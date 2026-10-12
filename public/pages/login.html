@@ -13,7 +13,6 @@
         document.documentElement.dir = 'rtl';
         var sheet = document.querySelector('link[href*="bootstrap.min.css"]');
         if (sheet) sheet.href = sheet.href.replace('bootstrap.min.css', 'bootstrap.rtl.min.css');
-
       }
     } catch (err) {}
   </script>
@@ -29,13 +28,9 @@
           <img src="../assets/images/logo.svg" alt="" width="36" height="36">
           <div>
             <div class="fw-bold">MBMS</div>
-            <div class="small text-secondary">Sign in to continue</div>
+            <div class="small text-secondary">Sign in</div>
           </div>
         </div>
-
-        <p class="small text-secondary mb-3">
-          Choose your province, then your email. Each province can be used by only one user. All users still see the same shared activity.
-        </p>
 
         <div class="alert alert-danger" id="login-server-error" hidden></div>
 
@@ -43,7 +38,7 @@
           <div class="mbms-field">
             <label class="form-label" for="location_id">Province</label>
             <select class="form-select" id="location_id" name="location_id" required>
-              <option value="">Loading provinces…</option>
+              <option value="">Select province</option>
             </select>
             <div class="invalid-feedback" data-error-for="location_id">Choose a province.</div>
           </div>
@@ -51,7 +46,7 @@
           <div class="mbms-field">
             <label class="form-label" for="email">Email</label>
             <select class="form-select" id="email" name="email" required>
-              <option value="">Loading emails…</option>
+              <option value="">Select email</option>
             </select>
             <div class="invalid-feedback" data-error-for="email">Choose your email.</div>
           </div>
@@ -67,11 +62,6 @@
 
           <button type="submit" class="btn btn-primary mbms-btn-block mt-3">Sign in</button>
         </form>
-
-        <p class="small text-secondary mt-3 mb-0">
-          After sign-in, your email and province are stored on your Settings profile. Passwords stay on the server only.
-          <a href="../index.html">View dashboard UI</a>
-        </p>
       </div>
     </section>
   </main>
