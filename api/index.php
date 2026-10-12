@@ -20,6 +20,20 @@ if ((getenv('DB_URL') === false || getenv('DB_URL') === '') && getenv('DATABASE_
     $_SERVER['DB_URL'] = $databaseUrl;
 }
 
+// Neon pooler hosts need options=endpoint%3D<id> when the runtime's libpq
+// lacks SNI support (common on serverless PHP). Without it every query fails.
+$dbUrl = (string) (getenv('DB_URL') ?: '');
+if ($dbUrl !== '' && str_contains($dbUrl, 'neon.tech') && ! str_contains($dbUrl, 'options=endpoint')) {
+    $host = parse_url($dbUrl, PHP_URL_HOST) ?: '';
+    if (preg_match('/^(ep-[a-z0-9-]+)/i', $host, $matches) === 1) {
+        $separator = str_contains($dbUrl, '?') ? '&' : '?';
+        $dbUrl .= $separator.'options=endpoint%3D'.$matches[1];
+        putenv('DB_URL='.$dbUrl);
+        $_ENV['DB_URL'] = $dbUrl;
+        $_SERVER['DB_URL'] = $dbUrl;
+    }
+}
+
 if ((getenv('DB_CONNECTION') === false || getenv('DB_CONNECTION') === '') && getenv('DB_URL')) {
     putenv('DB_CONNECTION=pgsql');
     $_ENV['DB_CONNECTION'] = 'pgsql';
