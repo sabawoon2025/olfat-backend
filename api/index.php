@@ -13,11 +13,27 @@
 */
 
 // Neon / Vercel Storage injects DATABASE_URL. Laravel reads DB_URL.
-if ((getenv('DB_URL') === false || getenv('DB_URL') === '') && getenv('DATABASE_URL')) {
-    $databaseUrl = (string) getenv('DATABASE_URL');
+// Prefer the unpooled URL: Neon's -pooler host (PgBouncer) breaks DDL
+// migrations with aborted-transaction errors.
+$preferredDatabaseUrl = getenv('DATABASE_URL_UNPOOLED')
+    ?: getenv('POSTGRES_URL_NON_POOLING')
+    ?: getenv('DATABASE_URL')
+    ?: false;
+
+if ((getenv('DB_URL') === false || getenv('DB_URL') === '') && $preferredDatabaseUrl) {
+    $databaseUrl = (string) $preferredDatabaseUrl;
     putenv('DB_URL='.$databaseUrl);
     $_ENV['DB_URL'] = $databaseUrl;
     $_SERVER['DB_URL'] = $databaseUrl;
+}
+
+// If only the pooler URL is present, rewrite the host for direct connections.
+$dbUrlForRewrite = (string) (getenv('DB_URL') ?: '');
+if ($dbUrlForRewrite !== '' && str_contains($dbUrlForRewrite, '-pooler.')) {
+    $dbUrlForRewrite = str_replace('-pooler.', '.', $dbUrlForRewrite);
+    putenv('DB_URL='.$dbUrlForRewrite);
+    $_ENV['DB_URL'] = $dbUrlForRewrite;
+    $_SERVER['DB_URL'] = $dbUrlForRewrite;
 }
 
 // Neon pooler hosts need an endpoint id when libpq lacks SNI. Do NOT put it in
