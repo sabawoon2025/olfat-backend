@@ -26,6 +26,21 @@ if ((getenv('DB_CONNECTION') === false || getenv('DB_CONNECTION') === '') && get
     $_SERVER['DB_CONNECTION'] = 'pgsql';
 }
 
+// On Vercel the rate limiter runs before controllers. CACHE_STORE=database
+// 500s every API call until migrate creates the cache table. Array cache is
+// the correct serverless default (function memory is ephemeral anyway).
+if (getenv('VERCEL') !== false || getenv('VERCEL_ENV') !== false) {
+    putenv('CACHE_STORE=array');
+    $_ENV['CACHE_STORE'] = 'array';
+    $_SERVER['CACHE_STORE'] = 'array';
+
+    if (getenv('SESSION_DRIVER') === false || getenv('SESSION_DRIVER') === '' || getenv('SESSION_DRIVER') === 'database') {
+        putenv('SESSION_DRIVER=array');
+        $_ENV['SESSION_DRIVER'] = 'array';
+        $_SERVER['SESSION_DRIVER'] = 'array';
+    }
+}
+
 // Laravel only treats cache paths starting with "/" as absolute, so this block is
 // Linux-only (which is what Vercel runs). On Windows it is skipped on purpose.
 if ((getenv('VERCEL') !== false || getenv('VERCEL_ENV') !== false) && DIRECTORY_SEPARATOR === '/') {

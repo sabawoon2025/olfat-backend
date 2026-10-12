@@ -38,4 +38,20 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        // When the caller presents CRON_SECRET, return the real exception
+        // so production bootstrap failures can be diagnosed without APP_DEBUG.
+        $exceptions->render(function (Throwable $e, Request $request) {
+            $secret = (string) config('app.cron_secret');
+            $token = (string) $request->bearerToken();
+
+            if ($secret === '' || $token === '' || ! hash_equals($secret, $token)) {
+                return null;
+            }
+
+            return response()->json([
+                'message' => $e->getMessage(),
+                'type' => $e::class,
+            ], 500);
+        });
     })->create();
