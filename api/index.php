@@ -20,14 +20,24 @@ if ((getenv('DB_URL') === false || getenv('DB_URL') === '') && getenv('DATABASE_
     $_SERVER['DB_URL'] = $databaseUrl;
 }
 
-// Neon pooler hosts need options=endpoint%3D<id> when the runtime's libpq
-// lacks SNI support (common on serverless PHP). Without it every query fails.
+// Neon pooler hosts need an endpoint id when libpq lacks SNI. Do NOT put it in
+// the URL ?options= query: Laravel maps that key onto PDO "options" and crashes.
+// Neon accepts endpoint=<id>;<password> in the password field instead.
 $dbUrl = (string) (getenv('DB_URL') ?: '');
-if ($dbUrl !== '' && str_contains($dbUrl, 'neon.tech') && ! str_contains($dbUrl, 'options=endpoint')) {
-    $host = parse_url($dbUrl, PHP_URL_HOST) ?: '';
-    if (preg_match('/^(ep-[a-z0-9-]+)/i', $host, $matches) === 1) {
-        $separator = str_contains($dbUrl, '?') ? '&' : '?';
-        $dbUrl .= $separator.'options=endpoint%3D'.$matches[1];
+if ($dbUrl !== '' && str_contains($dbUrl, 'neon.tech') && ! str_contains($dbUrl, 'endpoint=')) {
+    $parts = parse_url($dbUrl);
+    $host = (string) ($parts['host'] ?? '');
+    $password = (string) ($parts['pass'] ?? '');
+    if ($password !== '' && preg_match('/^(ep-[a-z0-9-]+)/i', $host, $matches) === 1) {
+        $parts['pass'] = 'endpoint='.$matches[1].';'.$password;
+        $scheme = ($parts['scheme'] ?? 'postgresql').'://';
+        $user = isset($parts['user']) ? rawurlencode($parts['user']) : '';
+        $pass = ':'.rawurlencode($parts['pass']);
+        $auth = ($user !== '' || isset($parts['pass'])) ? $user.$pass.'@' : '';
+        $port = isset($parts['port']) ? ':'.$parts['port'] : '';
+        $path = $parts['path'] ?? '';
+        $query = isset($parts['query']) ? '?'.$parts['query'] : '';
+        $dbUrl = $scheme.$auth.$host.$port.$path.$query;
         putenv('DB_URL='.$dbUrl);
         $_ENV['DB_URL'] = $dbUrl;
         $_SERVER['DB_URL'] = $dbUrl;
