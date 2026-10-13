@@ -87,6 +87,12 @@
     }
   }
 
+  function ensureScrollableModals() {
+    Array.prototype.forEach.call(document.querySelectorAll('.modal .modal-dialog'), function (dialog) {
+      dialog.classList.add('modal-dialog-scrollable');
+    });
+  }
+
   function init() {
     var pageOptions = global.MBMS_PAGE || {};
     var skipLayout = document.body.getAttribute('data-layout') === 'auth';
@@ -94,6 +100,7 @@
       global.MBMS_LAYOUT.mount(pageOptions);
     }
 
+    ensureScrollableModals();
     document.body.classList.add('mbms-ready');
     document.documentElement.dataset.bootstrap = bootstrapReady() ? 'ready' : 'missing';
     document.documentElement.dataset.apiBase = (global.MBMS_CONFIG && global.MBMS_CONFIG.apiBaseUrl) || '';

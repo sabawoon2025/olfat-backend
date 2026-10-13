@@ -181,23 +181,40 @@
   letter-spacing: 0.01em;
 }
 
-.modal-dialog {
-  margin: 0.75rem auto;
-  max-width: min(32rem, calc(100vw - 1.5rem));
+/* Scrollable submodules/modals on every page (works even when a <form> wraps body). */
+.modal {
+  --mbms-modal-margin: 0.75rem;
 }
 
-.modal-dialog-scrollable,
 .modal-dialog {
-  max-height: calc(100dvh - 1.5rem);
+  margin: var(--mbms-modal-margin) auto;
+  max-width: min(32rem, calc(100vw - 1.5rem));
+  max-height: calc(100dvh - (var(--mbms-modal-margin) * 2));
+  display: flex;
+  align-items: center;
+}
+
+.modal-dialog.modal-dialog-centered {
+  min-height: calc(100% - (var(--mbms-modal-margin) * 2));
 }
 
 .modal-content {
   border: 0;
   border-radius: var(--mbms-radius);
-  max-height: calc(100dvh - 1.5rem);
+  width: 100%;
+  max-height: calc(100dvh - (var(--mbms-modal-margin) * 2));
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.modal-content > form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: inherit;
+  overflow: hidden;
+  flex: 1 1 auto;
 }
 
 .modal-header,
@@ -206,23 +223,32 @@
   flex-shrink: 0;
 }
 
-.modal-body {
-  overflow-y: auto;
+.modal-body,
+.modal-content > form > .modal-body {
+  overflow-y: auto !important;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  max-height: min(70dvh, 34rem);
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
 }
 
 .mbms-scroll-panel {
-  max-height: min(40dvh, 16rem);
+  max-height: min(36vh, 14rem);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  padding-right: 0.15rem;
+  border: 1px solid var(--mbms-border);
+  border-radius: var(--mbms-radius-sm);
+  padding: 0.55rem;
+  background: #f8fafc;
 }
 
 .table-responsive.mbms-scroll-panel {
-  max-height: min(60dvh, 28rem);
+  max-height: min(55vh, 26rem);
+  background: transparent;
+  border: 0;
+  padding: 0;
 }
 
 .app-page,
@@ -230,8 +256,15 @@
 #catalog-root,
 #ret-root,
 #contacts-root,
-#dashboard-root {
+#dashboard-root,
+#materials-root,
+#tx-root {
   min-width: 0;
+}
+
+/* Long page tables also scroll instead of stretching forever */
+.table-responsive {
+  max-width: 100%;
 }
 
 .mbms-state {
