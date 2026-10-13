@@ -22,14 +22,19 @@
 </head>
 <body data-layout="auth" data-page="login">
   <main class="auth-screen">
+    <div class="auth-screen-media" aria-hidden="true">
+      <picture>
+        <source media="(min-width: 768px)" srcset="../assets/images/auth-login-bg.svg">
+        <img class="auth-screen-photo" src="../assets/images/auth-login-bg.svg" alt="" width="2400" height="1600" decoding="async" fetchpriority="high">
+      </picture>
+    </div>
+
     <section class="mbms-card card auth-card">
       <div class="card-body p-4 p-sm-5">
-        <header class="auth-card-brand">
-          <img src="../assets/images/logo.svg" alt="" width="44" height="44" class="auth-card-logo">
-          <div>
-            <h1 class="auth-card-title">MBMS</h1>
-            <p class="auth-card-sub">Sign in to your account</p>
-          </div>
+        <header class="auth-card-head">
+          <span class="auth-card-badge" aria-hidden="true"><i class="bi bi-shield-check"></i></span>
+          <h1 class="auth-card-title">Welcome back</h1>
+          <p class="auth-card-sub">Sign in to your account</p>
         </header>
 
         <div class="alert alert-danger d-flex align-items-start gap-2" id="login-server-error" hidden>

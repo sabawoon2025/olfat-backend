@@ -14,6 +14,8 @@
     'Sign out': 'خروج',
     'Sign in': 'ورود',
     'Sign in to continue': 'برای ادامه وارد شوید',
+    'Sign in to your account': 'به حساب خود وارد شوید',
+    'Welcome back': 'خوش آمدید',
     'Sign in · MBMS': 'ورود · MBMS',
     'Menu': 'فهرست',
     'More': 'بیشتر',
