@@ -30,6 +30,11 @@
           <div>
             <h1>Rice</h1>
           </div>
+          <div class="mbms-page-actions">
+            <button type="button" class="btn btn-primary" id="add-product" data-bs-toggle="modal" data-bs-target="#productModal">
+              <i class="bi bi-plus-lg" aria-hidden="true"></i> Add rice type
+            </button>
+          </div>
         </div>
         <div class="mbms-toolbar">
           <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search rice types">
@@ -106,6 +111,41 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <form id="product-form" novalidate>
+          <div class="modal-header">
+            <h2 class="modal-title h5" id="product-modal-title">Add rice type</h2>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p class="mbms-help">Create the rice type and bag sizes first. Then purchase stock and sell it.</p>
+            <div class="mbms-field">
+              <label class="form-label" for="product-name">Rice type / quality</label>
+              <input class="form-control" id="product-name" name="name" required placeholder="e.g. Basmati">
+            </div>
+            <div class="mbms-field">
+              <label class="form-label" for="product-notes">Notes</label>
+              <textarea class="form-control" id="product-notes" name="notes" rows="2" placeholder="Optional"></textarea>
+            </div>
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <strong>Variants / bag sizes</strong>
+              <button type="button" class="btn btn-outline-primary btn-sm" id="product-add-variant">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i> Add variant
+              </button>
+            </div>
+            <div id="product-variants-list"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save product</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>

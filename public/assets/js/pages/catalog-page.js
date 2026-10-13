@@ -1,6 +1,6 @@
 /**
  * Shared catalog UI for Tea, Rice, and Detergents.
- * Displays backend/mock values only. Does not calculate official stock or profit.
+ * Supports product + variant create, then purchase/sale against real variants.
  */
 (function (global) {
   'use strict';
@@ -15,7 +15,15 @@
       variantLabel: 'Bag size',
       showBags: true,
       showRemaining: true,
-      creditNote: 'Tea can be sold for cash or on credit. Official remaining debt comes from Laravel.'
+      addLabel: 'Add tea type',
+      creditNote: 'Tea can be sold for cash or on credit. Official remaining debt comes from Laravel.',
+      defaultVariants: [
+        { label: '20kg', package_qty: 20, base_unit: 'kg' },
+        { label: '30kg', package_qty: 30, base_unit: 'kg' },
+        { label: '35kg', package_qty: 35, base_unit: 'kg' },
+        { label: '50kg', package_qty: 50, base_unit: 'kg' },
+        { label: '68kg', package_qty: 68, base_unit: 'kg' }
+      ]
     },
     rice: {
       title: 'Rice',
@@ -26,7 +34,12 @@
       variantLabel: 'Bag size',
       showBags: true,
       showRemaining: false,
-      creditNote: 'Rice may be sold for cash or credit. Supplier-credit rules are not implemented in this UI.'
+      addLabel: 'Add rice type',
+      creditNote: 'Rice may be sold for cash or credit. Official balances stay on Laravel.',
+      defaultVariants: [
+        { label: '20kg', package_qty: 20, base_unit: 'kg' },
+        { label: '24.5kg', package_qty: 24.5, base_unit: 'kg' }
+      ]
     },
     detergents: {
       title: 'Detergents',
@@ -37,7 +50,11 @@
       variantLabel: 'Unit',
       showBags: false,
       showRemaining: false,
-      creditNote: 'Optional customer credit is supported in the form only. Credit rules will come from Laravel.'
+      addLabel: 'Add detergent',
+      creditNote: 'Optional customer credit is supported. Official balances stay on Laravel.',
+      defaultVariants: [
+        { label: '1 unit', package_qty: 1, base_unit: 'piece' }
+      ]
     }
   };
 
@@ -73,7 +90,7 @@
   function variantsFor(itemId, data) {
     var variants = (data && data.variants) || mockRoot().variants || [];
     return variants.filter(function (row) {
-      return row.type_id === itemId || row.product_id === itemId;
+      return String(row.type_id) === String(itemId) || String(row.product_id) === String(itemId);
     });
   }
 
@@ -92,7 +109,7 @@
   }
 
   function findItem(id, data) {
-    return itemsFrom(data).filter(function (item) { return item.id === id; })[0] || null;
+    return itemsFrom(data).filter(function (item) { return String(item.id) === String(id); })[0] || null;
   }
 
   function matchSearch(item, query) {
@@ -102,13 +119,33 @@
     return String(item.name || '').toLowerCase().indexOf(query) !== -1;
   }
 
+  function belongsToProduct(row, item) {
+    if (!row || !item) {
+      return false;
+    }
+    if (row.product_id && String(row.product_id) === String(item.id)) {
+      return true;
+    }
+    if (row.type_id && String(row.type_id) === String(item.id)) {
+      return true;
+    }
+    if (row.product && item.name && String(row.product) === String(item.name)) {
+      return true;
+    }
+    var variantIds = variantsFor(item.id, mockRoot()).map(function (v) { return String(v.id); });
+    if (row.variant_id && variantIds.indexOf(String(row.variant_id)) !== -1) {
+      return true;
+    }
+    return false;
+  }
+
   function renderList(data, source) {
     var cfg = currentConfig();
     var query = (document.getElementById('module-search') || {}).value || '';
     query = query.toLowerCase().trim();
     var filter = (document.getElementById('module-filter') || {}).value || '';
     var rows = itemsFrom(data).filter(function (item) {
-      return matchSearch(item, query) && (!filter || item.id === filter);
+      return matchSearch(item, query) && (!filter || String(item.id) === String(filter));
     });
 
     global.MBMS_RECORDS.showBanner(document.getElementById('source-banner'), source);
@@ -142,7 +179,52 @@
           return '<a class="btn btn-sm btn-outline-primary" href="?id=' + encodeURIComponent(item.id) + '">Open</a>';
         }
       }
-    ], 'No ' + cfg.title.toLowerCase() + ' records match.');
+    ], 'No ' + cfg.title.toLowerCase() + ' records yet. Add a product to start purchasing and selling.');
+  }
+
+  function renderHistoryTables(item, purchases, sales) {
+    global.MBMS_RECORDS.renderTable(document.getElementById('purchase-history-body'), purchases, [
+      { key: 'date' }, { key: 'supplier' }, { key: 'variant' }, { key: 'quantity' }, { key: 'total' }, { key: 'location' }
+    ], 'No purchases yet for this product.');
+    global.MBMS_RECORDS.renderTable(document.getElementById('sales-history-body'), sales, [
+      { key: 'date' }, { key: 'customer' }, { key: 'variant' }, { key: 'quantity' }, { key: 'total' }, { key: 'payment_type' }
+    ], 'No sales yet for this product.');
+
+    var history = purchases.map(function (row) {
+      return Object.assign({ history_type: 'Purchase', party: row.supplier }, row);
+    }).concat(sales.map(function (row) {
+      return Object.assign({ history_type: 'Sale', party: row.customer }, row);
+    }));
+    global.MBMS_RECORDS.renderTable(document.getElementById('all-history-body'), history, [
+      { key: 'date' }, { key: 'history_type' }, { key: 'party' }, { key: 'quantity' }, { key: 'total' }
+    ], 'No history yet.');
+  }
+
+  function loadProductHistory(item) {
+    renderHistoryTables(item, [], []);
+    return Promise.all([
+      global.MBMS_RECORDS.fetchOrMock('purchases', function () { return []; }),
+      global.MBMS_RECORDS.fetchOrMock('sales', function () { return []; })
+    ]).then(function (results) {
+      var purchases = ((results[0] && results[0].data) || []).filter(function (row) {
+        return belongsToProduct(row, item);
+      });
+      var sales = ((results[1] && results[1].data) || []).filter(function (row) {
+        return belongsToProduct(row, item);
+      });
+      renderHistoryTables(item, purchases, sales);
+    }).catch(function () {
+      renderHistoryTables(item, [], []);
+    });
+  }
+
+  function warmParties() {
+    return Promise.all([
+      global.MBMS_RECORDS.fetchOrMock('suppliers', function () { return []; }),
+      global.MBMS_RECORDS.fetchOrMock('customers', function () { return []; })
+    ]).catch(function () {
+      return null;
+    });
   }
 
   function renderDetail(item, data, source) {
@@ -160,56 +242,33 @@
             '<article class="mbms-card card mbms-stat-card"><div class="card-body">' +
             '<div class="mbms-stat-label">' + global.MBMS_UTILS.escapeHtml(variantName(row, data)) + '</div>' +
             '<div class="mbms-stat-value">' + global.MBMS_UTILS.escapeHtml(row.stock_display || '—') + '</div>' +
-            '<span class="badge text-bg-secondary">Backend value</span>' +
+            '<span class="badge text-bg-secondary">Live stock</span>' +
             '</div></article></div>'
           );
         }).join('')
-      : '<div class="col-12"><p class="text-secondary mb-0">No stock values yet.</p></div>';
+      : '<div class="col-12"><p class="text-secondary mb-0">No variants yet. Add variants when creating the product, then purchase stock.</p></div>';
 
     global.MBMS_RECORDS.renderTable(document.getElementById('variants-body'), variants, [
       { render: function (row) { return global.MBMS_UTILS.escapeHtml(variantName(row, data)); } },
       { key: 'stock_display' },
-      { render: function () { return '<span class="badge text-bg-secondary">Sample / API</span>'; } }
-    ], 'No variants yet. Future sizes or units will come from the backend.');
-
-    var purchases = ((data && data.purchases) || mockRoot().purchases || []).filter(function (row) {
-      return row.type_id === item.id || row.product_id === item.id;
-    }).concat(global.MBMS_RECORDS.storeList(cfg.endpoint + '-purchases').filter(function (row) {
-      return row.type_id === item.id || row.product_id === item.id;
-    }));
-    var sales = ((data && data.sales) || mockRoot().sales || []).filter(function (row) {
-      return row.type_id === item.id || row.product_id === item.id;
-    }).concat(global.MBMS_RECORDS.storeList(cfg.endpoint + '-sales').filter(function (row) {
-      return row.type_id === item.id || row.product_id === item.id;
-    }));
-
-    global.MBMS_RECORDS.renderTable(document.getElementById('purchase-history-body'), purchases, [
-      { key: 'date' }, { key: 'supplier' }, { render: function (row) { return global.MBMS_UTILS.escapeHtml(row.size_id || row.unit_id || ''); } }, { key: 'quantity' }, { key: 'total' }, { key: 'location' }
-    ]);
-    global.MBMS_RECORDS.renderTable(document.getElementById('sales-history-body'), sales, [
-      { key: 'date' }, { key: 'customer' }, { render: function (row) { return global.MBMS_UTILS.escapeHtml(row.size_id || row.unit_id || ''); } }, { key: 'quantity' }, { key: 'total' }, { key: 'payment_type' }
-    ]);
-
-    var history = purchases.map(function (row) {
-      return Object.assign({ history_type: 'Purchase' }, row);
-    }).concat(sales.map(function (row) {
-      return Object.assign({ history_type: 'Sale', supplier: row.customer }, row);
-    }));
-    global.MBMS_RECORDS.renderTable(document.getElementById('all-history-body'), history, [
-      { key: 'date' }, { key: 'history_type' }, { render: function (row) { return global.MBMS_UTILS.escapeHtml(row.supplier || row.customer || ''); } }, { key: 'quantity' }, { key: 'total' }
-    ]);
+      { render: function () { return '<span class="badge text-bg-secondary">API</span>'; } }
+    ], 'No variants yet.');
 
     setupForms(item, data);
+    warmParties().then(function () {
+      setupForms(item, data);
+    });
+    loadProductHistory(item);
   }
 
   function setupForms(item, data) {
     var cfg = currentConfig();
     document.getElementById('purchase-item-label').textContent = item.name;
     document.getElementById('sale-item-label').textContent = item.name;
-    document.querySelectorAll('[data-bags-field]').forEach(function (el) {
+    global.MBMS_UTILS.qsa('[data-bags-field]').forEach(function (el) {
       el.hidden = !cfg.showBags;
     });
-    document.querySelectorAll('[data-remaining-field]').forEach(function (el) {
+    global.MBMS_UTILS.qsa('[data-remaining-field]').forEach(function (el) {
       el.hidden = !cfg.showRemaining;
     });
     document.getElementById('sale-credit-note').textContent = cfg.creditNote;
@@ -226,10 +285,136 @@
     }
     global.MBMS_RECORDS.fillSelect(document.getElementById('purchase-variant'), variantOptions, function (row) { return row.id; }, function (row) { return row.label; });
     global.MBMS_RECORDS.fillSelect(document.getElementById('sale-variant'), variantOptions, function (row) { return row.id; }, function (row) { return row.label; });
-    global.MBMS_RECORDS.fillSelect(document.getElementById('purchase-supplier'), global.MBMS_MOCK.suppliers || [], function (row) { return row.id; }, function (row) { return row.name; });
-    global.MBMS_RECORDS.fillSelect(document.getElementById('sale-customer'), global.MBMS_MOCK.customers || [], function (row) { return row.id; }, function (row) { return row.name; });
+    global.MBMS_RECORDS.fillSelect(document.getElementById('purchase-supplier'), global.MBMS_CATALOG.suppliers(), function (row) { return row.id; }, function (row) { return row.name; });
+    global.MBMS_RECORDS.fillSelect(document.getElementById('sale-customer'), global.MBMS_CATALOG.customers(), function (row) { return row.id; }, function (row) { return row.name; });
     global.MBMS_RECORDS.fillWorkLocation(document.getElementById('purchase-location'));
     global.MBMS_RECORDS.fillWorkLocation(document.getElementById('sale-location'));
+  }
+
+  function variantRowHtml(variant) {
+    variant = variant || { label: '', package_qty: '', base_unit: 'kg' };
+    return (
+      '<div class="row g-2 mb-2 product-variant-row align-items-end">' +
+      '<div class="col-5"><label class="form-label mb-1">Variant</label>' +
+      '<input class="form-control" name="variant_label" value="' + global.MBMS_UTILS.escapeHtml(variant.label || '') + '" required placeholder="e.g. 20kg"></div>' +
+      '<div class="col-3"><label class="form-label mb-1">Qty</label>' +
+      '<input class="form-control" name="variant_qty" type="number" step="0.01" min="0" value="' + global.MBMS_UTILS.escapeHtml(String(variant.package_qty != null ? variant.package_qty : '')) + '" placeholder="20"></div>' +
+      '<div class="col-3"><label class="form-label mb-1">Unit</label>' +
+      '<input class="form-control" name="variant_unit" value="' + global.MBMS_UTILS.escapeHtml(variant.base_unit || 'kg') + '" required placeholder="kg"></div>' +
+      '<div class="col-1"><button type="button" class="btn btn-outline-danger btn-sm product-variant-remove" aria-label="Remove variant"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>' +
+      '</div>'
+    );
+  }
+
+  function fillDefaultVariants() {
+    var host = document.getElementById('product-variants-list');
+    if (!host) {
+      return;
+    }
+    var defaults = currentConfig().defaultVariants || [{ label: '1 unit', package_qty: 1, base_unit: 'piece' }];
+    host.innerHTML = defaults.map(variantRowHtml).join('');
+  }
+
+  function collectVariants() {
+    var rows = [];
+    global.MBMS_UTILS.qsa('#product-variants-list .product-variant-row').forEach(function (row) {
+      var label = (row.querySelector('[name="variant_label"]') || {}).value || '';
+      var qty = (row.querySelector('[name="variant_qty"]') || {}).value || '';
+      var unit = (row.querySelector('[name="variant_unit"]') || {}).value || 'kg';
+      label = String(label).trim();
+      if (!label) {
+        return;
+      }
+      rows.push({
+        label: label,
+        name: label,
+        package_qty: qty === '' ? 1 : Number(qty),
+        base_unit: String(unit).trim() || 'kg',
+        package_unit: String(unit).trim() || 'kg'
+      });
+    });
+    return rows;
+  }
+
+  function bindProductForm() {
+    var form = document.getElementById('product-form');
+    var addBtn = document.getElementById('product-add-variant');
+    var list = document.getElementById('product-variants-list');
+    var cfg = currentConfig();
+    var title = document.getElementById('product-modal-title');
+    if (title) {
+      title.textContent = cfg.addLabel || 'Add product';
+    }
+    var addAction = document.getElementById('add-product');
+    if (addAction) {
+      addAction.textContent = cfg.addLabel || 'Add product';
+    }
+
+    if (list) {
+      list.addEventListener('click', function (event) {
+        var btn = event.target.closest('.product-variant-remove');
+        if (!btn) {
+          return;
+        }
+        var rows = list.querySelectorAll('.product-variant-row');
+        if (rows.length <= 1) {
+          global.MBMS_UI.notify({ type: 'warning', message: 'Keep at least one variant.' });
+          return;
+        }
+        btn.closest('.product-variant-row').remove();
+      });
+    }
+
+    if (addBtn && list) {
+      addBtn.addEventListener('click', function () {
+        list.insertAdjacentHTML('beforeend', variantRowHtml({ label: '', package_qty: '', base_unit: 'kg' }));
+      });
+    }
+
+    var openBtn = document.getElementById('add-product');
+    if (openBtn) {
+      openBtn.addEventListener('click', function () {
+        if (form) {
+          form.reset();
+          form.classList.remove('was-validated');
+        }
+        fillDefaultVariants();
+      });
+    }
+
+    if (!form) {
+      return;
+    }
+
+    global.MBMS_UI.bindForm(form, {
+      onSubmit: function (values) {
+        var units = collectVariants();
+        if (!units.length) {
+          throw {
+            message: 'Add at least one variant (bag size or unit).',
+            errors: { variants: ['At least one variant is required'] }
+          };
+        }
+        var record = {
+          id: 'local-' + Date.now(),
+          name: values.name,
+          notes: values.notes || '',
+          units: units
+        };
+        return global.MBMS_RECORDS.submitOrMock('post', cfg.endpoint, record).then(function (result) {
+          global.MBMS_UI.notify({
+            type: result.source === 'api' ? 'success' : 'warning',
+            message: result.source === 'api'
+              ? 'Product saved. You can now purchase stock and sell it.'
+              : 'API not connected. Sample product only.'
+          });
+          form.reset();
+          bootstrap.Modal.getOrCreateInstance(document.getElementById('productModal')).hide();
+          var saved = global.MBMS_UTILS.unwrap(result.data) || result.data || {};
+          global.location.search = '?id=' + encodeURIComponent(saved.id || record.id);
+        });
+      }
+    });
   }
 
   function bindForms() {
@@ -250,7 +435,7 @@
           }).then(function (result) {
             global.MBMS_UI.notify({
               type: result.source === 'api' ? 'success' : 'warning',
-              message: result.source === 'api' ? 'Purchase sent to the API.' : 'API not connected. Saved as a local sample record only.'
+              message: result.source === 'api' ? 'Purchase saved. Stock updated by Laravel.' : 'API not connected. Saved as a local sample record only.'
             });
             bootstrap.Modal.getOrCreateInstance(document.getElementById('purchaseModal')).hide();
             purchaseForm.reset();
@@ -273,7 +458,7 @@
           }).then(function (result) {
             global.MBMS_UI.notify({
               type: result.source === 'api' ? 'success' : 'warning',
-              message: result.source === 'api' ? 'Sale sent to the API.' : 'API not connected. Saved as a local sample record only.'
+              message: result.source === 'api' ? 'Sale saved. Stock and customer balance updated by Laravel.' : 'API not connected. Saved as a local sample record only.'
             });
             bootstrap.Modal.getOrCreateInstance(document.getElementById('saleModal')).hide();
             saleForm.reset();
@@ -325,8 +510,7 @@
           actionLabel: 'Try again',
           onAction: load
         });
-      })
-      ;
+      });
   }
 
   global.MBMS_PAGE = {
@@ -341,6 +525,8 @@
       if (filter) {
         filter.addEventListener('change', load);
       }
+      fillDefaultVariants();
+      bindProductForm();
       bindForms();
       load();
     }

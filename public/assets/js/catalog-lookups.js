@@ -45,30 +45,28 @@
   }
 
   function variants(category, productId) {
+    if (!productId) {
+      return [];
+    }
     var product = products(category).filter(function (row) {
       return String(row.id) === String(productId);
     })[0];
     if (product && product.units && product.units.length) {
       return product.units;
     }
-    var data = mock();
-    if (category === 'tea') {
-      return ((data.tea && data.tea.sizes) || []).map(function (row) {
-        return { id: row.id, label: row.label };
+    if (category === 'tea' || category === 'rice') {
+      var catalog = mock()[category] || {};
+      var fromCatalog = (catalog.variants || []).filter(function (row) {
+        return String(row.type_id) === String(productId) || String(row.product_id) === String(productId);
       });
+      if (fromCatalog.length) {
+        return fromCatalog.map(function (row) {
+          return { id: row.id, label: row.label || row.size_id || row.unit_id };
+        });
+      }
     }
-    if (category === 'rice') {
-      return ((data.rice && data.rice.sizes) || []).map(function (row) {
-        return { id: row.id, label: row.label };
-      });
-    }
-    if (category === 'detergents') {
-      var product = products('detergents').filter(function (row) { return row.id === productId; })[0];
+    if (category === 'detergents' || category === 'raw-materials' || category === 'factory-materials') {
       return (product && product.units) || [];
-    }
-    if (category === 'raw-materials' || category === 'factory-materials') {
-      var item = products(category).filter(function (row) { return row.id === productId; })[0];
-      return (item && item.units) || [];
     }
     return [];
   }

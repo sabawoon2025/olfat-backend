@@ -1,6 +1,6 @@
 /**
  * Shared UI for Customers and Suppliers.
- * Balances are displayed from API/mock only and are not calculated here.
+ * Balances and ledger tabs are loaded from live sale/purchase/payment APIs.
  */
 (function (global) {
   'use strict';
@@ -22,18 +22,105 @@
   }
 
   function findRecord(id) {
-    return allRecords().filter(function (row) { return row.id === id; })[0] || null;
+    return allRecords().filter(function (row) { return String(row.id) === String(id); })[0] || null;
   }
 
-  function historyFor(id) {
-    var key = isCustomer() ? 'customerHistory' : 'supplierHistory';
-    var seed = (global.MBMS_MOCK && global.MBMS_MOCK[key] && global.MBMS_MOCK[key][id]) || {};
-    return {
-      sales: seed.sales || [],
-      purchases: seed.purchases || [],
-      payments: seed.payments || [],
-      transactions: seed.transactions || []
-    };
+  function emptyHistory() {
+    return { sales: [], purchases: [], payments: [], transactions: [] };
+  }
+
+  function renderHistory(history) {
+    if (isCustomer()) {
+      global.MBMS_RECORDS.renderTable(document.getElementById('sales-history-body'), history.sales, [
+        { key: 'date' }, { key: 'detail' }, { key: 'amount' }, { key: 'status' }
+      ], 'No sales yet.');
+    } else {
+      global.MBMS_RECORDS.renderTable(document.getElementById('purchase-history-body'), history.purchases, [
+        { key: 'date' }, { key: 'detail' }, { key: 'amount' }
+      ], 'No purchases yet.');
+    }
+    global.MBMS_RECORDS.renderTable(document.getElementById('payment-history-body'), history.payments, [
+      { key: 'date' }, { key: 'amount' }, { key: 'method' }, { key: 'location' }
+    ], 'No payments yet.');
+    global.MBMS_RECORDS.renderTable(document.getElementById('transaction-history-body'), history.transactions, [
+      { key: 'date' }, { key: 'type' }, { key: 'detail' }, { key: 'amount' }
+    ], 'No ledger rows yet.');
+  }
+
+  function loadHistory(recordId) {
+    renderHistory(emptyHistory());
+    if (!recordId) {
+      return Promise.resolve();
+    }
+
+    if (isCustomer()) {
+      return Promise.all([
+        global.MBMS_RECORDS.fetchOrMock('sales', function () { return []; }),
+        global.MBMS_RECORDS.fetchOrMock('payments/customers', function () { return []; })
+      ]).then(function (results) {
+        var sales = ((results[0] && results[0].data) || []).filter(function (row) {
+          return String(row.customer_id) === String(recordId);
+        }).map(function (row) {
+          return {
+            date: row.date,
+            detail: [row.product, row.variant].filter(Boolean).join(' · ') || row.reference_no || row.id,
+            amount: row.total,
+            status: row.payment_type || (row.remaining_raw > 0 ? 'credit' : 'paid')
+          };
+        });
+        var payments = ((results[1] && results[1].data) || []).filter(function (row) {
+          return !row.customer_id || String(row.customer_id) === String(recordId) || String(row.person_id) === String(recordId);
+        }).map(function (row) {
+          return {
+            date: row.date,
+            amount: row.amount,
+            method: row.description || 'Payment',
+            location: row.location || '—'
+          };
+        });
+        var transactions = sales.map(function (row) {
+          return { date: row.date, type: 'Sale', detail: row.detail, amount: row.amount };
+        }).concat(payments.map(function (row) {
+          return { date: row.date, type: 'Payment', detail: row.method, amount: row.amount };
+        }));
+        renderHistory({ sales: sales, purchases: [], payments: payments, transactions: transactions });
+      }).catch(function () {
+        renderHistory(emptyHistory());
+      });
+    }
+
+    return Promise.all([
+      global.MBMS_RECORDS.fetchOrMock('purchases', function () { return []; }),
+      global.MBMS_RECORDS.fetchOrMock('payments/suppliers', function () { return []; })
+    ]).then(function (results) {
+      var purchases = ((results[0] && results[0].data) || []).filter(function (row) {
+        return String(row.supplier_id) === String(recordId);
+      }).map(function (row) {
+        return {
+          date: row.date,
+          detail: [row.product, row.variant].filter(Boolean).join(' · ') || row.reference_no || row.id,
+          amount: row.total
+        };
+      });
+      var payments = ((results[1] && results[1].data) || []).filter(function (row) {
+        return !row.supplier_id || String(row.supplier_id) === String(recordId) || String(row.person_id) === String(recordId);
+      }).map(function (row) {
+        return {
+          date: row.date,
+          amount: row.amount,
+          method: row.description || 'Payment',
+          location: row.location || '—'
+        };
+      });
+      var transactions = purchases.map(function (row) {
+        return { date: row.date, type: 'Purchase', detail: row.detail, amount: row.amount };
+      }).concat(payments.map(function (row) {
+        return { date: row.date, type: 'Payment', detail: row.method, amount: row.amount };
+      }));
+      renderHistory({ sales: [], purchases: purchases, payments: payments, transactions: transactions });
+    }).catch(function () {
+      renderHistory(emptyHistory());
+    });
   }
 
   function renderList(source) {
@@ -72,25 +159,13 @@
     document.getElementById('detail-address').textContent = record.address || 'No address';
     document.getElementById('detail-location').textContent = record.location || '—';
     document.getElementById('detail-balance').textContent = record.balance_display || '—';
-    document.getElementById('detail-balance-note').textContent = record.notes || 'Official balance will come from Laravel.';
+    document.getElementById('detail-balance-note').textContent = record.notes ||
+      (isCustomer()
+        ? 'Receivable balance from unpaid sales minus payments.'
+        : 'Payable balance from unpaid purchases minus payments.');
     global.MBMS_RECORDS.showBanner(document.getElementById('source-banner'), source);
 
-    var history = historyFor(record.id);
-    if (isCustomer()) {
-      global.MBMS_RECORDS.renderTable(document.getElementById('sales-history-body'), history.sales, [
-        { key: 'date' }, { key: 'detail' }, { key: 'amount' }, { key: 'status' }
-      ]);
-    } else {
-      global.MBMS_RECORDS.renderTable(document.getElementById('purchase-history-body'), history.purchases, [
-        { key: 'date' }, { key: 'detail' }, { key: 'amount' }
-      ]);
-    }
-    global.MBMS_RECORDS.renderTable(document.getElementById('payment-history-body'), history.payments, [
-      { key: 'date' }, { key: 'amount' }, { key: 'method' }, { key: 'location' }
-    ]);
-    global.MBMS_RECORDS.renderTable(document.getElementById('transaction-history-body'), history.transactions, [
-      { key: 'date' }, { key: 'type' }, { key: 'detail' }, { key: 'amount' }
-    ]);
+    loadHistory(record.id);
 
     global.MBMS_UTILS.fillForm(document.getElementById('contact-form'), record);
     document.getElementById('contact-form-title').textContent = 'Edit ' + (isCustomer() ? 'customer' : 'supplier');
@@ -114,7 +189,7 @@
           var record = findRecord(id);
           if (!record && result.source === 'api' && result.data) {
             var list = Array.isArray(result.data) ? result.data : result.data.data || [];
-            record = list.filter(function (row) { return row.id === id; })[0] || null;
+            record = list.filter(function (row) { return String(row.id) === String(id); })[0] || null;
           }
           if (!record) {
             setMode(false);
@@ -128,8 +203,7 @@
           setMode(false);
           renderList(result.source);
         }
-      })
-      ;
+      });
   }
 
   function openCreate() {
@@ -175,7 +249,7 @@
           if (!id) {
             values.id = 'local-' + Date.now();
             values.balance_display = '—';
-            values.notes = 'New sample record. Official balance will come from Laravel.';
+            values.notes = 'New contact. Balance updates after sales, purchases, and payments.';
           }
           return global.MBMS_RECORDS.submitOrMock(method, path, values, function (body) {
             if (id) {

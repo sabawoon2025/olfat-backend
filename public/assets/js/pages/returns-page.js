@@ -16,6 +16,17 @@
     return mockList();
   }
 
+  function fillSaleSelect() {
+    global.MBMS_RECORDS.fillSelect(
+      document.getElementById('ret-sale'),
+      salesOptions(),
+      function (row) { return row.id; },
+      function (row) {
+        return (row.reference_no || row.id) + ' · ' + (row.product || 'Sale') + ' · ' + (row.date || '');
+      }
+    );
+  }
+
   function render(source) {
     global.MBMS_RECORDS.showBanner(document.getElementById('source-banner'), source);
     var rows = allRows();
@@ -43,9 +54,19 @@
       });
   }
 
+  function warmSales() {
+    return global.MBMS_RECORDS.fetchOrMock('sales', function () { return []; })
+      .then(function () {
+        fillSaleSelect();
+      })
+      .catch(function () {
+        fillSaleSelect();
+      });
+  }
+
   function fillSaleFields() {
     var saleId = document.getElementById('ret-sale').value;
-    var sale = salesOptions().filter(function (row) { return row.id === saleId; })[0];
+    var sale = salesOptions().filter(function (row) { return String(row.id) === String(saleId); })[0];
     if (!sale) {
       return;
     }
@@ -57,12 +78,8 @@
     active: 'returns',
     title: 'Sales Returns',
     onReady: function () {
-      global.MBMS_RECORDS.fillSelect(
-        document.getElementById('ret-sale'),
-        salesOptions(),
-        function (row) { return row.id; },
-        function (row) { return row.id + ' · ' + row.product + ' · ' + row.date; }
-      );
+      fillSaleSelect();
+      warmSales();
       global.MBMS_RECORDS.fillWorkLocation(document.getElementById('ret-location'));
       document.getElementById('ret-sale').addEventListener('change', fillSaleFields);
       global.MBMS_UI.bindReset(document.getElementById('ret-form'), document.getElementById('ret-reset'));
@@ -89,7 +106,7 @@
           var submitter = form.querySelector('[type="submit"]');
           global.MBMS_UI.setButtonLoading(submitter, true);
           var values = global.MBMS_UTILS.formToObject(form);
-          var sale = salesOptions().filter(function (row) { return row.id === values.sale_id; })[0] || {};
+          var sale = salesOptions().filter(function (row) { return String(row.id) === String(values.sale_id); })[0] || {};
           var record = {
             id: 'local-' + Date.now(),
             sale_id: values.sale_id,
@@ -115,6 +132,7 @@
             form.reset();
             form.classList.remove('was-validated');
             bootstrap.Modal.getOrCreateInstance(document.getElementById('retModal')).hide();
+            warmSales();
             load();
           }).catch(function (error) {
             global.MBMS_UI.notify({

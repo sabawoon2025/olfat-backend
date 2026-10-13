@@ -212,6 +212,29 @@
     fillDependentSelects();
   }
 
+  function warmLookups() {
+    var catalogPaths = isSales()
+      ? ['tea', 'rice', 'detergents']
+      : ['tea', 'rice', 'detergents', 'raw-materials', 'factory-materials'];
+    var partyPath = isSales() ? 'customers' : 'suppliers';
+    var emptyCatalog = function () {
+      return { types: [], products: [], variants: [], sizes: [] };
+    };
+    return Promise.all(
+      catalogPaths.map(function (path) {
+        return global.MBMS_RECORDS.fetchOrMock(path, emptyCatalog).catch(function () {
+          return null;
+        });
+      }).concat([
+        global.MBMS_RECORDS.fetchOrMock(partyPath, function () { return []; }).catch(function () {
+          return null;
+        })
+      ])
+    ).then(function () {
+      setupFormLookups();
+    });
+  }
+
   global.MBMS_PAGE = {
     active: document.body.getAttribute('data-page'),
     title: (document.querySelector('h1') && document.querySelector('h1').textContent) || (isSales() ? 'Sales' : 'Purchases'),
@@ -256,6 +279,7 @@
         locationEl.addEventListener('change', updateStockHint);
       }
       setupFormLookups();
+      warmLookups();
       ensureStockIndex();
 
       var form = document.getElementById('tx-form');
@@ -267,8 +291,8 @@
       global.MBMS_UI.bindForm(form, {
         onSubmit: function (values) {
           var category = lockedCategory() || values.category;
-          var product = global.MBMS_CATALOG.products(category).filter(function (row) { return row.id === values.product; })[0];
-          var variant = global.MBMS_CATALOG.variants(category, values.product).filter(function (row) { return row.id === values.variant; })[0];
+          var product = global.MBMS_CATALOG.products(category).filter(function (row) { return String(row.id) === String(values.product); })[0];
+          var variant = global.MBMS_CATALOG.variants(category, values.product).filter(function (row) { return String(row.id) === String(values.variant); })[0];
           var workLocationId = (global.MBMS_CONFIG && global.MBMS_CONFIG.getLocationId)
             ? global.MBMS_CONFIG.getLocationId()
             : values.location;

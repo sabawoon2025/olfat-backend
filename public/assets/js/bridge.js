@@ -640,6 +640,7 @@
       reference_no: row.reference_no || '',
       category: categoryOf(product.module),
       product: product.name || lineLabel(row.items) || 'Sale',
+      product_id: sid(product.id),
       variant: variant.name || '',
       variant_id: sid(item.product_variant_id || variant.id),
       customer: relName(row.customer),
@@ -668,6 +669,7 @@
         return {
           id: sid(line.id),
           product_variant_id: sid(line.product_variant_id || lineVariant.id),
+          product_id: sid(lineProduct.id),
           product: lineProduct.name || '',
           variant: lineVariant.name || '',
           unit: line.unit || lineVariant.base_unit || '',
@@ -691,6 +693,7 @@
       reference_no: row.reference_no || '',
       category: categoryOf(product.module),
       product: product.name || lineLabel(row.items) || 'Purchase',
+      product_id: sid(product.id),
       variant: variant.name || '',
       variant_id: sid(item.product_variant_id || variant.id),
       customer: '',
@@ -746,9 +749,13 @@
 
   function mapPayment(row, personKey) {
     var person = row[personKey] || {};
+    var personIdKey = personKey === 'customer' ? 'customer_id' : 'supplier_id';
     return {
       id: sid(row.id),
       person: person.name || '',
+      person_id: sid(row[personIdKey] || person.id),
+      customer_id: personKey === 'customer' ? sid(row.customer_id || person.id) : '',
+      supplier_id: personKey === 'supplier' ? sid(row.supplier_id || person.id) : '',
       amount: money(row.amount),
       date: day(row.paid_at),
       description: row.notes || row.description || '',
@@ -1021,13 +1028,16 @@
         body = {
           module: moduleOf(path),
           name: body && body.name,
-          description: body && body.notes,
+          description: (body && (body.notes || body.description)) || null,
           variants: ((body && body.units) || [{ label: 'Unit' }]).map(function (unit) {
+            var base = unit.base_unit || unit.package_unit || 'kg';
+            var qty = num(unit.package_qty);
             return {
               name: unit.label || unit.name || 'Unit',
-              base_unit: 'unit',
-              package_unit: 'unit',
-              package_qty: 1
+              base_unit: base,
+              package_unit: unit.package_unit || base,
+              package_qty: qty > 0 ? qty : 1,
+              sku: unit.sku || null
             };
           })
         };
@@ -1369,6 +1379,9 @@
       return data;
     }
     if (original === 'tea' || original === 'rice' || original === 'detergents') {
+      if (method === 'POST') {
+        return mapProduct(data || {});
+      }
       return catalogFrom(rowsOf(payload));
     }
     if ((original === 'raw-materials' || original === 'factory-materials') && method === 'GET') {
