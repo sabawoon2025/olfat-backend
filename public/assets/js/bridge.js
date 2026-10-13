@@ -256,8 +256,8 @@
     if (path === 'suppliers' || /^suppliers\//.test(path) || path === 'payments/suppliers') {
       return ['suppliers'];
     }
-    if (path === 'stock' || path.indexOf('stock/') === 0 || path === 'damaged-stock' || path === 'sales-returns') {
-      return ['stockBalances', 'stock', 'products', 'tea', 'rice', 'detergents'];
+    if (path === 'stock' || path.indexOf('stock/') === 0 || path === 'damaged-stock' || path === 'sales-returns' || path === 'purchase-returns') {
+      return ['stockBalances', 'stock', 'products', 'tea', 'rice', 'detergents', 'purchases', 'suppliers'];
     }
     if (path === 'workers' || /^workers\//.test(path) || path === 'worker-payments') {
       return ['workers', 'workerPayments'];
@@ -593,8 +593,10 @@
       id: sid(row.id),
       name: row.name || '',
       notes: row.description || '',
+      description: row.description || '',
       module: row.module || '',
       category: categoryOf(row.module),
+      is_active: row.is_active !== false && row.is_active !== 0 && row.is_active !== '0',
       units: variants.map(function (variant) {
         return { id: variant.id, label: variant.label };
       }),
@@ -708,7 +710,26 @@
       date: day(row.purchased_at),
       location: relName(row.location),
       location_id: sid(row.location_id),
-      notes: row.notes || ''
+      notes: row.notes || '',
+      items: (row.items || []).map(function (line) {
+        var lineVariant = line.variant || {};
+        var lineProduct = lineVariant.product || {};
+        return {
+          id: sid(line.id),
+          product_variant_id: sid(line.product_variant_id || lineVariant.id),
+          product_id: sid(lineProduct.id),
+          product: lineProduct.name || '',
+          variant: lineVariant.name || '',
+          unit: line.unit || lineVariant.base_unit || '',
+          quantity: line.quantity != null ? String(line.quantity) : '',
+          quantity_raw: num(line.quantity),
+          returned_quantity: line.returned_quantity != null ? String(line.returned_quantity) : '0',
+          unit_price: money(line.unit_price),
+          unit_price_raw: num(line.unit_price),
+          line_total: money(line.line_total != null ? line.line_total : (num(line.quantity) * num(line.unit_price))),
+          line_total_raw: num(line.line_total != null ? line.line_total : (num(line.quantity) * num(line.unit_price)))
+        };
+      })
     };
   }
 
@@ -858,9 +879,30 @@
     var product = variant.product || {};
     return {
       id: sid(row.id),
+      kind: 'sale',
       date: day(row.returned_at),
       sale_id: sid(row.sale_id || sale.id),
+      purchase_id: '',
       product: product.name || lineLabel(row.items) || sale.reference_no || '',
+      variant: variant.name || '',
+      quantity: item.quantity != null ? String(item.quantity) : '',
+      reason: row.notes || '',
+      location: relName(row.location)
+    };
+  }
+
+  function mapPurchaseReturn(row) {
+    var purchase = row.purchase || {};
+    var item = firstItem(row);
+    var variant = item.variant || {};
+    var product = variant.product || {};
+    return {
+      id: sid(row.id),
+      kind: 'purchase',
+      date: day(row.returned_at),
+      sale_id: '',
+      purchase_id: sid(row.purchase_id || purchase.id),
+      product: product.name || lineLabel(row.items) || purchase.reference_no || '',
       variant: variant.name || '',
       quantity: item.quantity != null ? String(item.quantity) : '',
       reason: row.notes || '',
@@ -1085,7 +1127,7 @@
     } else if (nextPath === 'stock') {
       nextPath = 'stock/balances';
       params.per_page = 200;
-    } else if (nextPath === 'stock/movements' || nextPath === 'sales-returns' || nextPath === 'damaged-stocks') {
+    } else if (nextPath === 'stock/movements' || nextPath === 'sales-returns' || nextPath === 'purchase-returns' || nextPath === 'damaged-stocks') {
       params.per_page = params.per_page || 100;
     } else if (nextPath === 'damaged-stock') {
       nextPath = 'damaged-stocks';
@@ -1111,6 +1153,19 @@
         notes: body.reason || null,
         items: [{
           sale_item_id: saleItem ? Number(saleItem.id) : '',
+          quantity: num(body.quantity)
+        }]
+      };
+    } else if (nextPath === 'purchase-returns' && verb === 'POST') {
+      var purchase = findNamed(global.MBMS_MOCK && global.MBMS_MOCK.purchases, body.purchase_id);
+      var purchaseItem = purchase && purchase.items && purchase.items[0];
+      body = {
+        purchase_id: idOnly(body.purchase_id),
+        location_id: idOnly(body.location_id || body.location),
+        returned_at: body.date || null,
+        notes: body.reason || null,
+        items: [{
+          purchase_item_id: purchaseItem ? Number(purchaseItem.id) : '',
           quantity: num(body.quantity)
         }]
       };
@@ -1422,6 +1477,9 @@
     if (original === 'sales-returns') {
       return method === 'GET' ? rowsOf(payload).map(mapReturn) : mapReturn(data || {});
     }
+    if (original === 'purchase-returns') {
+      return method === 'GET' ? rowsOf(payload).map(mapPurchaseReturn) : mapPurchaseReturn(data || {});
+    }
     if (original === 'damaged-stock') {
       return method === 'GET' ? rowsOf(payload).map(mapDamage) : mapDamage(data || {});
     }
@@ -1512,6 +1570,11 @@
     if (path === 'sales-returns' && Array.isArray(data)) {
       mock.returns = data;
       clearStore('returns');
+      return;
+    }
+    if (path === 'purchase-returns' && Array.isArray(data)) {
+      mock.purchaseReturns = data;
+      clearStore('purchaseReturns');
       return;
     }
     if (path === 'damaged-stock' && Array.isArray(data)) {

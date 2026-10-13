@@ -160,7 +160,15 @@
 
     var body = document.getElementById('catalog-list-body');
     global.MBMS_RECORDS.renderTable(body, rows, [
-      { key: 'name' },
+      {
+        render: function (item) {
+          var active = item.is_active !== false && item.is_active !== 0 && item.is_active !== '0';
+          var badge = active
+            ? '<span class="badge text-bg-success ms-1">Active</span>'
+            : '<span class="badge text-bg-secondary ms-1">Inactive</span>';
+          return global.MBMS_UTILS.escapeHtml(item.name || '') + badge;
+        }
+      },
       {
         render: function (item) {
           return variantsFor(item.id, data).map(function (row) {
@@ -227,10 +235,117 @@
     });
   }
 
+  function isActiveProduct(item) {
+    return item && item.is_active !== false && item.is_active !== 0 && item.is_active !== '0';
+  }
+
+  function syncDetailActions(item) {
+    var toggle = document.getElementById('toggle-product-active');
+    if (toggle) {
+      var active = isActiveProduct(item);
+      toggle.textContent = active ? 'Deactivate' : 'Activate';
+      toggle.className = active ? 'btn btn-outline-danger' : 'btn btn-outline-success';
+      toggle.dataset.active = active ? '1' : '0';
+    }
+    var purchaseBtn = document.querySelector('[data-bs-target="#purchaseModal"]');
+    var saleBtn = document.querySelector('[data-bs-target="#saleModal"]');
+    if (purchaseBtn) {
+      purchaseBtn.disabled = !isActiveProduct(item);
+    }
+    if (saleBtn) {
+      saleBtn.disabled = !isActiveProduct(item);
+    }
+  }
+
+  function openEditProduct(item, data) {
+    var form = document.getElementById('product-form');
+    var title = document.getElementById('product-modal-title');
+    var variantsWrap = document.getElementById('product-variants-wrap');
+    var idInput = document.getElementById('product-id');
+    var activeInput = document.getElementById('product-active');
+    if (!form) {
+      return;
+    }
+    form.reset();
+    form.classList.remove('was-validated');
+    if (idInput) {
+      idInput.value = item.id;
+    }
+    document.getElementById('product-name').value = item.name || '';
+    document.getElementById('product-notes').value = item.notes || item.description || '';
+    if (activeInput) {
+      activeInput.checked = isActiveProduct(item);
+    }
+    if (title) {
+      title.textContent = 'Edit ' + (currentConfig().itemLabel || 'product');
+    }
+    if (variantsWrap) {
+      variantsWrap.hidden = true;
+      global.MBMS_UTILS.qsa('#product-variants-list input, #product-variants-list button').forEach(function (el) {
+        el.disabled = true;
+        el.required = false;
+      });
+    }
+    var existing = document.getElementById('product-existing-variants');
+    if (existing) {
+      var labels = variantsFor(item.id, data).map(function (row) {
+        return global.MBMS_UTILS.escapeHtml(variantName(row, data));
+      });
+      existing.hidden = false;
+      existing.innerHTML = labels.length
+        ? '<p class="mbms-help mb-1">Current variants (unchanged):</p><div>' +
+          labels.map(function (label) { return '<span class="mbms-chip me-1">' + label + '</span>'; }).join('') +
+          '</div><p class="mbms-help mt-2 mb-0">To add new bag sizes later, create a new product or ask an admin to add variants.</p>'
+        : '<p class="mbms-help mb-0">No variants on this product yet.</p>';
+    }
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('productModal')).show();
+  }
+
+  function openCreateProduct() {
+    var form = document.getElementById('product-form');
+    var title = document.getElementById('product-modal-title');
+    var variantsWrap = document.getElementById('product-variants-wrap');
+    var idInput = document.getElementById('product-id');
+    var activeInput = document.getElementById('product-active');
+    var existing = document.getElementById('product-existing-variants');
+    if (form) {
+      form.reset();
+      form.classList.remove('was-validated');
+    }
+    if (idInput) {
+      idInput.value = '';
+    }
+    if (activeInput) {
+      activeInput.checked = true;
+    }
+    if (title) {
+      title.textContent = currentConfig().addLabel || 'Add product';
+    }
+    if (variantsWrap) {
+      variantsWrap.hidden = false;
+      global.MBMS_UTILS.qsa('#product-variants-list input').forEach(function (el) {
+        el.disabled = false;
+        if (el.name === 'variant_label' || el.name === 'variant_unit') {
+          el.required = true;
+        }
+      });
+      global.MBMS_UTILS.qsa('#product-variants-list button').forEach(function (el) {
+        el.disabled = false;
+      });
+    }
+    if (existing) {
+      existing.hidden = true;
+      existing.innerHTML = '';
+    }
+    fillDefaultVariants();
+  }
+
   function renderDetail(item, data, source) {
     var cfg = currentConfig();
     document.getElementById('detail-title').textContent = item.name;
-    document.getElementById('detail-note').textContent = item.example || item.notes || cfg.itemLabel;
+    document.getElementById('detail-note').textContent = (item.example || item.notes || cfg.itemLabel) +
+      (isActiveProduct(item) ? '' : ' · Inactive (hidden from new sales/purchases)');
+    syncDetailActions(item);
     global.MBMS_RECORDS.showBanner(document.getElementById('source-banner'), source);
 
     var variants = variantsFor(item.id, data);
@@ -373,12 +488,56 @@
 
     var openBtn = document.getElementById('add-product');
     if (openBtn) {
-      openBtn.addEventListener('click', function () {
-        if (form) {
-          form.reset();
-          form.classList.remove('was-validated');
+      openBtn.addEventListener('click', openCreateProduct);
+    }
+
+    var editBtn = document.getElementById('edit-product');
+    if (editBtn) {
+      editBtn.addEventListener('click', function () {
+        var id = global.MBMS_RECORDS.queryParam('id');
+        var data = (global.MBMS_API && global.MBMS_API.getCached)
+          ? (global.MBMS_API.getCached(cfg.endpoint) || mockRoot())
+          : mockRoot();
+        var item = findItem(id, data);
+        if (!item) {
+          global.MBMS_UI.notify({ type: 'danger', message: 'Product not found.' });
+          return;
         }
-        fillDefaultVariants();
+        openEditProduct(item, data);
+      });
+    }
+
+    var toggleBtn = document.getElementById('toggle-product-active');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', function () {
+        var id = global.MBMS_RECORDS.queryParam('id');
+        if (!id) {
+          return;
+        }
+        var makeActive = toggleBtn.dataset.active !== '1';
+        var label = makeActive ? 'Activate' : 'Deactivate';
+        global.MBMS_UI.confirm({
+          title: label + ' product',
+          message: makeActive
+            ? 'Activate this product so it can be purchased and sold again?'
+            : 'Deactivate this product? It will stay in history but hide from new sales and purchases.',
+          confirmLabel: label
+        }).then(function (ok) {
+          if (!ok) {
+            return;
+          }
+          return global.MBMS_RECORDS.submitOrMock('put', 'products/' + encodeURIComponent(id), {
+            is_active: makeActive
+          }).then(function (result) {
+            global.MBMS_UI.notify({
+              type: result.source === 'api' ? 'success' : 'warning',
+              message: result.source === 'api'
+                ? (makeActive ? 'Product activated.' : 'Product deactivated.')
+                : 'API not connected.'
+            });
+            load();
+          });
+        });
       });
     }
 
@@ -388,6 +547,22 @@
 
     global.MBMS_UI.bindForm(form, {
       onSubmit: function (values) {
+        var editingId = values.id || (document.getElementById('product-id') || {}).value;
+        if (editingId) {
+          return global.MBMS_RECORDS.submitOrMock('put', 'products/' + encodeURIComponent(editingId), {
+            name: values.name,
+            description: values.notes || null,
+            is_active: !!(document.getElementById('product-active') || {}).checked
+          }).then(function (result) {
+            global.MBMS_UI.notify({
+              type: result.source === 'api' ? 'success' : 'warning',
+              message: result.source === 'api' ? 'Product updated.' : 'API not connected.'
+            });
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('productModal')).hide();
+            load();
+          });
+        }
+
         var units = collectVariants();
         if (!units.length) {
           throw {

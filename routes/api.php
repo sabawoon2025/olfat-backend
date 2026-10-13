@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\LocationController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ProductVariantController;
 use App\Http\Controllers\Api\V1\PurchaseController;
+use App\Http\Controllers\Api\V1\PurchaseReturnController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SaleController;
 use App\Http\Controllers\Api\V1\SalesReturnController;
@@ -65,6 +66,7 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('customer-payments', CustomerPaymentController::class)->only(['index', 'store', 'show']);
         Route::apiResource('supplier-payments', SupplierPaymentController::class)->only(['index', 'store', 'show']);
         Route::apiResource('sales-returns', SalesReturnController::class)->only(['index', 'store', 'show']);
+        Route::apiResource('purchase-returns', PurchaseReturnController::class)->only(['index', 'store', 'show']);
         Route::apiResource('damaged-stocks', DamagedStockController::class)->only(['index', 'store', 'show']);
 
         Route::apiResource('workers', WorkerController::class);

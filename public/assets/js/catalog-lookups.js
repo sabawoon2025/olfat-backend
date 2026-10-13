@@ -24,22 +24,28 @@
     ]);
   }
 
+  function onlyActive(rows) {
+    return (rows || []).filter(function (row) {
+      return row.is_active !== false && row.is_active !== 0 && row.is_active !== '0';
+    });
+  }
+
   function products(category) {
     var data = mock();
     if (category === 'tea') {
-      return (data.tea && data.tea.types) || [];
+      return onlyActive((data.tea && data.tea.types) || []);
     }
     if (category === 'rice') {
-      return (data.rice && data.rice.types) || [];
+      return onlyActive((data.rice && data.rice.types) || []);
     }
     if (category === 'detergents') {
-      return (data.detergents && data.detergents.products) || [];
+      return onlyActive((data.detergents && data.detergents.products) || []);
     }
     if (category === 'raw-materials') {
-      return (data.rawMaterials || []).concat(global.MBMS_RECORDS ? global.MBMS_RECORDS.storeList('rawMaterials') : []);
+      return onlyActive((data.rawMaterials || []).concat(global.MBMS_RECORDS ? global.MBMS_RECORDS.storeList('rawMaterials') : []));
     }
     if (category === 'factory-materials') {
-      return (data.factoryMaterials || []).concat(global.MBMS_RECORDS ? global.MBMS_RECORDS.storeList('factoryMaterials') : []);
+      return onlyActive((data.factoryMaterials || []).concat(global.MBMS_RECORDS ? global.MBMS_RECORDS.storeList('factoryMaterials') : []));
     }
     return [];
   }

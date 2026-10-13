@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Sales Returns · MBMS</title>
+  <title>Returns · MBMS</title>
   <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="../assets/vendor/bootstrap-icons/bootstrap-icons.css">
   <script>
@@ -13,7 +13,7 @@
         document.documentElement.dir = 'rtl';
         var sheet = document.querySelector('link[href*="bootstrap.min.css"]');
         if (sheet) sheet.href = sheet.href.replace('bootstrap.min.css', 'bootstrap.rtl.min.css');
-}
+      }
     } catch (err) {}
   </script>
   <link rel="stylesheet" href="../assets/css/tokens.css">
@@ -26,19 +26,31 @@
       <div class="alert alert-warning mbms-source-banner" id="source-banner" hidden></div>
       <div class="mbms-page-header">
         <div>
-          <h1>Sales Returns</h1>
+          <h1>Returns</h1>
         </div>
         <div class="mbms-page-actions">
-          <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#retModal">New return</button>
+          <button type="button" class="btn btn-primary" id="open-return-modal" data-bs-toggle="modal" data-bs-target="#retModal">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i> New return
+          </button>
         </div>
       </div>
+
+      <ul class="nav nav-tabs mbms-nav-tabs" role="tablist">
+        <li class="nav-item">
+          <button class="nav-link active" id="tab-sales-btn" data-return-kind="sale" type="button">Sales returns</button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" id="tab-purchases-btn" data-return-kind="purchase" type="button">Purchase returns</button>
+        </li>
+      </ul>
+
       <div id="ret-empty" hidden></div>
-      <div class="table-responsive" id="ret-table-wrap">
+      <div class="table-responsive mbms-scroll-panel" id="ret-table-wrap">
         <table class="table mbms-table">
           <thead>
             <tr>
               <th>Date</th>
-              <th>Original sale</th>
+              <th>Original</th>
               <th>Product</th>
               <th>Variant</th>
               <th>Quantity</th>
@@ -57,21 +69,32 @@
       <div class="modal-content">
         <form id="ret-form" novalidate>
           <div class="modal-header">
-            <h2 class="modal-title h5">Record return</h2>
+            <h2 class="modal-title h5" id="ret-modal-title">Record sales return</h2>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
             <div class="mbms-field">
+              <label class="form-label" for="ret-kind">Return type</label>
+              <select class="form-select" id="ret-kind" name="kind" required>
+                <option value="sale">Sales return</option>
+                <option value="purchase">Purchase return</option>
+              </select>
+            </div>
+            <div class="mbms-field" data-sale-fields>
               <label class="form-label" for="ret-sale">Original sale</label>
-              <select class="form-select" id="ret-sale" name="sale_id" required></select>
+              <select class="form-select" id="ret-sale" name="sale_id"></select>
+            </div>
+            <div class="mbms-field" data-purchase-fields hidden>
+              <label class="form-label" for="ret-purchase">Original purchase</label>
+              <select class="form-select" id="ret-purchase" name="purchase_id"></select>
             </div>
             <div class="mbms-field">
               <label class="form-label" for="ret-product">Product</label>
-              <input class="form-control" id="ret-product" name="product" required>
+              <input class="form-control" id="ret-product" name="product" required readonly>
             </div>
             <div class="mbms-field">
               <label class="form-label" for="ret-variant">Variant</label>
-              <input class="form-control" id="ret-variant" name="variant" required>
+              <input class="form-control" id="ret-variant" name="variant" required readonly>
             </div>
             <div class="mbms-field">
               <label class="form-label" for="ret-quantity">Quantity</label>
@@ -84,10 +107,6 @@
             <div class="mbms-field">
               <label class="form-label" for="ret-reason">Reason</label>
               <textarea class="form-control" id="ret-reason" name="reason" rows="2" required></textarea>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="ret-condition">Condition if required</label>
-              <input class="form-control" id="ret-condition" name="condition" placeholder="Optional. Return condition rules are not defined here.">
             </div>
             <div class="mbms-field">
               <label class="form-label" for="ret-date">Date</label>

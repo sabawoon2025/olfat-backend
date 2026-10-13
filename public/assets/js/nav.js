@@ -33,7 +33,7 @@
           { id: 'sales', label: 'Sales', href: asset('pages/sales.html'), icon: 'cart' },
           { id: 'purchases', label: 'Purchases', href: asset('pages/purchases.html'), icon: 'truck' },
           { id: 'stock', label: 'Stock', href: asset('pages/stock.html'), icon: 'layers' },
-          { id: 'returns', label: 'Returns', href: asset('pages/returns.html'), icon: 'undo' },
+          { id: 'returns', label: 'Returns', href: asset('pages/returns.html'), icon: 'arrow-repeat' },
           { id: 'damaged-stock', label: 'Damaged Stock', href: asset('pages/damaged-stock.html'), icon: 'alert' }
         ]
       },

@@ -181,14 +181,57 @@
   letter-spacing: 0.01em;
 }
 
+.modal-dialog {
+  margin: 0.75rem auto;
+  max-width: min(32rem, calc(100vw - 1.5rem));
+}
+
+.modal-dialog-scrollable,
+.modal-dialog {
+  max-height: calc(100dvh - 1.5rem);
+}
+
 .modal-content {
   border: 0;
   border-radius: var(--mbms-radius);
+  max-height: calc(100dvh - 1.5rem);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .modal-header,
 .modal-footer {
   border-color: var(--mbms-border);
+  flex-shrink: 0;
+}
+
+.modal-body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  max-height: min(70dvh, 34rem);
+}
+
+.mbms-scroll-panel {
+  max-height: min(40dvh, 16rem);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-right: 0.15rem;
+}
+
+.table-responsive.mbms-scroll-panel {
+  max-height: min(60dvh, 28rem);
+}
+
+.app-page,
+#page-content,
+#catalog-root,
+#ret-root,
+#contacts-root,
+#dashboard-root {
+  min-width: 0;
 }
 
 .mbms-state {
