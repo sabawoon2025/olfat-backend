@@ -21,49 +21,97 @@
   <link rel="stylesheet" href="../assets/css/components.css">
 </head>
 <body data-layout="auth" data-page="login">
-  <main class="auth-screen">
-    <section class="mbms-card card auth-card">
-      <div class="card-body p-4">
-        <div class="d-flex align-items-center gap-2 mb-3">
-          <img src="../assets/images/logo.svg" alt="" width="36" height="36">
-          <div>
-            <div class="fw-bold">MBMS</div>
-            <div class="small text-secondary">Sign in</div>
-          </div>
+  <main class="auth-screen auth-screen-split">
+    <aside class="auth-brand" aria-label="About MBMS">
+      <div class="auth-brand-glow" aria-hidden="true"></div>
+      <div class="auth-brand-inner">
+        <div class="auth-brand-logo">
+          <img src="../assets/images/logo.svg" alt="" width="52" height="52">
         </div>
-
-        <div class="alert alert-danger" id="login-server-error" hidden></div>
-
-        <form id="login-form" novalidate>
-          <div class="mbms-field">
-            <label class="form-label" for="location_id">Province</label>
-            <select class="form-select" id="location_id" name="location_id" required>
-              <option value="">Select province</option>
-            </select>
-            <div class="invalid-feedback" data-error-for="location_id">Choose a province.</div>
-          </div>
-
-          <div class="mbms-field">
-            <label class="form-label" for="email">Email</label>
-            <select class="form-select" id="email" name="email" required>
-              <option value="">Select email</option>
-            </select>
-            <div class="invalid-feedback" data-error-for="email">Choose your email.</div>
-          </div>
-
-          <div class="mbms-field">
-            <label class="form-label" for="password">Password</label>
-            <div class="mbms-password-wrap">
-              <input class="form-control" id="password" name="password" type="password" autocomplete="current-password" required>
-              <button type="button" class="btn btn-outline-secondary mbms-password-toggle" id="toggle-password" aria-label="Show password">Show</button>
-            </div>
-            <div class="invalid-feedback" data-error-for="password">Password is required.</div>
-          </div>
-
-          <button type="submit" class="btn btn-primary mbms-btn-block mt-3">Sign in</button>
-        </form>
+        <h1 class="auth-brand-title">MBMS</h1>
+        <p class="auth-brand-tagline">Mobile Business Management System</p>
+        <ul class="auth-brand-features">
+          <li><i class="bi bi-cart-check" aria-hidden="true"></i> Sales, purchases &amp; stock</li>
+          <li><i class="bi bi-receipt" aria-hidden="true"></i> Professional invoices</li>
+          <li><i class="bi bi-bar-chart-line" aria-hidden="true"></i> Reports across provinces</li>
+        </ul>
+        <div class="auth-brand-art" aria-hidden="true">
+          <svg viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="24" y="48" width="120" height="88" rx="12" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.25)"/>
+            <rect x="40" y="64" width="72" height="8" rx="4" fill="rgba(255,255,255,0.5)"/>
+            <rect x="40" y="80" width="88" height="6" rx="3" fill="rgba(255,255,255,0.35)"/>
+            <rect x="40" y="94" width="64" height="6" rx="3" fill="rgba(255,255,255,0.35)"/>
+            <rect x="176" y="32" width="120" height="120" rx="16" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.2)"/>
+            <path d="M200 120 L236 84 L268 96 L292 72" stroke="rgba(255,255,255,0.55)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="236" cy="84" r="6" fill="#34d399"/>
+            <circle cx="268" cy="96" r="6" fill="#60a5fa"/>
+            <circle cx="292" cy="72" r="6" fill="#fbbf24"/>
+          </svg>
+        </div>
       </div>
-    </section>
+    </aside>
+
+    <div class="auth-panel">
+      <section class="mbms-card card auth-card">
+        <div class="card-body p-4 p-md-5">
+          <div class="auth-card-head">
+            <div class="auth-card-icon" aria-hidden="true">
+              <i class="bi bi-shield-lock"></i>
+            </div>
+            <div>
+              <h2 class="auth-card-title">Welcome back</h2>
+              <p class="auth-card-sub">Sign in to your account</p>
+            </div>
+          </div>
+
+          <div class="alert alert-danger d-flex align-items-start gap-2" id="login-server-error" hidden>
+            <i class="bi bi-exclamation-circle-fill flex-shrink-0 mt-1" aria-hidden="true"></i>
+            <span id="login-server-error-text"></span>
+          </div>
+
+          <form id="login-form" novalidate>
+            <div class="mbms-field">
+              <label class="form-label" for="location_id">Province</label>
+              <div class="input-group mbms-input-group">
+                <span class="input-group-text"><i class="bi bi-geo-alt" aria-hidden="true"></i></span>
+                <select class="form-select" id="location_id" name="location_id" required>
+                  <option value="">Select province</option>
+                </select>
+              </div>
+              <div class="invalid-feedback" data-error-for="location_id">Choose a province.</div>
+            </div>
+
+            <div class="mbms-field">
+              <label class="form-label" for="email">Email</label>
+              <div class="input-group mbms-input-group">
+                <span class="input-group-text"><i class="bi bi-envelope" aria-hidden="true"></i></span>
+                <select class="form-select" id="email" name="email" required>
+                  <option value="">Select email</option>
+                </select>
+              </div>
+              <div class="invalid-feedback" data-error-for="email">Choose your email.</div>
+            </div>
+
+            <div class="mbms-field">
+              <label class="form-label" for="password">Password</label>
+              <div class="input-group mbms-input-group mbms-password-group">
+                <span class="input-group-text"><i class="bi bi-key" aria-hidden="true"></i></span>
+                <input class="form-control" id="password" name="password" type="password" autocomplete="current-password" required>
+                <button type="button" class="btn btn-outline-secondary mbms-password-toggle" id="toggle-password" aria-label="Show password">
+                  <i class="bi bi-eye" id="toggle-password-icon" aria-hidden="true"></i>
+                </button>
+              </div>
+              <div class="invalid-feedback" data-error-for="password">Password is required.</div>
+            </div>
+
+            <button type="submit" class="btn btn-primary mbms-btn-block mt-4 auth-submit">
+              <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>
+              Sign in
+            </button>
+          </form>
+        </div>
+      </section>
+    </div>
   </main>
 
   <script defer src="../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>

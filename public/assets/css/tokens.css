@@ -2,9 +2,15 @@
 
 :root {
   --mbms-font: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
-  --mbms-primary: #1d4ed8;
-  --mbms-primary-hover: #1e40af;
-  --mbms-primary-soft: #eff4ff;
+  --mbms-primary: #2563eb;
+  --mbms-primary-hover: #1d4ed8;
+  --mbms-primary-soft: #eff6ff;
+  --mbms-accent: #0d9488;
+  --mbms-accent-soft: #ccfbf1;
+  --mbms-gradient-brand: linear-gradient(145deg, #1e3a8a 0%, #2563eb 42%, #0d9488 100%);
+  --mbms-gradient-page: radial-gradient(900px 480px at 0% 0%, rgba(37, 99, 235, 0.07), transparent 55%),
+    radial-gradient(700px 400px at 100% 0%, rgba(13, 148, 136, 0.06), transparent 50%),
+    linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
   --mbms-secondary: #4b5563;
   --mbms-bg: #f3f5f8;
   --mbms-surface: #ffffff;
@@ -22,7 +28,8 @@
   --mbms-focus: rgba(29, 78, 216, 0.18);
   --mbms-radius: 0.75rem;
   --mbms-radius-sm: 0.5rem;
-  --mbms-shadow: 0 1px 2px rgba(17, 24, 39, 0.06);
+  --mbms-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  --mbms-shadow-lg: 0 18px 48px rgba(15, 23, 42, 0.12);
   --mbms-header-h: 56px;
   --mbms-bottom-nav-h: 68px;
   --mbms-sidebar-w: 272px;
@@ -34,8 +41,8 @@
   --mbms-text-lg: 1.25rem;
   --mbms-text-xl: 1.4rem;
 
-  --bs-primary: #1d4ed8;
-  --bs-primary-rgb: 29, 78, 216;
+  --bs-primary: #2563eb;
+  --bs-primary-rgb: 37, 99, 235;
   --bs-success: #047857;
   --bs-danger: #b91c1c;
   --bs-warning: #b45309;
@@ -56,6 +63,11 @@ body {
 body {
   font-family: var(--mbms-font);
   color: var(--mbms-text);
-  background: var(--mbms-bg);
+  background: var(--mbms-gradient-page);
+  background-color: var(--mbms-bg);
   -webkit-tap-highlight-color: transparent;
+}
+
+body[data-layout="auth"] {
+  background: var(--mbms-surface);
 }

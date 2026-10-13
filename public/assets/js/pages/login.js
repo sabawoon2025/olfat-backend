@@ -9,10 +9,15 @@
 
   function showServerError(message) {
     var box = document.getElementById('login-server-error');
+    var text = document.getElementById('login-server-error-text');
     if (!box) {
       return;
     }
-    box.textContent = message;
+    if (text) {
+      text.textContent = message || '';
+    } else {
+      box.textContent = message;
+    }
     box.hidden = !message;
   }
 
@@ -133,10 +138,13 @@
       }
 
       if (toggle && password) {
+        var toggleIcon = document.getElementById('toggle-password-icon');
         toggle.addEventListener('click', function () {
           var hidden = password.type === 'password';
           password.type = hidden ? 'text' : 'password';
-          toggle.textContent = hidden ? 'Hide' : 'Show';
+          if (toggleIcon) {
+            toggleIcon.className = hidden ? 'bi bi-eye-slash' : 'bi bi-eye';
+          }
           toggle.setAttribute('aria-label', hidden ? 'Hide password' : 'Show password');
         });
       }

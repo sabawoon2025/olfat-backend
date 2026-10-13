@@ -36,17 +36,17 @@
         <h1>Dashboard</h1>
       </div>
       <div class="mbms-page-actions">
-        <button type="button" class="btn btn-primary" id="reload-dashboard">Refresh</button>
+        <button type="button" class="btn btn-primary" id="reload-dashboard"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Refresh</button>
       </div>
     </div>
 
     <div id="dashboard-root">
       <div class="alert alert-warning mbms-source-banner" id="dashboard-source" hidden></div>
       <div class="mbms-quick-actions">
-        <a class="btn btn-primary" href="pages/sales.html">New sale</a>
-        <a class="btn btn-outline-primary" href="pages/purchases.html">New purchase</a>
-        <a class="btn btn-outline-secondary" href="pages/payments.html">Record payment</a>
-        <a class="btn btn-outline-secondary" href="pages/reports.html">Open reports</a>
+        <a class="btn btn-primary" href="pages/sales.html"><i class="bi bi-cart-plus" aria-hidden="true"></i> New sale</a>
+        <a class="btn btn-outline-primary" href="pages/purchases.html"><i class="bi bi-bag-plus" aria-hidden="true"></i> New purchase</a>
+        <a class="btn btn-outline-secondary" href="pages/payments.html"><i class="bi bi-cash-coin" aria-hidden="true"></i> Record payment</a>
+        <a class="btn btn-outline-secondary" href="pages/reports.html"><i class="bi bi-bar-chart-line" aria-hidden="true"></i> Open reports</a>
       </div>
 
       <div id="dashboard-critical">
@@ -54,6 +54,7 @@
           <div class="col-6 col-lg-3">
             <article class="mbms-card card mbms-stat-card is-sales" data-widget="todaySales">
               <div class="card-body">
+                <div class="mbms-stat-icon" aria-hidden="true"><i class="bi bi-graph-up-arrow"></i></div>
                 <div class="mbms-stat-label">Today's Sales</div>
                 <div class="mbms-stat-value" data-value>—</div>
                 <div class="mbms-stat-breakdown" data-breakdown hidden></div>
@@ -64,6 +65,7 @@
           <div class="col-6 col-lg-3">
             <article class="mbms-card card mbms-stat-card is-purchases" data-widget="todayPurchases">
               <div class="card-body">
+                <div class="mbms-stat-icon" aria-hidden="true"><i class="bi bi-bag-check"></i></div>
                 <div class="mbms-stat-label">Today's Purchases</div>
                 <div class="mbms-stat-value" data-value>—</div>
                 <div class="mbms-stat-breakdown" data-breakdown hidden></div>
@@ -74,6 +76,7 @@
           <div class="col-6 col-lg-3">
             <article class="mbms-card card mbms-stat-card is-warning" data-widget="currentStock">
               <div class="card-body">
+                <div class="mbms-stat-icon" aria-hidden="true"><i class="bi bi-boxes"></i></div>
                 <div class="mbms-stat-label">Current Stock</div>
                 <div class="mbms-stat-value" data-value>—</div>
                 <div class="mbms-stat-breakdown" data-breakdown hidden></div>
@@ -84,6 +87,7 @@
           <div class="col-6 col-lg-3">
             <article class="mbms-card card mbms-stat-card" data-widget="profitLoss">
               <div class="card-body">
+                <div class="mbms-stat-icon" aria-hidden="true"><i class="bi bi-piggy-bank"></i></div>
                 <div class="mbms-stat-label">Profit/Loss</div>
                 <div class="mbms-stat-value" data-value>—</div>
                 <span class="badge text-bg-secondary" data-source-badge hidden>Sample data</span>
@@ -93,6 +97,7 @@
           <div class="col-6 col-lg-4">
             <article class="mbms-card card mbms-stat-card is-warning" data-widget="customerReceivables">
               <div class="card-body">
+                <div class="mbms-stat-icon" aria-hidden="true"><i class="bi bi-people"></i></div>
                 <div class="mbms-stat-label">Customer Receivables</div>
                 <div class="mbms-stat-value" data-value>—</div>
                 <span class="badge text-bg-secondary" data-source-badge hidden>Sample data</span>
@@ -102,6 +107,7 @@
           <div class="col-6 col-lg-4">
             <article class="mbms-card card mbms-stat-card is-danger" data-widget="supplierPayables">
               <div class="card-body">
+                <div class="mbms-stat-icon" aria-hidden="true"><i class="bi bi-truck"></i></div>
                 <div class="mbms-stat-label">Supplier Payables</div>
                 <div class="mbms-stat-value" data-value>—</div>
                 <span class="badge text-bg-secondary" data-source-badge hidden>Sample data</span>
@@ -111,6 +117,7 @@
           <div class="col-12 col-lg-4">
             <article class="mbms-card card mbms-stat-card" data-widget="workerPayments">
               <div class="card-body">
+                <div class="mbms-stat-icon" aria-hidden="true"><i class="bi bi-person-workspace"></i></div>
                 <div class="mbms-stat-label">Worker Payments</div>
                 <div class="mbms-stat-value" data-value>—</div>
                 <div class="mbms-stat-breakdown" data-breakdown hidden></div>
@@ -124,7 +131,7 @@
       <div id="dashboard-secondary" class="row g-3">
         <div class="col-12 col-lg-7">
           <section class="mbms-card card h-100">
-            <div class="card-header">Recent Transactions</div>
+            <div class="card-header mbms-card-header"><i class="bi bi-clock-history" aria-hidden="true"></i> Recent Transactions</div>
             <div class="table-responsive border-0">
               <table class="table mbms-table">
                 <thead>
@@ -144,7 +151,7 @@
         </div>
         <div class="col-12 col-lg-5">
           <section class="mbms-card card h-100">
-            <div class="card-header">Stock Warnings</div>
+            <div class="card-header mbms-card-header"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Stock Warnings</div>
             <div class="table-responsive border-0">
               <table class="table mbms-table">
                 <thead>
