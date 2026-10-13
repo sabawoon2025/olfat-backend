@@ -118,6 +118,11 @@
   border-radius: 0 var(--mbms-radius-sm) var(--mbms-radius-sm) 0;
 }
 
+[dir="rtl"] .app-nav-link.is-active {
+  box-shadow: inset -3px 0 0 var(--mbms-primary);
+  border-radius: var(--mbms-radius-sm) 0 0 var(--mbms-radius-sm);
+}
+
 .app-nav-link.is-disabled,
 .app-nav-link.disabled {
   opacity: 0.5;
@@ -137,6 +142,12 @@
 .app-page {
   max-width: 1180px;
   margin: 0 auto;
+  width: 100%;
+  min-width: 0;
+}
+
+.app-main {
+  overflow-x: clip;
 }
 
 .app-bottom-nav {

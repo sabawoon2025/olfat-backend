@@ -69,5 +69,6 @@ body {
 }
 
 body[data-layout="auth"] {
-  background: var(--mbms-surface);
+  background: #eef2f7;
+  overflow-x: hidden;
 }
