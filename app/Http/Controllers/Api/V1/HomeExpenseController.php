@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\HomeExpense;
+use App\Services\Settings\SettingsService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,6 +12,19 @@ use Illuminate\Support\Str;
 
 class HomeExpenseController extends Controller
 {
+    private const CATEGORIES_SETTING_KEY = 'home_expenses.categories';
+
+    /** @var list<string> */
+    private const DEFAULT_CATEGORIES = [
+        'Food',
+        'Household',
+        'Personal',
+        'Transport',
+        'Medical',
+    ];
+
+    public function __construct(private readonly SettingsService $settingsService) {}
+
     public function index(Request $request): JsonResponse
     {
         // OPEN QUESTION: visibility among the three users — currently all auth users can list all.
@@ -38,6 +52,14 @@ class HomeExpenseController extends Controller
         return ApiResponse::success($query->paginate($request->integer('per_page', 20)));
     }
 
+    /**
+     * Saved + default expense categories for the Add Expense dropdown.
+     */
+    public function categories(): JsonResponse
+    {
+        return ApiResponse::success($this->categoryList());
+    }
+
     public function store(Request $request): JsonResponse
     {
         $this->mergeExpenseDateAlias($request);
@@ -50,11 +72,15 @@ class HomeExpenseController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
+        $data['category'] = trim($data['category']);
+
         $expense = HomeExpense::query()->create([
             ...$data,
             'reference_no' => 'HEXP-'.now()->format('Ymd').'-'.Str::upper(Str::random(6)),
             'user_id' => $request->user()->id,
         ]);
+
+        $this->rememberCategory($data['category']);
 
         return ApiResponse::success($expense->load('user'), 'Home expense recorded', 201);
     }
@@ -76,7 +102,15 @@ class HomeExpenseController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
+        if (array_key_exists('category', $data)) {
+            $data['category'] = trim($data['category']);
+        }
+
         $homeExpense->fill($data)->save();
+
+        if (! empty($data['category'])) {
+            $this->rememberCategory($data['category']);
+        }
 
         return ApiResponse::success($homeExpense->fresh('user'), 'Home expense updated');
     }
@@ -98,5 +132,55 @@ class HomeExpenseController extends Controller
                 'expense_date' => $request->input('date'),
             ]);
         }
+    }
+
+    private function rememberCategory(string $category): void
+    {
+        $this->settingsService->appendUniqueString(
+            self::CATEGORIES_SETTING_KEY,
+            $category,
+            [
+                'group' => 'home_expenses',
+                'label' => 'Home Expense Categories',
+                'description' => 'Custom categories available in the Add Expense form',
+            ]
+        );
+    }
+
+    /**
+     * @return list<array{id:string,label:string}>
+     */
+    private function categoryList(): array
+    {
+        $saved = $this->settingsService->get(self::CATEGORIES_SETTING_KEY, []);
+        if (! is_array($saved)) {
+            $saved = [];
+        }
+
+        $fromExpenses = HomeExpense::query()
+            ->whereNotNull('category')
+            ->where('category', '!=', '')
+            ->distinct()
+            ->orderBy('category')
+            ->pluck('category')
+            ->all();
+
+        $merged = [];
+        foreach (array_merge(self::DEFAULT_CATEGORIES, $saved, $fromExpenses) as $label) {
+            $label = trim((string) $label);
+            if ($label === '') {
+                continue;
+            }
+            $key = mb_strtolower($label);
+            if (isset($merged[$key])) {
+                continue;
+            }
+            $merged[$key] = [
+                'id' => $label,
+                'label' => $label,
+            ];
+        }
+
+        return array_values($merged);
     }
 }

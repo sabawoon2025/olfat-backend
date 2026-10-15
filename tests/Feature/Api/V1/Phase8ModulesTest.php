@@ -4,6 +4,7 @@ namespace Tests\Feature\Api\V1;
 
 use App\Enums\ExternalDebtDirection;
 use App\Models\ExternalParty;
+use App\Models\HomeExpense;
 use App\Models\Location;
 use App\Models\User;
 use App\Models\Worker;
@@ -124,10 +125,28 @@ class Phase8ModulesTest extends TestCase
             ->assertJsonPath('data.amount', '2000.00');
 
         $this->assertTrue(
-            \App\Models\HomeExpense::query()
+            HomeExpense::query()
                 ->where('category', 'Household')
                 ->whereDate('expense_date', '2026-10-14')
                 ->exists()
         );
+    }
+
+    public function test_home_expense_saves_new_category_for_future_use(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->postJson('/api/v1/home-expenses', [
+            'category' => 'School fees',
+            'amount' => 150,
+            'expense_date' => now()->toDateString(),
+        ])->assertCreated();
+
+        $categories = $this->getJson('/api/v1/home-expenses/categories');
+
+        $categories->assertOk();
+        $labels = collect($categories->json('data'))->pluck('label')->all();
+        $this->assertContains('School fees', $labels);
+        $this->assertContains('Food', $labels);
     }
 }

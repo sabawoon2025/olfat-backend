@@ -1,17 +1,21 @@
 /**
  * Home expenses. Separate from business accounting and profit/loss.
+ * Categories: built-in defaults + saved custom categories + “Add new…”.
  */
 (function (global) {
   'use strict';
 
+  var NEW_CATEGORY_VALUE = '__new__';
+
   var DEFAULT_CATEGORIES = [
-    { id: 'food', label: 'Food' },
-    { id: 'household', label: 'Household' },
-    { id: 'personal', label: 'Personal' },
-    { id: 'transport', label: 'Transport' },
-    { id: 'medical', label: 'Medical' },
-    { id: 'other', label: 'Other' }
+    { id: 'Food', label: 'Food' },
+    { id: 'Household', label: 'Household' },
+    { id: 'Personal', label: 'Personal' },
+    { id: 'Transport', label: 'Transport' },
+    { id: 'Medical', label: 'Medical' }
   ];
+
+  var savedCategories = [];
 
   function num(value) {
     var n = Number(String(value == null ? '' : value).replace(/,/g, '').trim());
@@ -34,25 +38,38 @@
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
 
+  function normalizeCategoryLabel(label) {
+    return String(label == null ? '' : label).trim();
+  }
+
   function categories() {
-    var fromMock = (global.MBMS_MOCK && global.MBMS_MOCK.homeExpenseCategories) || [];
-    if (fromMock.length) {
-      return fromMock;
-    }
-    var fromRows = {};
-    records().forEach(function (row) {
-      if (row.category) {
-        fromRows[row.category] = true;
+    var map = {};
+    function add(label) {
+      var text = normalizeCategoryLabel(label);
+      if (!text) {
+        return;
       }
+      var key = text.toLowerCase();
+      if (!map[key]) {
+        map[key] = { id: text, label: text };
+      }
+    }
+
+    DEFAULT_CATEGORIES.forEach(function (row) { add(row.label); });
+    savedCategories.forEach(function (row) {
+      add(row && (row.label || row.id || row));
     });
-    var extras = Object.keys(fromRows).filter(function (label) {
-      return !DEFAULT_CATEGORIES.some(function (row) {
-        return row.label === label;
-      });
-    }).map(function (label) {
-      return { id: label, label: label };
+    records().forEach(function (row) {
+      add(row.category);
     });
-    return DEFAULT_CATEGORIES.concat(extras);
+
+    return Object.keys(map).sort().map(function (key) {
+      return map[key];
+    });
+  }
+
+  function categoryOptionsForForm() {
+    return categories().concat([{ id: NEW_CATEGORY_VALUE, label: '+ Add new category…' }]);
   }
 
   function seed() {
@@ -94,15 +111,66 @@
     );
   }
 
+  function setNewCategoryVisible(show) {
+    var wrap = document.getElementById('exp-category-new-wrap');
+    var input = document.getElementById('exp-category-new');
+    if (wrap) {
+      wrap.hidden = !show;
+    }
+    if (input) {
+      input.required = !!show;
+      if (!show) {
+        input.value = '';
+      }
+    }
+  }
+
   function fillCategory(selected) {
+    var select = document.getElementById('exp-category');
+    var value = selected || '';
+    var isCustom = value
+      && value !== NEW_CATEGORY_VALUE
+      && !categories().some(function (row) {
+        return row.label.toLowerCase() === String(value).toLowerCase();
+      });
+
     global.MBMS_RECORDS.fillSelect(
-      document.getElementById('exp-category'),
-      categories(),
+      select,
+      categoryOptionsForForm(),
+      function (row) { return row.id; },
       function (row) { return row.label; },
-      function (row) { return row.label; },
-      selected || '',
+      isCustom ? NEW_CATEGORY_VALUE : value,
       'Select category'
     );
+
+    if (isCustom) {
+      setNewCategoryVisible(true);
+      var input = document.getElementById('exp-category-new');
+      if (input) {
+        input.value = value;
+      }
+    } else {
+      setNewCategoryVisible(value === NEW_CATEGORY_VALUE);
+    }
+  }
+
+  function loadSavedCategories() {
+    if (!global.MBMS_API || typeof global.MBMS_API.get !== 'function') {
+      savedCategories = (global.MBMS_MOCK && global.MBMS_MOCK.homeExpenseCategories) || [];
+      return Promise.resolve(savedCategories);
+    }
+
+    return global.MBMS_API.get('home-expenses/categories').then(function (response) {
+      var rows = global.MBMS_UTILS.unwrap(response.data) || response.data || [];
+      if (!Array.isArray(rows) && rows && Array.isArray(rows.data)) {
+        rows = rows.data;
+      }
+      savedCategories = Array.isArray(rows) ? rows : [];
+      return savedCategories;
+    }).catch(function () {
+      savedCategories = (global.MBMS_MOCK && global.MBMS_MOCK.homeExpenseCategories) || [];
+      return savedCategories;
+    });
   }
 
   function render(source) {
@@ -165,7 +233,10 @@
   function load() {
     var selectedCategory = (document.getElementById('list-category') || {}).value || '';
     render();
-    return global.MBMS_RECORDS.fetchOrMock('home-expenses', seed)
+    return loadSavedCategories()
+      .then(function () {
+        return global.MBMS_RECORDS.fetchOrMock('home-expenses', seed);
+      })
       .then(function (result) {
         fillListCategory(selectedCategory);
         fillCategory((document.getElementById('exp-category') || {}).value || '');
@@ -184,6 +255,7 @@
     document.getElementById('exp-date').value = todayIso();
     global.MBMS_UTILS.setIconHeading(document.getElementById('exp-form-title'), 'bi-plus-lg', 'Add expense');
     fillCategory();
+    setNewCategoryVisible(false);
   }
 
   function openEdit(id) {
@@ -199,8 +271,23 @@
       amount: record.amount_raw != null ? String(record.amount_raw) : String(record.amount || '').replace(/,/g, ''),
       date: record.date
     });
+    // fillCategory may switch to "Add new" for unknown labels; keep the name filled.
+    if ((document.getElementById('exp-category') || {}).value === NEW_CATEGORY_VALUE) {
+      var input = document.getElementById('exp-category-new');
+      if (input) {
+        input.value = record.category || '';
+      }
+    }
     global.MBMS_UTILS.setIconHeading(document.getElementById('exp-form-title'), 'bi-pencil', 'Edit expense');
     bootstrap.Modal.getOrCreateInstance(document.getElementById('expModal')).show();
+  }
+
+  function resolveCategory(values) {
+    var selected = normalizeCategoryLabel(values.category);
+    if (selected === NEW_CATEGORY_VALUE) {
+      return normalizeCategoryLabel(values.category_new);
+    }
+    return selected;
   }
 
   global.MBMS_PAGE = {
@@ -230,6 +317,16 @@
         }
       });
 
+      document.getElementById('exp-category').addEventListener('change', function () {
+        setNewCategoryVisible(this.value === NEW_CATEGORY_VALUE);
+        if (this.value === NEW_CATEGORY_VALUE) {
+          var input = document.getElementById('exp-category-new');
+          if (input) {
+            input.focus();
+          }
+        }
+      });
+
       document.getElementById('expModal').addEventListener('show.bs.modal', function () {
         if (!(document.getElementById('exp-id') || {}).value && !(document.getElementById('exp-date') || {}).value) {
           document.getElementById('exp-date').value = todayIso();
@@ -241,6 +338,7 @@
         document.getElementById('exp-id').value = '';
         document.getElementById('exp-date').value = todayIso();
         fillCategory();
+        setNewCategoryVisible(false);
         global.MBMS_UTILS.setIconHeading(document.getElementById('exp-form-title'), 'bi-plus-lg', 'Add expense');
       });
 
@@ -248,16 +346,28 @@
         onSubmit: function (values) {
           var id = values.id;
           var amount = roundMoney(num(values.amount));
+          var category = resolveCategory(values);
+
           if (!(amount > 0)) {
             throw {
               message: 'Enter an amount greater than zero.',
               errors: { amount: ['Amount must be greater than zero'] }
             };
           }
-          if (!values.category) {
+          if (!category) {
             throw {
-              message: 'Select a category.',
-              errors: { category: ['Required'] }
+              message: values.category === NEW_CATEGORY_VALUE
+                ? 'Enter a name for the new category.'
+                : 'Select a category.',
+              errors: values.category === NEW_CATEGORY_VALUE
+                ? { category_new: ['Required'] }
+                : { category: ['Required'] }
+            };
+          }
+          if (category.length > 80) {
+            throw {
+              message: 'Category name must be 80 characters or fewer.',
+              errors: { category_new: ['Max 80 characters'] }
             };
           }
 
@@ -265,7 +375,7 @@
           var path = 'home-expenses' + (id ? '/' + id : '');
           var expenseDate = values.date || values.expense_date || todayIso();
           var record = {
-            category: values.category,
+            category: category,
             description: values.description || null,
             amount: amount,
             date: expenseDate,
@@ -275,9 +385,12 @@
           return global.MBMS_RECORDS.submitOrMock(method, path, record).then(function (result) {
             global.MBMS_UI.notify({
               type: result.source === 'api' ? 'success' : 'warning',
-              message: result.source === 'api' ? 'Expense saved.' : 'API not connected. Sample expense only.'
+              message: result.source === 'api'
+                ? ('Expense saved' + (values.category === NEW_CATEGORY_VALUE ? ' and category “‘ + category + '” added.' : '.'))
+                : 'API not connected. Sample expense only.'
             });
             document.getElementById('exp-form').reset();
+            setNewCategoryVisible(false);
             bootstrap.Modal.getOrCreateInstance(document.getElementById('expModal')).hide();
             if (global.MBMS_API && global.MBMS_API.invalidateCaches) {
               global.MBMS_API.invalidateCaches(['homeExpenses']);

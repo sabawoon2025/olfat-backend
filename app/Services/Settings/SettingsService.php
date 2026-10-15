@@ -44,6 +44,55 @@ class SettingsService
     }
 
     /**
+     * Append a unique string to a JSON-array setting (case-insensitive).
+     *
+     * @param  array{group?:string,label?:string,description?:string}  $attributes
+     * @return list<string>
+     */
+    public function appendUniqueString(string $key, string $value, array $attributes = []): array
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return [];
+        }
+
+        $setting = Setting::query()->firstOrCreate(
+            ['key' => $key],
+            [
+                'value' => '[]',
+                'type' => 'json',
+                'group' => $attributes['group'] ?? 'general',
+                'label' => $attributes['label'] ?? $key,
+                'description' => $attributes['description'] ?? null,
+            ]
+        );
+
+        $list = $setting->typedValue();
+        if (! is_array($list)) {
+            $list = [];
+        }
+
+        $normalized = array_values(array_filter(array_map(
+            static fn ($item): string => trim((string) $item),
+            $list
+        )));
+
+        foreach ($normalized as $existing) {
+            if (strcasecmp($existing, $value) === 0) {
+                return $normalized;
+            }
+        }
+
+        $normalized[] = $value;
+        $setting->type = 'json';
+        $setting->setTypedValue($normalized);
+        $setting->save();
+        $this->forgetCache();
+
+        return $normalized;
+    }
+
+    /**
      * @param  array<string, mixed>  $values  key => value
      */
     public function updateMany(array $values): Collection

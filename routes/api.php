@@ -76,6 +76,7 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('external-debts', ExternalDebtController::class)->only(['index', 'store', 'show']);
         Route::post('external-debts/{external_debt}/payments', [ExternalDebtController::class, 'storePayment']);
 
+        Route::get('home-expenses/categories', [HomeExpenseController::class, 'categories']);
         Route::apiResource('home-expenses', HomeExpenseController::class);
 
         Route::get('/stock/balances', [StockController::class, 'balances']);

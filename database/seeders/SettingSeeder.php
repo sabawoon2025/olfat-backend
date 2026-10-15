@@ -226,6 +226,16 @@ class SettingSeeder extends Seeder
                 'description' => 'Legacy key kept for backwards compatibility — prefer invoice.footer_note',
             ],
 
+            // --- Home expenses --------------------------------------------
+            [
+                'key' => 'home_expenses.categories',
+                'value' => '[]',
+                'type' => 'json',
+                'group' => 'home_expenses',
+                'label' => 'Home Expense Categories',
+                'description' => 'Custom categories available in the Add Expense form',
+            ],
+
             // --- Stock ----------------------------------------------------
             [
                 'key' => 'stock.low_stock_threshold',
