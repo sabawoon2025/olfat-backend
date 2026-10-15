@@ -29,7 +29,7 @@
     bankDetails: '',
     signatureCustomer: 'Customer signature',
     signatureAuthorized: 'Authorized signature',
-    showWatermark: true,
+    showWatermark: false,
     currencyCode: 'AFN',
     currencySymbol: '',
     currencyPosition: 'suffix'
@@ -78,17 +78,6 @@
   function textOrFallback(primary, fallback) {
     var value = (primary == null ? '' : String(primary)).trim();
     return value || fallback || '';
-  }
-
-  function truthy(value) {
-    if (value === true || value === 1 || value === '1') {
-      return true;
-    }
-    if (typeof value === 'string') {
-      var lower = value.toLowerCase();
-      return lower === 'true' || lower === 'yes' || lower === 'on';
-    }
-    return false;
   }
 
   function setText(id, value) {
@@ -241,12 +230,12 @@
     var remaining = Number(sale.remaining_raw != null ? sale.remaining_raw : sale.remaining || 0);
     var paid = Number(sale.paid_raw != null ? sale.paid_raw : sale.paid || 0);
     if (remaining <= 0.0001) {
-      return { label: 'Paid', className: 'is-paid', watermark: 'PAID' };
+      return { label: 'Paid', className: 'is-paid' };
     }
     if (paid <= 0.0001) {
-      return { label: 'Unpaid', className: 'is-credit', watermark: 'UNPAID' };
+      return { label: 'Unpaid', className: 'is-credit' };
     }
-    return { label: 'Partial', className: 'is-mixed', watermark: 'PARTIAL' };
+    return { label: 'Partial', className: 'is-mixed' };
   }
 
   function applyLocationProfile(profile) {
@@ -333,9 +322,8 @@
         map['invoice.signature_authorized_label'],
         billSettings.signatureAuthorized
       );
-      if (map['invoice.show_watermark'] != null) {
-        billSettings.showWatermark = truthy(map['invoice.show_watermark']);
-      }
+      /* Watermark intentionally disabled for a clean professional invoice. */
+      billSettings.showWatermark = false;
       billSettings.currencyCode = textOrFallback(map['app.currency_code'], billSettings.currencyCode);
       billSettings.currencySymbol = textOrFallback(map['app.currency_symbol'], billSettings.currencySymbol);
       billSettings.currencyPosition = textOrFallback(map['app.currency_position'], billSettings.currencyPosition);
@@ -351,7 +339,7 @@
     }
     var rows = [];
     if (billSettings.phone) {
-      rows.push({ label: 'Phone', value: billSettings.phone });
+      rows.push({ label: 'Tel', value: billSettings.phone });
     }
     if (billSettings.whatsapp) {
       rows.push({ label: 'WhatsApp', value: billSettings.whatsapp });
@@ -362,9 +350,16 @@
     if (billSettings.website) {
       rows.push({ label: 'Web', value: billSettings.website });
     }
+    if (!rows.length) {
+      list.hidden = true;
+      list.innerHTML = '';
+      return;
+    }
+    list.hidden = false;
     list.innerHTML = rows.map(function (row) {
-      return '<li><span class="label">' + global.MBMS_UTILS.escapeHtml(row.label) +
-        '</span><span>' + global.MBMS_UTILS.escapeHtml(row.value) + '</span></li>';
+      return '<span class="bill-contact-item"><span class="label">' +
+        global.MBMS_UTILS.escapeHtml(row.label) + ':</span>' +
+        global.MBMS_UTILS.escapeHtml(row.value) + '</span>';
     }).join('');
   }
 
@@ -441,12 +436,10 @@
 
   function renderParties(sale, status) {
     setText('bill-customer-name', sale.customer || 'Walk-in customer');
-    setText('bill-customer-phone', sale.customer_phone ? ('Phone: ' + sale.customer_phone) : '');
-    setText('bill-customer-address', sale.customer_address ? ('Address: ' + sale.customer_address) : '');
-
+    setText('bill-customer-phone', sale.customer_phone || '—');
+    setText('bill-customer-address', sale.customer_address || '—');
     setText('bill-seller-name', sale.seller || billSettings.businessName || 'Staff');
-    setText('bill-seller-province', sale.location ? ('Location: ' + sale.location) : '');
-    setText('bill-payment-type', 'Payment: ' + paymentLabel(sale, status));
+    setText('bill-payment-type', paymentLabel(sale, status));
   }
 
   function normalizeItems(sale) {
@@ -565,12 +558,8 @@
     if (sale.location) {
       metaBits.push(sale.location);
     }
-    if (billSettings.whatsapp) {
-      metaBits.push('WhatsApp ' + billSettings.whatsapp);
-    } else if (billSettings.phone) {
-      metaBits.push(billSettings.phone);
-    }
     metaBits.push(invoiceNumber(sale));
+    metaBits.push('Computer generated invoice');
     setText('bill-footer-meta', metaBits.join(' · '));
   }
 
