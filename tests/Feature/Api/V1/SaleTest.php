@@ -48,6 +48,11 @@ class SaleTest extends TestCase
             ->assertJsonPath('data.payment_type', 'mixed')
             ->assertJsonPath('data.user_id', $user->id);
 
+        $this->assertMatchesRegularExpression(
+            '/^INV-'.now()->format('Y').'-\d{4}$/',
+            (string) $response->json('data.reference_no')
+        );
+
         $this->assertDatabaseHas('stock_balances', [
             'product_variant_id' => $variant->id,
             'location_id' => $location->id,

@@ -10,7 +10,6 @@ use App\Models\SaleItem;
 use App\Models\User;
 use App\Services\Stock\StockService;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 class SaleService
@@ -145,6 +144,20 @@ class SaleService
 
     private function nextReference(): string
     {
-        return 'SAL-'.now()->format('Ymd').'-'.Str::upper(Str::random(6));
+        $year = now()->format('Y');
+        $prefix = 'INV-'.$year.'-';
+
+        $latest = Sale::query()
+            ->where('reference_no', 'like', $prefix.'%')
+            ->lockForUpdate()
+            ->orderByDesc('id')
+            ->value('reference_no');
+
+        $sequence = 1;
+        if (is_string($latest) && preg_match('/^INV-\d{4}-(\d+)$/', $latest, $matches) === 1) {
+            $sequence = ((int) $matches[1]) + 1;
+        }
+
+        return $prefix.str_pad((string) $sequence, 4, '0', STR_PAD_LEFT);
     }
 }

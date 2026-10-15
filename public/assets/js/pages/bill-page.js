@@ -202,14 +202,25 @@
 
   function invoiceNumber(sale) {
     var ref = textOrFallback(sale.reference_no, '');
-    var prefix = textOrFallback(billSettings.invoicePrefix, '');
-    if (!ref) {
-      return prefix ? (prefix + '-' + sale.id) : ('#' + sale.id);
-    }
-    if (prefix && ref.toUpperCase().indexOf(prefix.toUpperCase()) === 0) {
+    if (ref) {
       return ref;
     }
-    return prefix ? (prefix + '-' + ref) : ref;
+
+    var prefix = textOrFallback(billSettings.invoicePrefix, 'INV').replace(/[^A-Za-z0-9]+/g, '').toUpperCase() || 'INV';
+    var year = '';
+    if (sale.date) {
+      year = String(sale.date).slice(0, 4);
+    } else if (sale.sold_at) {
+      year = String(sale.sold_at).slice(0, 4);
+    }
+    if (!/^\d{4}$/.test(year)) {
+      year = String(new Date().getFullYear());
+    }
+    var sequence = String(sale.id || 0);
+    while (sequence.length < 4) {
+      sequence = '0' + sequence;
+    }
+    return prefix + '-' + year + '-' + sequence;
   }
 
   function paymentLabel(sale, status) {
