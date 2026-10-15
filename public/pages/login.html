@@ -27,56 +27,77 @@
         <source media="(min-width: 768px)" srcset="../assets/images/auth-login-bg.svg">
         <img class="auth-screen-photo" src="../assets/images/auth-login-bg.svg" alt="" width="2400" height="1600" decoding="async" fetchpriority="high">
       </picture>
+      <div class="auth-screen-veil"></div>
+      <div class="auth-screen-orb auth-screen-orb-a"></div>
+      <div class="auth-screen-orb auth-screen-orb-b"></div>
     </div>
 
-    <section class="mbms-card card auth-card">
-      <div class="card-body p-4 p-sm-5">
-        <header class="auth-card-head">
-          <span class="auth-card-badge" aria-hidden="true"><i class="bi bi-shield-check"></i></span>
-          <h1 class="auth-card-title">Welcome back</h1>
-          <p class="auth-card-sub">Sign in to your account</p>
-        </header>
+    <div class="auth-shell">
+      <aside class="auth-brand-panel">
+        <p class="auth-brand-mark">MBMS</p>
+        <h1 class="auth-brand-headline">Shared ledger for every province</h1>
+        <p class="auth-brand-copy">One business. Three locations. Sign in to continue.</p>
+      </aside>
 
-        <div class="alert alert-danger d-flex align-items-start gap-2" id="login-server-error" hidden>
-          <i class="bi bi-exclamation-circle-fill flex-shrink-0 mt-1" aria-hidden="true"></i>
-          <span id="login-server-error-text"></span>
-        </div>
+      <section class="auth-card" aria-labelledby="login-heading">
+        <div class="auth-card-body">
+          <header class="auth-card-head">
+            <span class="auth-card-badge" aria-hidden="true"><i class="bi bi-shield-lock-fill"></i></span>
+            <h2 class="auth-card-title" id="login-heading">Sign in</h2>
+            <p class="auth-card-sub">Choose your province, then enter your password</p>
+          </header>
 
-        <form id="login-form" novalidate>
-          <div class="mbms-field">
-            <label class="form-label" for="location_id"><i class="bi bi-geo-alt form-label-icon" aria-hidden="true"></i> Province</label>
-            <select class="form-select" id="location_id" name="location_id" required>
-              <option value="">Select province</option>
-            </select>
-            <div class="invalid-feedback" data-error-for="location_id">Choose a province.</div>
+          <div class="alert alert-danger d-flex align-items-start gap-2 auth-alert" id="login-server-error" hidden>
+            <i class="bi bi-exclamation-circle-fill flex-shrink-0 mt-1" aria-hidden="true"></i>
+            <span id="login-server-error-text"></span>
           </div>
 
-          <div class="mbms-field">
-            <label class="form-label" for="email"><i class="bi bi-envelope form-label-icon" aria-hidden="true"></i> Email</label>
-            <select class="form-select" id="email" name="email" required>
-              <option value="">Select email</option>
-            </select>
-            <div class="invalid-feedback" data-error-for="email">Choose your email.</div>
-          </div>
-
-          <div class="mbms-field">
-            <label class="form-label" for="password"><i class="bi bi-key form-label-icon" aria-hidden="true"></i> Password</label>
-            <div class="mbms-password-wrap">
-              <input class="form-control" id="password" name="password" type="password" autocomplete="current-password" required>
-              <button type="button" class="btn btn-outline-secondary mbms-password-toggle" id="toggle-password" aria-label="Show password">
-                <i class="bi bi-eye" id="toggle-password-icon" aria-hidden="true"></i>
-              </button>
+          <form id="login-form" novalidate>
+            <div class="mbms-field auth-field">
+              <label class="form-label" for="location_id">
+                <i class="bi bi-geo-alt-fill form-label-icon" aria-hidden="true"></i> Province
+              </label>
+              <select class="form-select auth-input" id="location_id" name="location_id" required>
+                <option value="">Select province</option>
+              </select>
+              <div class="invalid-feedback" data-error-for="location_id">Choose a province.</div>
             </div>
-            <div class="invalid-feedback" data-error-for="password">Password is required.</div>
-          </div>
 
-          <button type="submit" class="btn btn-primary mbms-btn-block mt-4 auth-submit">
-            <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>
-            Sign in
-          </button>
-        </form>
-      </div>
-    </section>
+            <div class="mbms-field auth-field">
+              <label class="form-label" for="email">
+                <i class="bi bi-person-fill form-label-icon" aria-hidden="true"></i> Account
+              </label>
+              <select class="form-select auth-input" id="email" name="email" required>
+                <option value="">Select email</option>
+              </select>
+              <div class="invalid-feedback" data-error-for="email">Choose your email.</div>
+            </div>
+
+            <div class="mbms-field auth-field">
+              <label class="form-label" for="password">
+                <i class="bi bi-key-fill form-label-icon" aria-hidden="true"></i> Password
+              </label>
+              <div class="mbms-password-wrap">
+                <input class="form-control auth-input" id="password" name="password" type="password" autocomplete="current-password" required placeholder="Enter your password">
+                <button type="button" class="btn btn-outline-secondary mbms-password-toggle" id="toggle-password" aria-label="Show password">
+                  <i class="bi bi-eye" id="toggle-password-icon" aria-hidden="true"></i>
+                </button>
+              </div>
+              <div class="invalid-feedback" data-error-for="password">Password is required.</div>
+            </div>
+
+            <button type="submit" class="btn btn-primary mbms-btn-block auth-submit">
+              <span class="auth-submit-label">
+                <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>
+                Continue to MBMS
+              </span>
+            </button>
+          </form>
+
+          <p class="auth-card-foot">Secure access for Kabul, Maidan/Wardak, and Ghazni</p>
+        </div>
+      </section>
+    </div>
   </main>
 
   <script defer src="../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>

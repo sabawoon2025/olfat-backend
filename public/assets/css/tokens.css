@@ -72,6 +72,6 @@ body {
 }
 
 body[data-layout="auth"] {
-  background: #eef2f7;
+  background: #0b1d3a;
   overflow-x: hidden;
 }
