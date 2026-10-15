@@ -38,6 +38,10 @@ Route::prefix('v1')->group(function () {
         ->middleware('throttle:60,1');
     Route::post('/auth/login', [AuthController::class, 'login'])
         ->middleware('throttle:login');
+    Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])
+        ->middleware('throttle:password-reset');
+    Route::post('/auth/reset-password', [AuthController::class, 'resetPassword'])
+        ->middleware('throttle:password-reset');
 
     Route::middleware(['auth:sanctum', 'active', 'province'])->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);

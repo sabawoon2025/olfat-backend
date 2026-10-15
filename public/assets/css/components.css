@@ -949,6 +949,13 @@ body[data-page="home-expenses"] #expModal .modal-title .bi {
   color: #db2777;
 }
 
+.mbms-account-card .card-body > .text-secondary:first-child {
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--mbms-radius-sm);
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
 .mbms-new-category-panel {
   padding: 0.75rem 0.85rem;
   border: 1px dashed #f9a8d4;
@@ -1915,6 +1922,55 @@ body[data-page="home-expenses"] #expModal .modal-title .bi {
   color: rgba(226, 232, 240, 0.88);
   font-size: clamp(0.98rem, 2vw, 1.1rem);
   line-height: 1.55;
+}
+
+.auth-brand-points {
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+  max-width: 28rem;
+}
+
+.auth-brand-points li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  color: rgba(241, 245, 249, 0.92);
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.auth-brand-points .bi {
+  margin-top: 0.15rem;
+  color: #99f6e4;
+}
+
+.auth-shell-single {
+  justify-items: center;
+}
+
+.auth-shell-single .auth-card {
+  justify-self: center;
+}
+
+.auth-link {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--mbms-primary);
+  text-decoration: none;
+}
+
+.auth-link:hover,
+.auth-link:focus-visible {
+  text-decoration: underline;
+}
+
+.auth-card-foot .auth-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .auth-card {

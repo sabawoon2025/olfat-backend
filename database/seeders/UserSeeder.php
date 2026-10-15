@@ -22,8 +22,8 @@ class UserSeeder extends Seeder
 
         $users = [
             ['name' => 'User One', 'email' => 'user1@example.com', 'role' => UserRole::Admin],
-            ['name' => 'User Two', 'email' => 'user2@example.com', 'role' => UserRole::Staff],
-            ['name' => 'User Three', 'email' => 'user3@example.com', 'role' => UserRole::Staff],
+            ['name' => 'User Two', 'email' => 'user2@example.com', 'role' => UserRole::Admin],
+            ['name' => 'User Three', 'email' => 'user3@example.com', 'role' => UserRole::Admin],
         ];
 
         foreach ($users as $user) {

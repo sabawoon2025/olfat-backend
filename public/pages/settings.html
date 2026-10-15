@@ -32,21 +32,22 @@
 
       <div class="row g-3">
         <div class="col-12 col-lg-6">
-          <section class="mbms-card card h-100">
+          <section class="mbms-card card h-100 mbms-account-card">
             <div class="card-header mbms-card-header"><i class="bi bi-person-circle" aria-hidden="true"></i> Profile</div>
             <div class="card-body">
+              <p class="text-secondary small mb-3">Update your name and email. Your province is fixed after first claim.</p>
               <form id="profile-form" novalidate>
                 <div class="mbms-field">
                   <label class="form-label" for="profile-name">Name</label>
-                  <input class="form-control" id="profile-name" name="name" required>
+                  <input class="form-control" id="profile-name" name="name" required autocomplete="name">
                 </div>
                 <div class="mbms-field">
                   <label class="form-label" for="profile-email">Email</label>
-                  <input class="form-control" id="profile-email" name="email" type="email" required>
+                  <input class="form-control" id="profile-email" name="email" type="email" required autocomplete="email">
                 </div>
                 <div class="mbms-field">
                   <label class="form-label" for="profile-location">Province</label>
-                  <select class="form-select" id="profile-location" name="location" disabled></select>
+                  <select class="form-select" id="profile-location" name="location" disabled data-ac="0"></select>
                 </div>
                 <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle" aria-hidden="true"></i> Save profile</button>
               </form>
@@ -54,21 +55,22 @@
           </section>
         </div>
         <div class="col-12 col-lg-6">
-          <section class="mbms-card card h-100">
-            <div class="card-header mbms-card-header"><i class="bi bi-shield-lock" aria-hidden="true"></i> Account</div>
+          <section class="mbms-card card h-100 mbms-account-card">
+            <div class="card-header mbms-card-header"><i class="bi bi-shield-lock" aria-hidden="true"></i> Password</div>
             <div class="card-body">
+              <p class="text-secondary small mb-3">Changing your password signs out other devices for your account. Forgot it? Use <a href="forgot-password.html">Forgot password</a> on the sign-in page.</p>
               <form id="password-form" novalidate>
                 <div class="mbms-field">
                   <label class="form-label" for="current-password">Current password</label>
-                  <input class="form-control" id="current-password" name="current_password" type="password" required>
+                  <input class="form-control" id="current-password" name="current_password" type="password" required autocomplete="current-password">
                 </div>
                 <div class="mbms-field">
                   <label class="form-label" for="new-password">New password</label>
-                  <input class="form-control" id="new-password" name="password" type="password" required>
+                  <input class="form-control" id="new-password" name="password" type="password" required autocomplete="new-password">
                 </div>
                 <div class="mbms-field">
                   <label class="form-label" for="confirm-password">Confirm new password</label>
-                  <input class="form-control" id="confirm-password" name="password_confirmation" type="password" required>
+                  <input class="form-control" id="confirm-password" name="password_confirmation" type="password" required autocomplete="new-password">
                 </div>
                 <button type="submit" class="btn btn-primary"><i class="bi bi-shield-lock" aria-hidden="true"></i> Update password</button>
               </form>

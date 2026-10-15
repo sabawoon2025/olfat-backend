@@ -542,7 +542,9 @@
           }).then(function (result) {
             global.MBMS_UI.notify({
               type: result.source === 'api' ? 'success' : 'warning',
-              message: result.source === 'api' ? 'Password updated.' : 'API not connected. Password was not changed.'
+              message: result.source === 'api'
+                ? 'Password updated. Other devices for this account were signed out.'
+                : 'API not connected. Password was not changed.'
             });
             document.getElementById('password-form').reset();
           });

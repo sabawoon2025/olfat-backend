@@ -18,7 +18,7 @@
   </script>
   <link rel="stylesheet" href="../assets/css/tokens.css">
   <link rel="stylesheet" href="../assets/css/layout.css">
-  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/components.css?v=20261015m">
 </head>
 <body data-layout="auth" data-page="login">
   <main class="auth-screen">
@@ -35,8 +35,13 @@
     <div class="auth-shell">
       <aside class="auth-brand-panel">
         <p class="auth-brand-mark">MBMS</p>
-        <h1 class="auth-brand-headline">Shared ledger for every province</h1>
-        <p class="auth-brand-copy">One business. Three locations. Sign in to continue.</p>
+        <h1 class="auth-brand-headline">One business. Three provinces.</h1>
+        <p class="auth-brand-copy">All brothers see the same shared ledger. Sign in with your province and password to continue.</p>
+        <ul class="auth-brand-points">
+          <li><i class="bi bi-people-fill" aria-hidden="true"></i> Equal admin access for every brother</li>
+          <li><i class="bi bi-phone" aria-hidden="true"></i> Safe to use on more than one device at once</li>
+          <li><i class="bi bi-shield-check" aria-hidden="true"></i> Each action is saved under your name</li>
+        </ul>
       </aside>
 
       <section class="auth-card" aria-labelledby="login-heading">
@@ -44,7 +49,7 @@
           <header class="auth-card-head">
             <span class="auth-card-badge" aria-hidden="true"><i class="bi bi-shield-lock-fill"></i></span>
             <h2 class="auth-card-title" id="login-heading">Sign in</h2>
-            <p class="auth-card-sub">Choose your province, then enter your password</p>
+            <p class="auth-card-sub">Choose your province and account, then enter your password</p>
           </header>
 
           <div class="alert alert-danger d-flex align-items-start gap-2 auth-alert" id="login-server-error" hidden>
@@ -57,7 +62,7 @@
               <label class="form-label" for="location_id">
                 <i class="bi bi-geo-alt-fill form-label-icon" aria-hidden="true"></i> Province
               </label>
-              <select class="form-select auth-input" id="location_id" name="location_id" required>
+              <select class="form-select auth-input" id="location_id" name="location_id" required data-ac="0">
                 <option value="">Select province</option>
               </select>
               <div class="invalid-feedback" data-error-for="location_id">Choose a province.</div>
@@ -67,17 +72,20 @@
               <label class="form-label" for="email">
                 <i class="bi bi-person-fill form-label-icon" aria-hidden="true"></i> Account
               </label>
-              <select class="form-select auth-input" id="email" name="email" required>
+              <select class="form-select auth-input" id="email" name="email" required data-ac="0">
                 <option value="">Select email</option>
               </select>
               <div class="invalid-feedback" data-error-for="email">Choose your email.</div>
             </div>
 
             <div class="mbms-field auth-field">
-              <label class="form-label" for="password">
-                <i class="bi bi-key-fill form-label-icon" aria-hidden="true"></i> Password
-              </label>
-              <div class="mbms-password-wrap">
+              <div class="d-flex justify-content-between align-items-center gap-2">
+                <label class="form-label mb-0" for="password">
+                  <i class="bi bi-key-fill form-label-icon" aria-hidden="true"></i> Password
+                </label>
+                <a class="auth-link" href="forgot-password.html">Forgot password?</a>
+              </div>
+              <div class="mbms-password-wrap mt-2">
                 <input class="form-control auth-input" id="password" name="password" type="password" autocomplete="current-password" required placeholder="Enter your password">
                 <button type="button" class="btn btn-outline-secondary mbms-password-toggle" id="toggle-password" aria-label="Show password">
                   <i class="bi bi-eye" id="toggle-password-icon" aria-hidden="true"></i>
@@ -94,7 +102,7 @@
             </button>
           </form>
 
-          <p class="auth-card-foot">Secure access for Kabul, Maidan/Wardak, and Ghazni</p>
+          <p class="auth-card-foot">Kabul · Maidan/Wardak · Ghazni — closed accounts for the three brothers</p>
         </div>
       </section>
     </div>
@@ -105,13 +113,13 @@
   <script defer src="../assets/js/config.js"></script>
   <script defer src="../assets/js/i18n.js"></script>
   <script defer src="../assets/js/api.js"></script>
-  <script defer src="../assets/js/bridge.js"></script>
+  <script defer src="../assets/js/bridge.js?v=20261015m"></script>
   <script defer src="../assets/js/utils.js"></script>
   <script defer src="../assets/js/ui.js"></script>
   <script defer src="../assets/js/nav.js"></script>
-  <script defer src="../assets/js/auth.js"></script>
+  <script defer src="../assets/js/auth.js?v=20261015m"></script>
   <script defer src="../assets/js/layout.js"></script>
-  <script defer src="../assets/js/pages/login.js"></script>
+  <script defer src="../assets/js/pages/login.js?v=20261015m"></script>
   <script defer src="../assets/js/app.js"></script>
 </body>
 </html>

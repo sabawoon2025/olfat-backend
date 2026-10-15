@@ -57,17 +57,19 @@
   }
 
   function boot() {
-    // Only the sign-in screen uses this redirect. The sale bill also uses a bare
+    // Guest auth screens (login / forgot password). Sale bill also uses a bare
     // layout, and signed-in users must be able to open it.
-    var loginPage = document.body.getAttribute('data-page') === 'login';
+    var page = document.body.getAttribute('data-page') || '';
+    var authLayout = document.body.getAttribute('data-layout') === 'auth';
+    var guestAuthPage = authLayout || page === 'login' || page === 'forgot-password';
     var signedIn = global.MBMS_AUTH && global.MBMS_AUTH.isSignedIn();
-    if (loginPage && signedIn) {
+    if (page === 'login' && signedIn) {
       global.location.href = (global.MBMS_NAV && global.MBMS_NAV.asset)
         ? global.MBMS_NAV.asset('index.html')
         : '../index.html';
       return;
     }
-    if (!loginPage && !signedIn) {
+    if (!guestAuthPage && !signedIn) {
       global.location.href = (global.MBMS_NAV && global.MBMS_NAV.asset)
         ? global.MBMS_NAV.asset('pages/login.html')
         : 'pages/login.html';
@@ -77,7 +79,7 @@
     // 1–4: auth gate above, then page init + page API + render.
     // 5: background prefetch only after the page has started (idle).
     init();
-    if (!loginPage && global.MBMS_API && typeof global.MBMS_API.prefetch === 'function') {
+    if (!guestAuthPage && global.MBMS_API && typeof global.MBMS_API.prefetch === 'function') {
       scheduleBackground(function () {
         global.MBMS_API.prefetch({
           background: true,

@@ -4,20 +4,26 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Requests\Auth\UpdatePasswordRequest;
 use App\Http\Requests\Auth\UpdateProfileRequest;
 use App\Models\Location;
 use App\Models\User;
+use App\Services\Auth\PasswordResetCodeService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
 {
+    public function __construct(private readonly PasswordResetCodeService $passwordResetCodeService) {}
+
     public function loginOptions(): JsonResponse
     {
         $claimedByLocation = User::query()
@@ -153,7 +159,48 @@ class AuthController extends Controller
         $user->password = $request->validated('password');
         $user->save();
 
-        return ApiResponse::success(null, 'Password updated');
+        $this->revokeOtherTokens($request);
+
+        return ApiResponse::success(null, 'Password updated. Other devices were signed out.');
+    }
+
+    public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
+    {
+        $this->passwordResetCodeService->sendCode($request->validated('email'));
+
+        return ApiResponse::success(null, PasswordResetCodeService::GENERIC_MESSAGE);
+    }
+
+    public function resetPassword(ResetPasswordRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+
+        $this->passwordResetCodeService->resetPassword(
+            $data['email'],
+            $data['code'],
+            $data['password']
+        );
+
+        return ApiResponse::success(null, 'Password updated. You can sign in with your new password.');
+    }
+
+    private function revokeOtherTokens(Request $request): void
+    {
+        $user = $request->user();
+        if (! $user) {
+            return;
+        }
+
+        $current = $user->currentAccessToken();
+        $currentId = $current instanceof PersonalAccessToken
+            ? $current->id
+            : (is_object($current) && isset($current->id) ? $current->id : null);
+
+        PersonalAccessToken::query()
+            ->where('tokenable_type', $user->getMorphClass())
+            ->where('tokenable_id', $user->getKey())
+            ->when($currentId !== null, fn ($query) => $query->where('id', '!=', $currentId))
+            ->delete();
     }
 
     /**

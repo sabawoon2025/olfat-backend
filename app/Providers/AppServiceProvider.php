@@ -64,6 +64,15 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
 
+        RateLimiter::for('password-reset', function (Request $request) {
+            $email = strtolower((string) $request->input('email', ''));
+
+            return [
+                Limit::perMinute(5)->by($request->ip()),
+                Limit::perMinute(3)->by($email.'|'.$request->ip()),
+            ];
+        });
+
         $reportCache = ReportCacheObserver::class;
         foreach ([
             Sale::class,
