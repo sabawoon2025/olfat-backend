@@ -7,6 +7,7 @@ use App\Http\Requests\Location\StoreLocationRequest;
 use App\Http\Requests\Location\UpdateLocationRequest;
 use App\Models\Location;
 use App\Support\ApiResponse;
+use App\Support\InvoiceProfile;
 use Illuminate\Http\JsonResponse;
 
 class LocationController extends Controller
@@ -20,7 +21,12 @@ class LocationController extends Controller
 
     public function store(StoreLocationRequest $request): JsonResponse
     {
-        $location = Location::query()->create($request->validated());
+        $data = $request->validated();
+        if (array_key_exists('invoice_profile', $data)) {
+            $data['invoice_profile'] = InvoiceProfile::sanitize($data['invoice_profile'] ?? []);
+        }
+
+        $location = Location::query()->create($data);
 
         return ApiResponse::success($location, 'Location created', 201);
     }
@@ -32,7 +38,12 @@ class LocationController extends Controller
 
     public function update(UpdateLocationRequest $request, Location $location): JsonResponse
     {
-        $location->fill($request->validated());
+        $data = $request->validated();
+        if (array_key_exists('invoice_profile', $data)) {
+            $data['invoice_profile'] = InvoiceProfile::sanitize($data['invoice_profile'] ?? []);
+        }
+
+        $location->fill($data);
         $location->save();
 
         return ApiResponse::success($location->fresh(), 'Location updated');

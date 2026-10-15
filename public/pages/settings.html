@@ -164,6 +164,11 @@
                     <input class="form-control" id="biz-phone" name="business.phone">
                   </div>
                   <div class="col-12 col-md-4">
+                    <label class="form-label" for="biz-whatsapp">WhatsApp</label>
+                    <input class="form-control" id="biz-whatsapp" name="business.whatsapp" placeholder="9370xxxxxxx">
+                    <small class="text-secondary">Default number; each branch can override below.</small>
+                  </div>
+                  <div class="col-12 col-md-4">
                     <label class="form-label" for="biz-email">Email</label>
                     <input class="form-control" id="biz-email" name="business.email" type="email">
                   </div>
@@ -187,22 +192,28 @@
                     </select>
                   </div>
                 </div>
-<button type="submit" class="btn btn-primary"><i class="bi bi-building" aria-hidden="true"></i> Save business identity</button>
+                <div class="mt-3">
+                  <button type="submit" class="btn btn-primary"><i class="bi bi-building" aria-hidden="true"></i> Save business identity</button>
+                </div>
               </form>
             </div>
           </section>
         </div>
 
         <!-- =====================================================
-             Admin-only: Invoice / bill content
+             Admin-only: Invoice / bill content (global defaults)
              ===================================================== -->
         <div class="col-12" id="invoice-section" hidden>
           <section class="mbms-card card">
             <div class="card-header d-flex justify-content-between align-items-center">
-              <span class="mbms-card-header"><i class="bi bi-receipt" aria-hidden="true"></i> Invoice content</span>
+              <span class="mbms-card-header"><i class="bi bi-receipt" aria-hidden="true"></i> Invoice content (defaults)</span>
               <span class="badge text-bg-primary">Admin only</span>
             </div>
             <div class="card-body">
+              <p class="text-secondary small mb-3">
+                These values apply when a branch does not set its own invoice header or footer.
+                Use <strong>Branch invoice profiles</strong> below for Kabul, Maidan/Wardak, and Ghazni.
+              </p>
               <form id="invoice-form" novalidate>
                 <div class="row g-3">
                   <div class="col-12 col-md-4">
@@ -240,11 +251,109 @@
                     </div>
                   </div>
                 </div>
-<div class="d-flex flex-wrap gap-2">
+                <div class="d-flex flex-wrap gap-2 mt-3">
                   <button type="submit" class="btn btn-primary"><i class="bi bi-receipt" aria-hidden="true"></i> Save invoice settings</button>
                   <a class="btn btn-outline-secondary" href="bill.html" target="_blank" rel="noopener">
                     <i class="bi bi-box-arrow-up-right"></i> Preview a bill
                   </a>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+
+        <!-- =====================================================
+             Admin-only: Per-branch invoice header / footer
+             ===================================================== -->
+        <div class="col-12" id="branch-invoice-section" hidden>
+          <section class="mbms-card card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <span class="mbms-card-header"><i class="bi bi-geo-alt" aria-hidden="true"></i> Branch invoice profiles</span>
+              <span class="badge text-bg-primary">Admin only</span>
+            </div>
+            <div class="card-body">
+              <p class="text-secondary small mb-3">
+                Each location (Kabul, Maidan/Wardak, Ghazni) can show its own logo, name, phone,
+                WhatsApp, address, and footer on sale invoices. Leave a field blank to use the
+                global business / invoice defaults above.
+              </p>
+              <form id="branch-invoice-form" novalidate>
+                <div class="row g-3">
+                  <div class="col-12 col-md-6">
+                    <label class="form-label" for="branch-location">Branch / location</label>
+                    <select class="form-select" id="branch-location" required>
+                      <option value="">Select a branch…</option>
+                    </select>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label class="form-label" for="branch-legal-name">Branch display name</label>
+                    <input class="form-control" id="branch-legal-name" name="legal_name" placeholder="Olfat Trading — Kabul">
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label class="form-label" for="branch-tagline">Tagline</label>
+                    <input class="form-control" id="branch-tagline" name="tagline" placeholder="Kabul Branch Sales Invoice">
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label class="form-label" for="branch-logo-url">Logo URL</label>
+                    <input class="form-control" id="branch-logo-url" name="logo_url" placeholder="/assets/images/logo.svg">
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label class="form-label" for="branch-address-1">Address line 1</label>
+                    <input class="form-control" id="branch-address-1" name="address_line1">
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label class="form-label" for="branch-address-2">Address line 2</label>
+                    <input class="form-control" id="branch-address-2" name="address_line2">
+                  </div>
+                  <div class="col-12 col-md-4">
+                    <label class="form-label" for="branch-phone">Phone</label>
+                    <input class="form-control" id="branch-phone" name="phone">
+                  </div>
+                  <div class="col-12 col-md-4">
+                    <label class="form-label" for="branch-whatsapp">WhatsApp</label>
+                    <input class="form-control" id="branch-whatsapp" name="whatsapp" placeholder="9370xxxxxxx">
+                  </div>
+                  <div class="col-12 col-md-4">
+                    <label class="form-label" for="branch-email">Email</label>
+                    <input class="form-control" id="branch-email" name="email" type="email">
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label class="form-label" for="branch-website">Website</label>
+                    <input class="form-control" id="branch-website" name="website">
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label class="form-label" for="branch-tax-id">Tax / registration number</label>
+                    <input class="form-control" id="branch-tax-id" name="tax_id">
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label" for="branch-header-note">Header note</label>
+                    <input class="form-control" id="branch-header-note" name="header_note">
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label" for="branch-footer-note">Footer note</label>
+                    <input class="form-control" id="branch-footer-note" name="footer_note" placeholder="Thank you for your business.">
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label class="form-label" for="branch-terms">Terms &amp; conditions</label>
+                    <textarea class="form-control" id="branch-terms" name="terms" rows="3"></textarea>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label class="form-label" for="branch-bank">Bank / payment details</label>
+                    <textarea class="form-control" id="branch-bank" name="bank_details" rows="3"></textarea>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label class="form-label" for="branch-sign-customer">Customer signature label</label>
+                    <input class="form-control" id="branch-sign-customer" name="signature_customer_label">
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label class="form-label" for="branch-sign-authorized">Authorized signature label</label>
+                    <input class="form-control" id="branch-sign-authorized" name="signature_authorized_label">
+                  </div>
+                </div>
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                  <button type="submit" class="btn btn-primary" id="branch-invoice-save">
+                    <i class="bi bi-geo-alt" aria-hidden="true"></i> Save branch invoice profile
+                  </button>
                 </div>
               </form>
             </div>

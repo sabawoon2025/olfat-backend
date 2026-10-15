@@ -52,6 +52,18 @@ body.bill-page {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+  align-items: center;
+}
+
+.bill-toolbar-actions .btn-outline-success {
+  border-color: #16a34a;
+  color: #15803d;
+}
+
+.bill-toolbar-actions .btn-outline-success:hover {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #fff;
 }
 
 .bill-error {

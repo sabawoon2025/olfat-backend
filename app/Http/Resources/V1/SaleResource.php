@@ -29,6 +29,7 @@ class SaleResource extends JsonResource
      *     location_id:?int,
      *     location:?string,
      *     location_code:?string,
+     *     invoice_profile:array<string, string>,
      *     user_id:?int,
      *     seller:?string,
      *     total:string,
@@ -63,6 +64,9 @@ class SaleResource extends JsonResource
             'location_id' => $this->location_id,
             'location' => $location?->name,
             'location_code' => $location?->code,
+            'invoice_profile' => $location
+                ? $location->compactInvoiceProfile()
+                : [],
 
             'user_id' => $this->user_id,
             'seller' => $seller?->name,

@@ -102,6 +102,14 @@ class SettingSeeder extends Seeder
                 'description' => 'Primary phone number printed on invoices',
             ],
             [
+                'key' => 'business.whatsapp',
+                'value' => '',
+                'type' => 'string',
+                'group' => 'business',
+                'label' => 'WhatsApp',
+                'description' => 'Default WhatsApp number shown on invoices (branch profiles can override)',
+            ],
+            [
                 'key' => 'business.email',
                 'value' => '',
                 'type' => 'string',
