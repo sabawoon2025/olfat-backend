@@ -14,7 +14,9 @@
   },
   "routes": [
     { "src": "/index\\.php", "dest": "/api/index.php" },
-    { "src": "/(assets|pages)/(.*)", "headers": { "Cache-Control": "public, max-age=3600" }, "continue": true },
+    { "src": "/assets/(.*)", "headers": { "Cache-Control": "public, max-age=3600" }, "continue": true },
+    { "src": "/pages/(.*\\.html)", "headers": { "Cache-Control": "public, max-age=0, must-revalidate" }, "continue": true },
+    { "src": "/index\\.html", "headers": { "Cache-Control": "public, max-age=0, must-revalidate" }, "continue": true },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/api/index.php" }
   ],

@@ -2113,6 +2113,12 @@
   }
 
   function redirectLogin() {
+    var page = document.body ? (document.body.getAttribute('data-page') || '') : '';
+    var authLayout = document.body && document.body.getAttribute('data-layout') === 'auth';
+    var resetPage = document.body && (document.body.getAttribute('data-auth') === 'reset' || page === 'forgot-password');
+    if (authLayout || page === 'login' || resetPage) {
+      return;
+    }
     if (global.MBMS_CONFIG && global.MBMS_CONFIG.clearAuthToken) {
       global.MBMS_CONFIG.clearAuthToken();
     }

@@ -61,9 +61,11 @@
     // layout, and signed-in users must be able to open it.
     var page = document.body.getAttribute('data-page') || '';
     var authLayout = document.body.getAttribute('data-layout') === 'auth';
-    var guestAuthPage = authLayout || page === 'login' || page === 'forgot-password';
+    // data-page="login" on the reset screen lets an older cached app.js leave guests here.
+    var resetPage = document.body.getAttribute('data-auth') === 'reset' || page === 'forgot-password';
+    var guestAuthPage = authLayout || page === 'login' || resetPage;
     var signedIn = global.MBMS_AUTH && global.MBMS_AUTH.isSignedIn();
-    if (page === 'login' && signedIn) {
+    if (page === 'login' && !resetPage && signedIn) {
       global.location.href = (global.MBMS_NAV && global.MBMS_NAV.asset)
         ? global.MBMS_NAV.asset('index.html')
         : '../index.html';
