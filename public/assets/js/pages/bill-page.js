@@ -414,7 +414,7 @@
     var statusEl = document.getElementById('bill-status');
     if (statusEl) {
       statusEl.textContent = status.label;
-      statusEl.className = 'bill-status ' + status.className;
+      statusEl.className = 'bill-status ' + (status.className || '');
     }
 
     var headerNote = document.getElementById('bill-header-note');
@@ -560,22 +560,7 @@
       metaBits.push(billSettings.phone);
     }
     metaBits.push(invoiceNumber(sale));
-    metaBits.push('Computer generated invoice');
     setText('bill-footer-meta', metaBits.join(' · '));
-  }
-
-  function renderWatermark(status) {
-    var watermark = document.getElementById('bill-watermark');
-    if (!watermark) {
-      return;
-    }
-    if (!billSettings.showWatermark || !status.watermark) {
-      watermark.hidden = true;
-      return;
-    }
-    watermark.hidden = false;
-    watermark.className = 'bill-watermark ' + status.className;
-    watermark.setAttribute('data-text', status.watermark);
   }
 
   function renderSale(sale) {
@@ -603,7 +588,6 @@
     renderNotes(sale);
     renderSignatures();
     renderFooter(sale);
-    renderWatermark(status);
   }
 
   function whatsAppText(sale) {
