@@ -15,7 +15,7 @@ class HomeExpenseFactory extends Factory
     {
         return [
             'reference_no' => 'HEXP-'.now()->format('Ymd').'-'.fake()->unique()->bothify('??????'),
-            'category' => fake()->randomElement(['Food', 'Household', 'Personal', 'Other']),
+            'category' => fake()->randomElement(['Food', 'Household', 'Personal', 'Transport', 'Medical']),
             'description' => fake()->sentence(3),
             'amount' => fake()->randomFloat(2, 5, 200),
             'expense_date' => now()->toDateString(),

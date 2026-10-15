@@ -148,5 +148,7 @@ class Phase8ModulesTest extends TestCase
         $labels = collect($categories->json('data'))->pluck('label')->all();
         $this->assertContains('School fees', $labels);
         $this->assertContains('Food', $labels);
+        $this->assertNotContains('Other', $labels);
+        $this->assertNotContains('Other home expenses', $labels);
     }
 }

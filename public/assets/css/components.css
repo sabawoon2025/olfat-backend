@@ -949,6 +949,13 @@ body[data-page="home-expenses"] #expModal .modal-title .bi {
   color: #db2777;
 }
 
+.mbms-new-category-panel {
+  padding: 0.75rem 0.85rem;
+  border: 1px dashed #f9a8d4;
+  border-radius: var(--mbms-radius-sm);
+  background: #fff7fb;
+}
+
 .mbms-expense-modal .mbms-field .form-control,
 .mbms-expense-modal .mbms-field .form-select {
   min-height: 2.6rem;
@@ -1003,6 +1010,33 @@ body[data-page="home-expenses"] #expModal .modal-title .bi {
 .mbms-purchase-modal .mbms-field .form-control:read-only {
   background: #f8fafc;
   font-weight: 700;
+}
+
+.mbms-sale-lines {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.mbms-sale-line {
+  padding: 0.85rem;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--mbms-radius-sm);
+  background: #fff;
+}
+
+.mbms-sale-line-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.mbms-sale-line-head strong {
+  font-size: 0.82rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--mbms-muted);
 }
 
 .mbms-profit-panel {

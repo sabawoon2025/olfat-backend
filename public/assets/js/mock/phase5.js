@@ -87,10 +87,11 @@
   ];
 
   global.MBMS_MOCK.homeExpenseCategories = [
-    { id: 'food', label: 'Food' },
-    { id: 'household', label: 'Household expenses' },
-    { id: 'personal', label: 'Personal expenses' },
-    { id: 'other', label: 'Other home expenses' }
+    { id: 'Food', label: 'Food' },
+    { id: 'Household', label: 'Household' },
+    { id: 'Personal', label: 'Personal' },
+    { id: 'Transport', label: 'Transport' },
+    { id: 'Medical', label: 'Medical' }
   ];
 
   global.MBMS_MOCK.homeExpenses = [

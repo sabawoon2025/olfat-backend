@@ -1,12 +1,13 @@
 /**
  * Reusable Sales and Purchases UI.
- * One form architecture for Tea, Rice, Detergents, and purchase-only materials.
+ * Sales supports multiple product lines; purchases keep a single-line form.
  */
 (function (global) {
   'use strict';
 
   var priceManual = false;
   var paidManual = false;
+  var lineSeq = 0;
 
   function mode() {
     return document.body.getAttribute('data-transaction') || 'sales';
@@ -14,6 +15,10 @@
 
   function isSales() {
     return mode() === 'sales';
+  }
+
+  function usesMultiLines() {
+    return !!document.getElementById('tx-lines');
   }
 
   function lockedCategory() {
@@ -63,13 +68,34 @@
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
 
-  function refreshAutocomplete() {
+  function lineNodes() {
+    return Array.prototype.slice.call(document.querySelectorAll('#tx-lines .mbms-sale-line'));
+  }
+
+  function workLocationId(fallback) {
+    if (global.MBMS_CONFIG && typeof global.MBMS_CONFIG.getLocationId === 'function') {
+      var configured = global.MBMS_CONFIG.getLocationId();
+      if (configured) {
+        return configured;
+      }
+    }
+    return fallback || (document.getElementById('tx-location') || {}).value || '';
+  }
+
+  function refreshAutocomplete(root) {
     if (!global.MBMS_AUTOCOMPLETE) {
+      return;
+    }
+    if (root) {
+      global.MBMS_AUTOCOMPLETE.enhanceAll(root);
       return;
     }
     ['tx-party', 'tx-product', 'tx-variant'].forEach(function (id) {
       global.MBMS_AUTOCOMPLETE.refresh(document.getElementById(id));
     });
+    if (usesMultiLines()) {
+      global.MBMS_AUTOCOMPLETE.enhanceAll(document.getElementById('tx-lines'));
+    }
   }
 
   function parsePrice(row) {
@@ -92,26 +118,109 @@
       : ((global.MBMS_MOCK && global.MBMS_MOCK.purchases) || []);
     var best = null;
     rows.forEach(function (row) {
-      if (String(row.variant_id) !== String(variantId)) {
+      var matches = String(row.variant_id) === String(variantId);
+      if (!matches && Array.isArray(row.items)) {
+        matches = row.items.some(function (item) {
+          return String(item.product_variant_id || item.variant_id) === String(variantId);
+        });
+      }
+      if (!matches) {
         return;
       }
       if (!best || String(row.date || '') >= String(best.date || '')) {
         best = row;
       }
     });
+    if (!best) {
+      return null;
+    }
+    if (Array.isArray(best.items) && best.items.length) {
+      var line = best.items.filter(function (item) {
+        return String(item.product_variant_id || item.variant_id) === String(variantId);
+      })[0] || best.items[0];
+      if (line && line.unit_price_raw != null) {
+        return num(line.unit_price_raw);
+      }
+      if (line && line.unit_price != null) {
+        return num(line.unit_price);
+      }
+    }
     return parsePrice(best);
   }
 
-  function availableStock() {
-    var variantId = (document.getElementById('tx-variant') || {}).value || '';
-    var locationId = (document.getElementById('tx-location') || {}).value || '';
+  function stockFor(variantId, locationId) {
     if (!variantId || !locationId || !global.MBMS_API || typeof global.MBMS_API.stockAtLocation !== 'function') {
       return { qty: null, unit: '', location: '' };
     }
     return global.MBMS_API.stockAtLocation(variantId, locationId);
   }
 
+  function availableStock() {
+    var variantId = (document.getElementById('tx-variant') || {}).value || '';
+    var locationId = workLocationId();
+    return stockFor(variantId, locationId);
+  }
+
+  function updateLineStockHint(lineEl) {
+    if (!lineEl || !isSales()) {
+      return;
+    }
+    var hint = lineEl.querySelector('[data-line="stock-hint"]');
+    var error = lineEl.querySelector('[data-line="stock-error"]');
+    var qtyInput = lineEl.querySelector('[data-line="quantity"]');
+    var variantId = (lineEl.querySelector('[data-line="variant"]') || {}).value || '';
+    var locationId = workLocationId();
+    var locationSelect = document.getElementById('tx-location');
+    var locationName = '';
+    if (locationSelect && locationSelect.selectedIndex >= 0) {
+      locationName = locationSelect.options[locationSelect.selectedIndex].textContent || '';
+    }
+    if (!hint) {
+      return;
+    }
+    if (!variantId || !locationId) {
+      hint.textContent = 'Choose product, variant, and location to see available stock.';
+      hint.classList.remove('text-danger', 'text-success');
+      if (error) {
+        error.hidden = true;
+        error.textContent = '';
+      }
+      if (qtyInput) {
+        qtyInput.classList.remove('is-invalid');
+      }
+      return;
+    }
+    if (!global.MBMS_API || typeof global.MBMS_API.stockAtLocation !== 'function') {
+      hint.textContent = 'Available stock is checked when you save.';
+      return;
+    }
+    var stock = stockFor(variantId, locationId);
+    var qty = stock.qty != null ? stock.qty : 0;
+    var unit = stock.unit ? (' ' + stock.unit) : '';
+    var place = stock.location || locationName || 'this location';
+    hint.textContent = 'Available in ' + place + ': ' + qty + unit + '.';
+    hint.classList.toggle('text-success', qty > 0);
+    hint.classList.toggle('text-danger', qty <= 0);
+
+    var wanted = num(qtyInput && qtyInput.value);
+    if (error && qtyInput) {
+      if (wanted > 0 && wanted > qty) {
+        error.hidden = false;
+        error.textContent = 'Not enough stock. Available: ' + qty + unit + ' in ' + place + '.';
+        qtyInput.classList.add('is-invalid');
+      } else {
+        error.hidden = true;
+        error.textContent = '';
+        qtyInput.classList.remove('is-invalid');
+      }
+    }
+  }
+
   function updateStockHint() {
+    if (usesMultiLines()) {
+      lineNodes().forEach(updateLineStockHint);
+      return;
+    }
     var hint = document.getElementById('tx-stock-hint');
     var error = document.getElementById('tx-stock-error');
     var qtyInput = document.getElementById('tx-quantity');
@@ -119,7 +228,7 @@
       return;
     }
     var variantId = (document.getElementById('tx-variant') || {}).value || '';
-    var locationId = (document.getElementById('tx-location') || {}).value || '';
+    var locationId = workLocationId();
     var locationSelect = document.getElementById('tx-location');
     var locationName = '';
     if (locationSelect && locationSelect.selectedIndex >= 0) {
@@ -163,11 +272,75 @@
     }
   }
 
+  function updateLineTotals(lineEl) {
+    if (!lineEl) {
+      return 0;
+    }
+    var qty = num((lineEl.querySelector('[data-line="quantity"]') || {}).value);
+    var price = num((lineEl.querySelector('[data-line="price"]') || {}).value);
+    var total = roundMoney(qty * price);
+    var totalEl = lineEl.querySelector('[data-line="line-total"]');
+    if (totalEl) {
+      totalEl.value = qty > 0 && price >= 0 ? String(total) : '';
+    }
+    updateLineStockHint(lineEl);
+    return total;
+  }
+
   function updateProfitPanel() {
     var panel = document.getElementById('tx-profit-panel');
     if (!panel || !isSales()) {
       return;
     }
+    var costEl = document.getElementById('tx-cost-display');
+    var profitEl = document.getElementById('tx-profit-display');
+
+    if (usesMultiLines()) {
+      var totalCost = 0;
+      var totalProfit = 0;
+      var priced = 0;
+      var withCost = 0;
+      lineNodes().forEach(function (lineEl) {
+        var variantId = (lineEl.querySelector('[data-line="variant"]') || {}).value || '';
+        var qty = num((lineEl.querySelector('[data-line="quantity"]') || {}).value);
+        var price = num((lineEl.querySelector('[data-line="price"]') || {}).value);
+        if (!variantId || !(price >= 0) || !(qty > 0)) {
+          return;
+        }
+        priced += 1;
+        var cost = lastTradePrice(variantId, 'purchase');
+        if (cost == null) {
+          return;
+        }
+        withCost += 1;
+        totalCost += cost * qty;
+        totalProfit += (price - cost) * qty;
+      });
+      if (!priced) {
+        panel.hidden = true;
+        return;
+      }
+      panel.hidden = false;
+      if (!withCost) {
+        if (costEl) {
+          costEl.textContent = 'No purchase yet';
+        }
+        if (profitEl) {
+          profitEl.textContent = '—';
+          profitEl.className = '';
+        }
+        return;
+      }
+      if (costEl) {
+        costEl.textContent = moneyText(totalCost);
+      }
+      if (profitEl) {
+        profitEl.textContent = moneyText(totalProfit);
+        profitEl.className = totalProfit >= 0 ? 'text-success' : 'text-danger';
+      }
+      return;
+    }
+
     var variantId = (document.getElementById('tx-variant') || {}).value || '';
     var qty = num((document.getElementById('tx-quantity') || {}).value);
     var price = num((document.getElementById('tx-price') || {}).value);
@@ -176,8 +349,6 @@
       return;
     }
     var cost = lastTradePrice(variantId, 'purchase');
-    var costEl = document.getElementById('tx-cost-display');
-    var profitEl = document.getElementById('tx-profit-display');
     panel.hidden = false;
     if (cost == null) {
       if (costEl) {
@@ -201,18 +372,29 @@
 
   function syncTotals(options) {
     options = options || {};
-    var qtyEl = document.getElementById('tx-quantity');
-    var priceEl = document.getElementById('tx-price');
     var totalEl = document.getElementById('tx-total');
     var paidEl = document.getElementById('tx-paid');
     var remainingEl = document.getElementById('tx-remaining');
     var paymentType = document.getElementById('tx-payment-type');
+    var total = 0;
 
-    var qty = num(qtyEl && qtyEl.value);
-    var price = num(priceEl && priceEl.value);
-    var total = roundMoney(qty * price);
+    if (usesMultiLines()) {
+      lineNodes().forEach(function (lineEl) {
+        total = roundMoney(total + updateLineTotals(lineEl));
+      });
+    } else {
+      var qtyEl = document.getElementById('tx-quantity');
+      var priceEl = document.getElementById('tx-price');
+      var qty = num(qtyEl && qtyEl.value);
+      var price = num(priceEl && priceEl.value);
+      total = roundMoney(qty * price);
+    }
+
     if (totalEl) {
-      totalEl.value = qty > 0 && price >= 0 ? String(total) : '';
+      totalEl.value = total > 0 || (usesMultiLines() && lineNodes().length) ? String(total) : '';
+      if (!usesMultiLines() && !(num((document.getElementById('tx-quantity') || {}).value) > 0)) {
+        totalEl.value = '';
+      }
     }
 
     if (paymentType && paidEl && !paidManual && !options.keepPaid) {
@@ -233,7 +415,35 @@
     updateProfitPanel();
   }
 
+  function applySuggestedPriceForLine(lineEl) {
+    if (!lineEl || lineEl.dataset.priceManual === '1') {
+      updateLineStockHint(lineEl);
+      return;
+    }
+    var variantId = (lineEl.querySelector('[data-line="variant"]') || {}).value || '';
+    var priceEl = lineEl.querySelector('[data-line="price"]');
+    if (!variantId || !priceEl) {
+      return;
+    }
+    var last = lastTradePrice(variantId, 'sale');
+    if (last != null && last >= 0) {
+      priceEl.value = String(last);
+      priceEl.dataset.suggested = '1';
+    } else {
+      priceEl.placeholder = 'Enter selling price';
+      if (priceEl.dataset.suggested === '1') {
+        priceEl.value = '';
+      }
+    }
+    updateLineTotals(lineEl);
+  }
+
   function applySuggestedPrice() {
+    if (usesMultiLines()) {
+      lineNodes().forEach(applySuggestedPriceForLine);
+      syncTotals({ keepPaid: true });
+      return;
+    }
     if (priceManual) {
       updateProfitPanel();
       return;
@@ -294,7 +504,44 @@
     });
   }
 
+  function fillLineDependentSelects(lineEl) {
+    if (!lineEl) {
+      return;
+    }
+    var category = lockedCategory() || (lineEl.querySelector('[data-line="category"]') || {}).value;
+    var productSelect = lineEl.querySelector('[data-line="product"]');
+    var variantSelect = lineEl.querySelector('[data-line="variant"]');
+    var currentProduct = productSelect ? productSelect.value : '';
+    var currentVariant = variantSelect ? variantSelect.value : '';
+    global.MBMS_RECORDS.fillSelect(
+      productSelect,
+      global.MBMS_CATALOG.products(category),
+      function (row) { return row.id; },
+      function (row) { return row.name; },
+      currentProduct,
+      'Select product'
+    );
+    global.MBMS_RECORDS.fillSelect(
+      variantSelect,
+      global.MBMS_CATALOG.variants(category, (productSelect || {}).value),
+      function (row) { return row.id; },
+      function (row) { return row.label; },
+      currentVariant,
+      'Select variant'
+    );
+    refreshAutocomplete(lineEl);
+    if (lineEl.dataset.priceManual !== '1') {
+      applySuggestedPriceForLine(lineEl);
+    }
+    updateLineStockHint(lineEl);
+  }
+
   function fillDependentSelects() {
+    if (usesMultiLines()) {
+      lineNodes().forEach(fillLineDependentSelects);
+      syncTotals({ keepPaid: true });
+      return;
+    }
     var category = lockedCategory() || (document.getElementById('tx-category') || {}).value;
     var productSelect = document.getElementById('tx-product');
     var variantSelect = document.getElementById('tx-variant');
@@ -322,6 +569,205 @@
     updateStockHint();
   }
 
+  function renumberLines() {
+    lineNodes().forEach(function (lineEl, index) {
+      var title = lineEl.querySelector('[data-line="title"]');
+      if (title) {
+        title.textContent = 'Product ' + (index + 1);
+      }
+      var removeBtn = lineEl.querySelector('[data-line="remove"]');
+      if (removeBtn) {
+        removeBtn.disabled = lineNodes().length <= 1;
+      }
+    });
+  }
+
+  function buildLineElement() {
+    lineSeq += 1;
+    var id = 'line-' + lineSeq;
+    var wrap = document.createElement('div');
+    wrap.className = 'mbms-sale-line';
+    wrap.dataset.lineId = id;
+    wrap.innerHTML =
+      '<div class="mbms-sale-line-head">' +
+        '<strong data-line="title">Product 1</strong>' +
+        '<button type="button" class="btn btn-sm btn-outline-danger" data-line="remove" aria-label="Remove product">' +
+          '<i class="bi bi-trash" aria-hidden="true"></i> Remove' +
+        '</button>' +
+      '</div>' +
+      '<div class="row g-2">' +
+        '<div class="col-md-4">' +
+          '<div class="mbms-field mb-0">' +
+            '<label class="form-label">Category</label>' +
+            '<select class="form-select" data-line="category" required></select>' +
+          '</div>' +
+        '</div>' +
+        '<div class="col-md-4">' +
+          '<div class="mbms-field mb-0">' +
+            '<label class="form-label">Product</label>' +
+            '<select class="form-select" data-line="product" required data-ac="1" data-ac-placeholder="Search product…"></select>' +
+          '</div>' +
+        '</div>' +
+        '<div class="col-md-4">' +
+          '<div class="mbms-field mb-0">' +
+            '<label class="form-label">Variant / unit</label>' +
+            '<select class="form-select" data-line="variant" required data-ac="1" data-ac-placeholder="Type to search…"></select>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="row g-2 mt-1">' +
+        '<div class="col-md-4">' +
+          '<div class="mbms-field mb-0">' +
+            '<label class="form-label">Quantity</label>' +
+            '<input class="form-control" data-line="quantity" required inputmode="decimal" min="0.01" step="0.01" placeholder="0">' +
+          '</div>' +
+        '</div>' +
+        '<div class="col-md-4">' +
+          '<div class="mbms-field mb-0">' +
+            '<label class="form-label">Selling price</label>' +
+            '<input class="form-control" data-line="price" required inputmode="decimal" min="0" step="0.01" placeholder="0.00">' +
+          '</div>' +
+        '</div>' +
+        '<div class="col-md-4">' +
+          '<div class="mbms-field mb-0">' +
+            '<label class="form-label">Line total</label>' +
+            '<input class="form-control" data-line="line-total" inputmode="decimal" readonly tabindex="-1">' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<p class="mbms-help is-compact mb-0 mt-2" data-line="stock-hint">Choose product, variant, and location to see available stock.</p>' +
+      '<p class="text-danger small mb-0 mt-1" data-line="stock-error" hidden></p>';
+    return wrap;
+  }
+
+  function fillLineCategory(lineEl) {
+    var locked = lockedCategory();
+    var categorySelect = lineEl.querySelector('[data-line="category"]');
+    global.MBMS_RECORDS.fillSelect(
+      categorySelect,
+      categories(),
+      function (row) { return row.id; },
+      function (row) { return row.label; },
+      locked || (categorySelect && categorySelect.value) || '',
+      'Select category'
+    );
+    if (locked && categorySelect) {
+      categorySelect.value = locked;
+      categorySelect.disabled = true;
+    }
+  }
+
+  function addLine() {
+    var container = document.getElementById('tx-lines');
+    if (!container) {
+      return null;
+    }
+    var lineEl = buildLineElement();
+    container.appendChild(lineEl);
+    fillLineCategory(lineEl);
+    fillLineDependentSelects(lineEl);
+    renumberLines();
+    syncTotals({ keepPaid: true });
+    return lineEl;
+  }
+
+  function resetLines() {
+    var container = document.getElementById('tx-lines');
+    if (!container) {
+      return;
+    }
+    container.innerHTML = '';
+    addLine();
+  }
+
+  function removeLine(lineEl) {
+    if (!lineEl) {
+      return;
+    }
+    if (lineNodes().length <= 1) {
+      lineEl.dataset.priceManual = '';
+      ['category', 'product', 'variant', 'quantity', 'price', 'line-total'].forEach(function (key) {
+        var el = lineEl.querySelector('[data-line="' + key + '"]');
+        if (!el || el.disabled) {
+          return;
+        }
+        el.value = '';
+      });
+      fillLineCategory(lineEl);
+      fillLineDependentSelects(lineEl);
+      syncTotals();
+      return;
+    }
+    lineEl.remove();
+    renumberLines();
+    syncTotals();
+  }
+
+  function collectSaleLines() {
+    var locationId = workLocationId();
+    var seen = {};
+    var lines = [];
+    var errors = [];
+
+    lineNodes().forEach(function (lineEl, index) {
+      var label = 'Product ' + (index + 1);
+      var category = lockedCategory() || (lineEl.querySelector('[data-line="category"]') || {}).value || '';
+      var productId = (lineEl.querySelector('[data-line="product"]') || {}).value || '';
+      var variantId = (lineEl.querySelector('[data-line="variant"]') || {}).value || '';
+      var qty = num((lineEl.querySelector('[data-line="quantity"]') || {}).value);
+      var price = num((lineEl.querySelector('[data-line="price"]') || {}).value);
+      var product = global.MBMS_CATALOG.products(category).filter(function (row) {
+        return String(row.id) === String(productId);
+      })[0];
+      var variant = global.MBMS_CATALOG.variants(category, productId).filter(function (row) {
+        return String(row.id) === String(variantId);
+      })[0];
+
+      if (!category || !productId || !variantId) {
+        errors.push(label + ': choose category, product, and variant.');
+        return;
+      }
+      if (!(qty > 0)) {
+        errors.push(label + ': quantity must be greater than zero.');
+        return;
+      }
+      if (price < 0) {
+        errors.push(label + ': price cannot be negative.');
+        return;
+      }
+      if (seen[String(variantId)]) {
+        errors.push(label + ': this variant is already on another line. Combine quantities instead.');
+        return;
+      }
+      seen[String(variantId)] = true;
+
+      if (global.MBMS_API && typeof global.MBMS_API.stockAtLocation === 'function') {
+        var available = stockFor(variantId, locationId);
+        if (qty > Number(available.qty || 0)) {
+          var unit = available.unit ? (' ' + available.unit) : '';
+          var place = available.location || 'this location';
+          errors.push(label + ': only ' + available.qty + unit + ' available in ' + place + '.');
+          return;
+        }
+      }
+
+      lines.push({
+        category: category,
+        product_id: productId,
+        product: product ? product.name : productId,
+        variant_id: variantId,
+        variant: variant ? variant.label : variantId,
+        quantity: qty,
+        price: price,
+        unit_price: price,
+        product_variant_id: variantId,
+        line_total: roundMoney(qty * price)
+      });
+    });
+
+    return { lines: lines, errors: errors };
+  }
+
   function filterRows() {
     var search = String((document.getElementById('module-search') || {}).value || '').toLowerCase();
     var category = lockedCategory() || (document.getElementById('list-category') || {}).value || '';
@@ -329,7 +775,12 @@
     var from = (document.getElementById('date-from') || {}).value || '';
     var to = (document.getElementById('date-to') || {}).value || '';
     return allRows().filter(function (row) {
-      var text = (row.product + ' ' + row.customer + ' ' + row.supplier + ' ' + row.variant + ' ' + (row.payment_type || '')).toLowerCase();
+      var itemText = Array.isArray(row.items)
+        ? row.items.map(function (item) {
+          return [item.product, item.variant].filter(Boolean).join(' ');
+        }).join(' ')
+        : '';
+      var text = (row.product + ' ' + row.customer + ' ' + row.supplier + ' ' + row.variant + ' ' + itemText + ' ' + (row.payment_type || '')).toLowerCase();
       var okSearch = !search || text.indexOf(search) !== -1;
       var okCat = !category || row.category === category;
       var okLoc = !location || row.location === location;
@@ -473,19 +924,21 @@
 
   function setupFormLookups(preferredPartyId) {
     var locked = lockedCategory();
-    var categorySelect = document.getElementById('tx-category');
-    if (locked && categorySelect) {
-      categorySelect.value = locked;
-      categorySelect.disabled = true;
+    if (!usesMultiLines()) {
+      var categorySelect = document.getElementById('tx-category');
+      if (locked && categorySelect) {
+        categorySelect.value = locked;
+        categorySelect.disabled = true;
+      }
+      global.MBMS_RECORDS.fillSelect(
+        categorySelect,
+        categories(),
+        function (row) { return row.id; },
+        function (row) { return row.label; },
+        locked || (categorySelect && categorySelect.value) || '',
+        'Select category'
+      );
     }
-    global.MBMS_RECORDS.fillSelect(
-      categorySelect,
-      categories(),
-      function (row) { return row.id; },
-      function (row) { return row.label; },
-      locked || (categorySelect && categorySelect.value) || '',
-      'Select category'
-    );
     global.MBMS_RECORDS.fillWorkLocation(document.getElementById('tx-location'));
     if (isSales()) {
       global.MBMS_RECORDS.fillSelect(
@@ -506,7 +959,11 @@
         'Select supplier'
       );
     }
-    fillDependentSelects();
+    if (usesMultiLines()) {
+      resetLines();
+    } else {
+      fillDependentSelects();
+    }
     defaultFormMeta();
     refreshAutocomplete();
     syncTotals({ keepPaid: true });
@@ -564,6 +1021,76 @@
     }
   }
 
+  function bindMultiLineEvents() {
+    var lines = document.getElementById('tx-lines');
+    var addBtn = document.getElementById('tx-add-line');
+    if (addBtn) {
+      addBtn.addEventListener('click', function () {
+        addLine();
+      });
+    }
+    if (!lines) {
+      return;
+    }
+    lines.addEventListener('click', function (event) {
+      var removeBtn = event.target.closest('[data-line="remove"]');
+      if (removeBtn) {
+        removeLine(removeBtn.closest('.mbms-sale-line'));
+      }
+    });
+    lines.addEventListener('change', function (event) {
+      var target = event.target;
+      var lineEl = target.closest('.mbms-sale-line');
+      if (!lineEl) {
+        return;
+      }
+      var role = target.getAttribute('data-line');
+      if (role === 'category') {
+        var productSelect = lineEl.querySelector('[data-line="product"]');
+        var variantSelect = lineEl.querySelector('[data-line="variant"]');
+        if (productSelect) {
+          productSelect.value = '';
+        }
+        if (variantSelect) {
+          variantSelect.value = '';
+        }
+        lineEl.dataset.priceManual = '';
+        fillLineDependentSelects(lineEl);
+        syncTotals();
+        return;
+      }
+      if (role === 'product') {
+        var variantOnly = lineEl.querySelector('[data-line="variant"]');
+        if (variantOnly) {
+          variantOnly.value = '';
+        }
+        lineEl.dataset.priceManual = '';
+        fillLineDependentSelects(lineEl);
+        syncTotals();
+        return;
+      }
+      if (role === 'variant') {
+        lineEl.dataset.priceManual = '';
+        applySuggestedPriceForLine(lineEl);
+        syncTotals();
+      }
+    });
+    lines.addEventListener('input', function (event) {
+      var target = event.target;
+      var lineEl = target.closest('.mbms-sale-line');
+      if (!lineEl) {
+        return;
+      }
+      var role = target.getAttribute('data-line');
+      if (role === 'price') {
+        lineEl.dataset.priceManual = '1';
+      }
+      if (role === 'quantity' || role === 'price') {
+        syncTotals({ fromPaid: false });
+      }
+    });
+  }
+
   global.MBMS_PAGE = {
     active: document.body.getAttribute('data-page'),
     title: (document.querySelector('h1') && document.querySelector('h1').textContent) || (isSales() ? 'Sales' : 'Purchases'),
@@ -597,40 +1124,48 @@
         }
       });
 
-      var categoryEl = document.getElementById('tx-category');
-      var productEl = document.getElementById('tx-product');
-      if (categoryEl) {
-        categoryEl.addEventListener('change', function () {
-          if (productEl) {
-            productEl.value = '';
-          }
-          var variantSelect = document.getElementById('tx-variant');
-          if (variantSelect) {
-            variantSelect.value = '';
-          }
-          fillDependentSelects();
-        });
+      if (usesMultiLines()) {
+        bindMultiLineEvents();
+      } else {
+        var categoryEl = document.getElementById('tx-category');
+        var productEl = document.getElementById('tx-product');
+        if (categoryEl) {
+          categoryEl.addEventListener('change', function () {
+            if (productEl) {
+              productEl.value = '';
+            }
+            var variantSelect = document.getElementById('tx-variant');
+            if (variantSelect) {
+              variantSelect.value = '';
+            }
+            fillDependentSelects();
+          });
+        }
+        if (productEl) {
+          productEl.addEventListener('change', function () {
+            var variantSelect = document.getElementById('tx-variant');
+            if (variantSelect) {
+              variantSelect.value = '';
+            }
+            fillDependentSelects();
+          });
+        }
+        var variantEl = document.getElementById('tx-variant');
+        if (variantEl) {
+          variantEl.addEventListener('change', function () {
+            priceManual = false;
+            applySuggestedPrice();
+            updateStockHint();
+          });
+        }
       }
-      if (productEl) {
-        productEl.addEventListener('change', function () {
-          var variantSelect = document.getElementById('tx-variant');
-          if (variantSelect) {
-            variantSelect.value = '';
-          }
-          fillDependentSelects();
-        });
-      }
-      var variantEl = document.getElementById('tx-variant');
+
       var locationEl = document.getElementById('tx-location');
-      if (variantEl) {
-        variantEl.addEventListener('change', function () {
-          priceManual = false;
-          applySuggestedPrice();
-          updateStockHint();
-        });
-      }
       if (locationEl) {
-        locationEl.addEventListener('change', updateStockHint);
+        locationEl.addEventListener('change', function () {
+          updateStockHint();
+          syncTotals({ keepPaid: true });
+        });
       }
 
       ['tx-quantity', 'tx-price', 'tx-paid', 'tx-payment-type'].forEach(function (id) {
@@ -683,6 +1218,100 @@
 
       global.MBMS_UI.bindForm(form, {
         onSubmit: function (values) {
+          var workLoc = workLocationId(values.location);
+          if (workLoc) {
+            values.location = workLoc;
+          }
+
+          if (usesMultiLines()) {
+            var collected = collectSaleLines();
+            if (collected.errors.length) {
+              throw {
+                message: collected.errors[0],
+                errors: { items: collected.errors }
+              };
+            }
+            if (!collected.lines.length) {
+              throw {
+                message: 'Add at least one product.',
+                errors: { items: ['Add at least one product.'] }
+              };
+            }
+
+            var multiTotal = roundMoney(collected.lines.reduce(function (sum, line) {
+              return sum + line.line_total;
+            }, 0));
+            var multiPaid = values.paid === '' || values.paid == null ? 0 : num(values.paid);
+            if (values.payment_type === 'cash' && multiPaid <= 0) {
+              multiPaid = multiTotal;
+            }
+            if (multiPaid > multiTotal) {
+              throw {
+                message: 'Paid amount cannot exceed the grand total.',
+                errors: { paid: ['Paid amount cannot exceed the grand total.'] }
+              };
+            }
+            var multiRemaining = roundMoney(Math.max(0, multiTotal - multiPaid));
+            var first = collected.lines[0];
+            var record = {
+              id: 'local-' + Date.now(),
+              category: first.category,
+              product: collected.lines.map(function (line) { return line.product; }).join(', '),
+              variant: collected.lines.length > 1
+                ? (collected.lines.length + ' items')
+                : first.variant,
+              variant_id: first.variant_id,
+              quantity: collected.lines.length > 1
+                ? collected.lines.map(function (line) { return line.quantity; }).join(' + ')
+                : first.quantity,
+              price: first.price,
+              total: multiTotal,
+              paid: multiPaid,
+              remaining: multiRemaining,
+              payment_type: values.payment_type || (multiRemaining > 0 ? 'credit' : 'cash'),
+              date: values.date || todayIso(),
+              location: values.location,
+              location_id: values.location,
+              notes: values.notes,
+              customer: values.party,
+              items: collected.lines.map(function (line) {
+                return {
+                  product_variant_id: line.product_variant_id,
+                  quantity: line.quantity,
+                  unit_price: line.unit_price
+                };
+              })
+            };
+            return global.MBMS_RECORDS.submitOrMock('post', endpoint(), record, function (body) {
+              return global.MBMS_RECORDS.storeSave(storeKey(), body);
+            }).then(function (result) {
+              var saved = global.MBMS_UTILS.unwrap(result.data) || result.data || {};
+              global.MBMS_UI.notify({
+                type: result.source === 'api' ? 'success' : 'warning',
+                title: result.source === 'api' ? 'Saved' : 'Saved locally',
+                message: result.source === 'api'
+                  ? 'Sale saved. Opening the invoice for print or WhatsApp.'
+                  : 'API not connected. Sample record only. Stock was not changed in the browser.'
+              });
+              form.reset();
+              form.classList.remove('was-validated');
+              priceManual = false;
+              paidManual = false;
+              setupFormLookups();
+              bootstrap.Modal.getOrCreateInstance(document.getElementById('txModal')).hide();
+              return Promise.all([
+                global.MBMS_RECORDS.fetchOrMock('customers', function () { return []; }).catch(function () { return null; }),
+                refreshCatalogAfterTrade()
+              ]).then(function () {
+                return load();
+              }).then(function () {
+                if (result.source === 'api' && saved.id) {
+                  openBill(saved.id);
+                }
+              });
+            });
+          }
+
           var category = lockedCategory() || values.category;
           var product = global.MBMS_CATALOG.products(category).filter(function (row) {
             return String(row.id) === String(values.product);
@@ -690,12 +1319,6 @@
           var variant = global.MBMS_CATALOG.variants(category, values.product).filter(function (row) {
             return String(row.id) === String(values.variant);
           })[0];
-          var workLocationId = (global.MBMS_CONFIG && global.MBMS_CONFIG.getLocationId)
-            ? global.MBMS_CONFIG.getLocationId()
-            : values.location;
-          if (workLocationId) {
-            values.location = workLocationId;
-          }
 
           var qty = num(values.quantity);
           var price = num(values.price);

@@ -168,7 +168,7 @@ class HomeExpenseController extends Controller
         $merged = [];
         foreach (array_merge(self::DEFAULT_CATEGORIES, $saved, $fromExpenses) as $label) {
             $label = trim((string) $label);
-            if ($label === '') {
+            if ($label === '' || $this->isRetiredCategory($label)) {
                 continue;
             }
             $key = mb_strtolower($label);
@@ -182,5 +182,12 @@ class HomeExpenseController extends Controller
         }
 
         return array_values($merged);
+    }
+
+    private function isRetiredCategory(string $label): bool
+    {
+        $normalized = mb_strtolower(trim($label));
+
+        return in_array($normalized, ['other', 'other home expenses', 'سایر مصارف خانه'], true);
     }
 }

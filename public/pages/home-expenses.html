@@ -76,12 +76,18 @@
               <div class="mbms-form-section-title"><i class="bi bi-tag" aria-hidden="true"></i> Expense</div>
               <div class="mbms-field">
                 <label class="form-label" for="exp-category">Category</label>
-                <select class="form-select" id="exp-category" name="category" required></select>
+                <div class="d-flex flex-wrap gap-2 align-items-stretch">
+                  <select class="form-select flex-grow-1" id="exp-category" name="category" required style="min-width: min(100%, 12rem);"></select>
+                  <button type="button" class="btn btn-outline-primary text-nowrap" id="exp-add-category-btn">
+                    <i class="bi bi-plus-lg" aria-hidden="true"></i> Add new category
+                  </button>
+                </div>
+                <p class="mbms-help mb-0 mt-1">Pick a saved category, or click Add new category to type a name.</p>
               </div>
-              <div class="mbms-field" id="exp-category-new-wrap" hidden>
+              <div class="mbms-field mbms-new-category-panel" id="exp-category-new-wrap" hidden>
                 <label class="form-label" for="exp-category-new">New category name</label>
-                <input class="form-control" id="exp-category-new" name="category_new" maxlength="80" placeholder="e.g. Rent, School fees, Utilities">
-                <small class="text-secondary">This category is saved and will appear in the list next time.</small>
+                <input class="form-control" id="exp-category-new" name="category_new" maxlength="80" placeholder="e.g. Rent, School fees, Utilities" autocomplete="off">
+                <small class="text-secondary">Saved with this expense and kept in the category list for next time.</small>
               </div>
               <div class="mbms-field mb-0">
                 <label class="form-label" for="exp-description">Description <span class="text-secondary fw-normal">(optional)</span></label>
@@ -122,7 +128,7 @@
   <script defer src="../assets/js/config.js"></script>
   <script defer src="../assets/js/i18n.js"></script>
   <script defer src="../assets/js/api.js"></script>
-  <script defer src="../assets/js/bridge.js?v=20261015e"></script>
+  <script defer src="../assets/js/bridge.js?v=20261015i"></script>
   <script defer src="../assets/js/utils.js"></script>
   <script defer src="../assets/js/ui.js"></script>
   <script defer src="../assets/js/nav.js"></script>
@@ -130,7 +136,7 @@
   <script defer src="../assets/js/layout.js"></script>
   <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
-  <script defer src="../assets/js/pages/home-expenses-page.js?v=20261015h"></script>
+  <script defer src="../assets/js/pages/home-expenses-page.js?v=20261015i"></script>
   <script defer src="../assets/js/app.js"></script>
 </body>
 </html>

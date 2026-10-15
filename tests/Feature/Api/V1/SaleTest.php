@@ -91,6 +91,60 @@ class SaleTest extends TestCase
         $this->assertSame('10.00', $customer->fresh()->balance);
     }
 
+    public function test_sale_with_multiple_items_calculates_total_and_stock(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $customer = Customer::factory()->create(['balance' => 0]);
+        $location = Location::factory()->create();
+        $firstVariant = ProductVariant::factory()->create(['base_unit' => 'kg']);
+        $secondVariant = ProductVariant::factory()->create(['base_unit' => 'sacks']);
+
+        $this->seedStock($firstVariant->id, $location->id, $user, 10);
+        $this->seedStock($secondVariant->id, $location->id, $user, 8);
+
+        $response = $this->postJson('/api/v1/sales', [
+            'customer_id' => $customer->id,
+            'location_id' => $location->id,
+            'paid_amount' => 100,
+            'items' => [
+                [
+                    'product_variant_id' => $firstVariant->id,
+                    'quantity' => 2,
+                    'unit_price' => 40,
+                ],
+                [
+                    'product_variant_id' => $secondVariant->id,
+                    'quantity' => 3,
+                    'unit_price' => 50,
+                ],
+            ],
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.total_amount', '230.00')
+            ->assertJsonPath('data.paid_amount', '100.00')
+            ->assertJsonPath('data.remaining_amount', '130.00')
+            ->assertJsonPath('data.payment_type', 'mixed')
+            ->assertJsonCount(2, 'data.items')
+            ->assertJsonPath('data.items.0.line_total', '80.00')
+            ->assertJsonPath('data.items.1.line_total', '150.00');
+
+        $this->assertDatabaseHas('stock_balances', [
+            'product_variant_id' => $firstVariant->id,
+            'location_id' => $location->id,
+            'quantity' => 8,
+        ]);
+        $this->assertDatabaseHas('stock_balances', [
+            'product_variant_id' => $secondVariant->id,
+            'location_id' => $location->id,
+            'quantity' => 5,
+        ]);
+
+        $this->assertSame('130.00', $customer->fresh()->balance);
+    }
+
     public function test_sale_fails_when_stock_is_insufficient(): void
     {
         $user = User::factory()->create();

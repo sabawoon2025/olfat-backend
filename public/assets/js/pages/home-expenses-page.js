@@ -6,6 +6,11 @@
   'use strict';
 
   var NEW_CATEGORY_VALUE = '__new__';
+  var RETIRED_CATEGORIES = {
+    other: true,
+    'other home expenses': true,
+    'سایر مصارف خانه': true
+  };
 
   var DEFAULT_CATEGORIES = [
     { id: 'Food', label: 'Food' },
@@ -42,11 +47,31 @@
     return String(label == null ? '' : label).trim();
   }
 
+  function isRetiredCategory(label) {
+    return !!RETIRED_CATEGORIES[normalizeCategoryLabel(label).toLowerCase()];
+  }
+
+  function rememberLocalCategory(label) {
+    var text = normalizeCategoryLabel(label);
+    if (!text || isRetiredCategory(text)) {
+      return;
+    }
+    var exists = savedCategories.some(function (row) {
+      var value = normalizeCategoryLabel(row && (row.label || row.id || row));
+      return value.toLowerCase() === text.toLowerCase();
+    });
+    if (!exists) {
+      savedCategories.push({ id: text, label: text });
+    }
+    global.MBMS_MOCK = global.MBMS_MOCK || {};
+    global.MBMS_MOCK.homeExpenseCategories = savedCategories.slice();
+  }
+
   function categories() {
     var map = {};
     function add(label) {
       var text = normalizeCategoryLabel(label);
-      if (!text) {
+      if (!text || isRetiredCategory(text)) {
         return;
       }
       var key = text.toLowerCase();
@@ -70,6 +95,27 @@
 
   function categoryOptionsForForm() {
     return categories().concat([{ id: NEW_CATEGORY_VALUE, label: '+ Add new category…' }]);
+  }
+
+  function selectNewCategoryMode(focusInput) {
+    var select = document.getElementById('exp-category');
+    if (select) {
+      if (!Array.prototype.some.call(select.options || [], function (opt) {
+        return opt.value === NEW_CATEGORY_VALUE;
+      })) {
+        fillCategory(NEW_CATEGORY_VALUE);
+      } else {
+        select.value = NEW_CATEGORY_VALUE;
+      }
+    }
+    setNewCategoryVisible(true);
+    if (focusInput) {
+      var input = document.getElementById('exp-category-new');
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }
   }
 
   function seed() {
@@ -161,14 +207,24 @@
     }
 
     return global.MBMS_API.get('home-expenses/categories').then(function (response) {
-      var rows = global.MBMS_UTILS.unwrap(response.data) || response.data || [];
+      var rows = global.MBMS_UTILS.unwrap(response.data);
+      if (rows == null) {
+        rows = response.data;
+      }
+      rows = global.MBMS_UTILS.unwrap(rows);
       if (!Array.isArray(rows) && rows && Array.isArray(rows.data)) {
         rows = rows.data;
       }
-      savedCategories = Array.isArray(rows) ? rows : [];
+      savedCategories = (Array.isArray(rows) ? rows : []).filter(function (row) {
+        return !isRetiredCategory(row && (row.label || row.id || row));
+      });
+      global.MBMS_MOCK = global.MBMS_MOCK || {};
+      global.MBMS_MOCK.homeExpenseCategories = savedCategories.slice();
       return savedCategories;
     }).catch(function () {
-      savedCategories = (global.MBMS_MOCK && global.MBMS_MOCK.homeExpenseCategories) || [];
+      savedCategories = ((global.MBMS_MOCK && global.MBMS_MOCK.homeExpenseCategories) || []).filter(function (row) {
+        return !isRetiredCategory(row && (row.label || row.id || row));
+      });
       return savedCategories;
     });
   }
@@ -318,14 +374,19 @@
       });
 
       document.getElementById('exp-category').addEventListener('change', function () {
-        setNewCategoryVisible(this.value === NEW_CATEGORY_VALUE);
         if (this.value === NEW_CATEGORY_VALUE) {
-          var input = document.getElementById('exp-category-new');
-          if (input) {
-            input.focus();
-          }
+          selectNewCategoryMode(true);
+          return;
         }
+        setNewCategoryVisible(false);
       });
+
+      var addCategoryBtn = document.getElementById('exp-add-category-btn');
+      if (addCategoryBtn) {
+        addCategoryBtn.addEventListener('click', function () {
+          selectNewCategoryMode(true);
+        });
+      }
 
       document.getElementById('expModal').addEventListener('show.bs.modal', function () {
         if (!(document.getElementById('exp-id') || {}).value && !(document.getElementById('exp-date') || {}).value) {
@@ -383,6 +444,7 @@
           };
 
           return global.MBMS_RECORDS.submitOrMock(method, path, record).then(function (result) {
+            rememberLocalCategory(category);
             global.MBMS_UI.notify({
               type: result.source === 'api' ? 'success' : 'warning',
               message: result.source === 'api'

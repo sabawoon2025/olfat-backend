@@ -577,6 +577,15 @@
 
   function lineLabel(items) {
     return (items || []).map(function (item) {
+      if (!item) {
+        return '';
+      }
+      if (typeof item.product === 'string' || typeof item.variant === 'string') {
+        return [
+          typeof item.product === 'string' ? item.product : '',
+          typeof item.variant === 'string' ? item.variant : ''
+        ].filter(Boolean).join(' ');
+      }
       var variant = item.variant || {};
       var product = variant.product || {};
       return [product.name, variant.name].filter(Boolean).join(' ');
@@ -722,13 +731,28 @@
     var remainingRaw = row.remaining_raw != null ? row.remaining_raw : row.remaining_amount;
     var dateValue = row.date || row.sold_at || '';
 
+    var multi = items.length > 1;
+    var productLabel = multi
+      ? items.map(function (line) {
+        return [line.product, line.variant].filter(Boolean).join(' ');
+      }).filter(Boolean).join(', ')
+      : (item.product || nestedProduct.name || lineLabel(items) || lineLabel(row.items) || 'Sale');
+    var variantLabel = multi
+      ? (items.length + ' items')
+      : (item.variant || nestedVariant.name || '');
+    var quantityLabel = multi
+      ? items.map(function (line) { return line.quantity; }).filter(function (value) {
+        return value != null && value !== '';
+      }).join(' + ')
+      : (item.quantity != null ? String(item.quantity) : '');
+
     return {
       id: sid(row.id),
       reference_no: row.reference_no || '',
       category: categoryOf(nestedProduct.module || row.category),
-      product: item.product || nestedProduct.name || lineLabel(row.items) || 'Sale',
+      product: productLabel,
       product_id: sid(item.product_id || nestedProduct.id || row.product_id),
-      variant: item.variant || nestedVariant.name || '',
+      variant: variantLabel,
       variant_id: sid(item.product_variant_id || nestedVariant.id || row.variant_id),
       customer: relName(row.customer),
       customer_id: sid(row.customer_id || customerObj.id),
@@ -736,7 +760,7 @@
       customer_address: row.customer_address || customerObj.address || '',
       seller: row.seller || sellerObj.name || '',
       supplier: '',
-      quantity: item.quantity != null ? String(item.quantity) : '',
+      quantity: quantityLabel,
       price: item.unit_price != null ? item.unit_price : (item.unit_price_raw != null ? money(item.unit_price_raw) : ''),
       price_raw: item.unit_price_raw != null ? num(item.unit_price_raw) : null,
       total: row.total != null && row.total_raw == null ? String(row.total) : money(totalRaw),
@@ -1135,16 +1159,35 @@
   }
 
   function tradeBody(body, partyKey, dateKey) {
+    body = body || {};
     var paid = body.paid != null ? body.paid : body.paid_amount;
+    var items;
+    if (Array.isArray(body.items) && body.items.length) {
+      items = body.items.map(function (item) {
+        item = item || {};
+        return {
+          product_variant_id: idOnly(
+            item.product_variant_id || item.variant_id || item.variant || item.unit || item.size_id || item.unit_id
+          ),
+          quantity: num(item.quantity || item.bags || item.total_kg),
+          unit_price: num(item.unit_price != null ? item.unit_price : item.price)
+        };
+      }).filter(function (item) {
+        return item.product_variant_id && item.quantity > 0;
+      });
+    }
+    if (!items || !items.length) {
+      items = [{
+        product_variant_id: idOnly(body.variant_id || body.variant || body.unit || body.size_id || body.unit_id),
+        quantity: num(body.quantity || body.bags || body.total_kg),
+        unit_price: num(body.price != null ? body.price : body.unit_price)
+      }];
+    }
     var payload = {
       location_id: idOnly(body.location_id || body.location),
       paid_amount: num(paid),
       notes: body.notes || null,
-      items: [{
-        product_variant_id: idOnly(body.variant_id || body.variant || body.unit || body.size_id || body.unit_id),
-        quantity: num(body.quantity || body.bags || body.total_kg),
-        unit_price: num(body.price != null ? body.price : body.unit_price)
-      }]
+      items: items
     };
     payload[partyKey] = idOnly(body[partyKey] || body.party_id || body.party || body.customer || body.supplier || body.person);
     payload[dateKey] = body.date || body[dateKey] || null;
@@ -1933,6 +1976,18 @@
     }
     if (original === 'home-expenses' || /^home-expenses\/\d+$/.test(original)) {
       return method === 'GET' ? rowsOf(payload).map(mapExpense) : mapExpense(data || {});
+    }
+    if (original === 'home-expenses/categories') {
+      var categoryRows = Array.isArray(data) ? data : rowsOf(payload);
+      return (categoryRows || []).map(function (row) {
+        if (typeof row === 'string') {
+          return { id: row, label: row };
+        }
+        var label = (row && (row.label || row.id || row.name)) || '';
+        return { id: label, label: label };
+      }).filter(function (row) {
+        return row.label;
+      });
     }
     return data;
   }
