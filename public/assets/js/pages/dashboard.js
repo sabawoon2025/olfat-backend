@@ -114,7 +114,8 @@
     if (banner) {
       if (source === 'error') {
         banner.hidden = false;
-        banner.textContent = 'Unable to load live dashboard data. Check your connection and try again.';
+        banner.textContent = data.notice
+          || 'Unable to load live dashboard data. Check your connection and try again.';
       } else {
         banner.hidden = !isMock;
         if (isMock) {
@@ -148,11 +149,17 @@
         var payload = global.MBMS_UTILS.unwrap(response.data) || response.data || {};
         render(payload, 'api');
       })
-      .catch(function () {
+      .catch(function (error) {
+        var detail = global.MBMS_UTILS && typeof global.MBMS_UTILS.getErrorMessage === 'function'
+          ? global.MBMS_UTILS.getErrorMessage(error, '')
+          : '';
         render({
           widgets: {},
           recentTransactions: [],
-          stockWarnings: []
+          stockWarnings: [],
+          notice: detail
+            ? ('Unable to load live dashboard data. ' + detail)
+            : 'Unable to load live dashboard data. Check your connection and try again.'
         }, 'error');
       });
   }

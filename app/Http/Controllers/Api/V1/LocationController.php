@@ -9,12 +9,15 @@ use App\Models\Location;
 use App\Support\ApiResponse;
 use App\Support\InvoiceProfile;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Schema;
 
 class LocationController extends Controller
 {
     public function index(): JsonResponse
     {
-        $locations = Location::query()->orderBy('name')->get();
+        $locations = Location::query()
+            ->orderBy('name')
+            ->get($this->locationColumns());
 
         return ApiResponse::success($locations);
     }
@@ -70,5 +73,19 @@ class LocationController extends Controller
         $location->delete();
 
         return ApiResponse::success(null, 'Location deleted');
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function locationColumns(): array
+    {
+        $columns = ['id', 'name', 'code', 'is_active', 'created_at', 'updated_at'];
+
+        if (Schema::hasColumn('locations', 'invoice_profile')) {
+            $columns[] = 'invoice_profile';
+        }
+
+        return $columns;
     }
 }

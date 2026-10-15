@@ -23,6 +23,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Throwable;
 
 class ReportService
 {
@@ -56,7 +58,11 @@ class ReportService
             ->first();
 
         $lowStock = StockBalance::query()
-            ->with(['variant.product', 'location'])
+            ->with([
+                'variant:id,product_id,name',
+                'variant.product:id,name',
+                'location:id,name',
+            ])
             ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
             ->where('quantity', '<=', $lowStockThreshold)
             ->orderBy('quantity')
@@ -64,14 +70,14 @@ class ReportService
             ->get();
 
         $recentSales = Sale::query()
-            ->with(['customer', 'location'])
+            ->with(['customer:id,name', 'location:id,name'])
             ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
             ->latest('sold_at')
             ->limit(5)
             ->get();
 
         $recentPurchases = Purchase::query()
-            ->with(['supplier', 'location'])
+            ->with(['supplier:id,name', 'location:id,name'])
             ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
             ->latest('purchased_at')
             ->limit(5)
@@ -111,7 +117,7 @@ class ReportService
             'low_stock_threshold' => $lowStockThreshold,
             'recent_sales' => $recentSales,
             'recent_purchases' => $recentPurchases,
-            'profit_loss' => $this->profitLossSummaryCard($todayStart, $todayEnd, $locationId),
+            'profit_loss' => $this->safeProfitLossSummaryCard($todayStart, $todayEnd, $locationId),
             'worker_payments_today' => $workerPaymentsToday,
             'stock_quantity' => $stockQuantity,
             'by_location' => $this->dashboardByLocation($todayStart, $todayEnd, $locationId),
@@ -482,14 +488,17 @@ class ReportService
 
     private function calculateProfitLoss(Carbon $from, Carbon $to, ?int $locationId): array
     {
+        $purchaseReturnedQty = $this->purchaseReturnedQuantitySql();
+        $saleReturnedQty = $this->saleReturnedQuantitySql();
+
         // Net purchase qty/cost after purchase returns (weighted-average denominator).
         $avgCosts = PurchaseItem::query()
             ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
             ->when($locationId, fn ($q) => $q->where('purchases.location_id', $locationId))
             ->where('purchases.purchased_at', '<=', $to)
             ->selectRaw('purchase_items.product_variant_id as product_variant_id')
-            ->selectRaw('SUM(purchase_items.unit_price * (purchase_items.quantity - COALESCE(purchase_items.returned_quantity, 0))) as cost_total')
-            ->selectRaw('SUM(purchase_items.quantity - COALESCE(purchase_items.returned_quantity, 0)) as qty_total')
+            ->selectRaw("SUM(purchase_items.unit_price * (purchase_items.quantity - {$purchaseReturnedQty})) as cost_total")
+            ->selectRaw("SUM(purchase_items.quantity - {$purchaseReturnedQty}) as qty_total")
             ->groupBy('purchase_items.product_variant_id')
             ->get()
             ->keyBy('product_variant_id');
@@ -501,11 +510,11 @@ class ReportService
             ->whereBetween('sales.sold_at', [$from, $to])
             ->selectRaw('sale_items.product_variant_id as product_variant_id')
             ->selectRaw('SUM(sale_items.quantity) as sold_qty_gross')
-            ->selectRaw('SUM(COALESCE(sale_items.returned_quantity, 0)) as returned_qty')
-            ->selectRaw('SUM(sale_items.quantity - COALESCE(sale_items.returned_quantity, 0)) as sold_qty')
+            ->selectRaw("SUM({$saleReturnedQty}) as returned_qty")
+            ->selectRaw("SUM(sale_items.quantity - {$saleReturnedQty}) as sold_qty")
             ->selectRaw('SUM(sale_items.unit_price * sale_items.quantity) as revenue_gross')
-            ->selectRaw('SUM(sale_items.unit_price * COALESCE(sale_items.returned_quantity, 0)) as returns_amount')
-            ->selectRaw('SUM(sale_items.unit_price * (sale_items.quantity - COALESCE(sale_items.returned_quantity, 0))) as revenue_total')
+            ->selectRaw("SUM(sale_items.unit_price * {$saleReturnedQty}) as returns_amount")
+            ->selectRaw("SUM(sale_items.unit_price * (sale_items.quantity - {$saleReturnedQty})) as revenue_total")
             ->groupBy('sale_items.product_variant_id')
             ->get();
 
@@ -619,6 +628,43 @@ class ReportService
             'revenue' => $pl['summary']['revenue'] ?? 0,
             'cost' => $pl['summary']['cost'] ?? 0,
         ];
+    }
+
+    /**
+     * Dashboard must still load when P&L SQL fails (e.g. pending migrations).
+     *
+     * @return array{available:bool, method:string, net_profit:?float, gross_profit:?float, revenue:?float, cost:?float}
+     */
+    private function safeProfitLossSummaryCard(Carbon $from, Carbon $to, ?int $locationId): array
+    {
+        try {
+            return $this->profitLossSummaryCard($from, $to, $locationId);
+        } catch (Throwable $e) {
+            report($e);
+
+            return [
+                'available' => false,
+                'method' => 'weighted_average',
+                'net_profit' => null,
+                'gross_profit' => null,
+                'revenue' => null,
+                'cost' => null,
+            ];
+        }
+    }
+
+    private function purchaseReturnedQuantitySql(): string
+    {
+        return Schema::hasColumn('purchase_items', 'returned_quantity')
+            ? 'COALESCE(purchase_items.returned_quantity, 0)'
+            : '0';
+    }
+
+    private function saleReturnedQuantitySql(): string
+    {
+        return Schema::hasColumn('sale_items', 'returned_quantity')
+            ? 'COALESCE(sale_items.returned_quantity, 0)'
+            : '0';
     }
 
     private function filtersPayload(?Carbon $from, ?Carbon $to, ?int $locationId): array
