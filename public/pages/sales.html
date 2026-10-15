@@ -13,12 +13,12 @@
         document.documentElement.dir = 'rtl';
         var sheet = document.querySelector('link[href*="bootstrap.min.css"]');
         if (sheet) sheet.href = sheet.href.replace('bootstrap.min.css', 'bootstrap.rtl.min.css');
-}
+      }
     } catch (err) {}
   </script>
   <link rel="stylesheet" href="../assets/css/tokens.css">
   <link rel="stylesheet" href="../assets/css/layout.css">
-  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/components.css?v=20261015j">
 </head>
 <body data-page="sales" data-transaction="sales">
   <div id="page-content">
@@ -67,7 +67,7 @@
   </div>
 
   <div class="modal fade" id="txModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable mbms-sale-dialog">
       <div class="modal-content mbms-sale-modal">
         <form id="tx-form" novalidate>
           <div class="modal-header">
@@ -75,104 +75,85 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <div class="mbms-form-section is-sale">
-              <div class="mbms-form-section-title"><i class="bi bi-person" aria-hidden="true"></i> Customer</div>
-              <div class="d-flex flex-wrap gap-2 align-items-end">
-                <div class="mbms-field flex-grow-1 mb-0" style="min-width: min(100%, 16rem);">
-                  <label class="form-label" for="tx-party">Select customer</label>
+            <div class="mbms-sale-top">
+              <div class="mbms-field mb-0 mbms-sale-customer">
+                <label class="form-label" for="tx-party">Customer</label>
+                <div class="mbms-sale-customer-row">
                   <select class="form-select" id="tx-party" name="party" required data-ac="1" data-ac-placeholder="Type customer name…"></select>
+                  <a class="btn btn-outline-primary" id="tx-add-customer" href="customers.html?add=1&amp;return=sales.html">
+                    <i class="bi bi-person-plus" aria-hidden="true"></i><span> Add</span>
+                  </a>
                 </div>
-                <a class="btn btn-outline-primary" id="tx-add-customer" href="customers.html?add=1&amp;return=sales.html">
-                  <i class="bi bi-person-plus" aria-hidden="true"></i> Add customer
-                </a>
               </div>
-              <p class="mbms-help mt-2 mb-0">New customer? Add them first — you’ll return here automatically.</p>
+              <div class="mbms-field mb-0">
+                <label class="form-label" for="tx-date">Date</label>
+                <input class="form-control" id="tx-date" name="date" type="date" required>
+              </div>
+              <div class="mbms-field mb-0">
+                <label class="form-label" for="tx-location">Location</label>
+                <select class="form-select" id="tx-location" name="location" required></select>
+              </div>
             </div>
 
-            <div class="mbms-form-section is-sale">
-              <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-2">
-                <div class="mbms-form-section-title mb-0"><i class="bi bi-box-seam" aria-hidden="true"></i> Products</div>
-                <button type="button" class="btn btn-sm btn-outline-primary" id="tx-add-line">
+            <div class="mbms-sale-products">
+              <div class="mbms-sale-products-head">
+                <h3 class="mbms-sale-products-title"><i class="bi bi-box-seam" aria-hidden="true"></i> Products</h3>
+                <button type="button" class="btn btn-sm btn-primary" id="tx-add-line">
                   <i class="bi bi-plus-lg" aria-hidden="true"></i> Add product
                 </button>
               </div>
+              <div class="mbms-sale-line-labels" aria-hidden="true">
+                <span>Category</span>
+                <span>Product</span>
+                <span>Variant</span>
+                <span>Qty</span>
+                <span>Price</span>
+                <span>Total</span>
+                <span></span>
+              </div>
               <div id="tx-lines" class="mbms-sale-lines"></div>
-              <p class="mbms-help mb-0">Add one or more products. Totals update from each line’s quantity and selling price.</p>
             </div>
 
-            <div class="mbms-form-section is-sale">
-              <div class="mbms-form-section-title"><i class="bi bi-cash-coin" aria-hidden="true"></i> Payment</div>
-              <div class="row g-2">
-                <div class="col-md-4">
-                  <div class="mbms-field mb-0">
-                    <label class="form-label" for="tx-total">Grand total</label>
-                    <input class="form-control" id="tx-total" name="total" inputmode="decimal" min="0" step="0.01" readonly>
-                  </div>
-                </div>
-                <div class="col-md-4">
-                  <div class="mbms-field mb-0">
-                    <label class="form-label" for="tx-payment-type">Cash / Credit</label>
-                    <select class="form-select" id="tx-payment-type" name="payment_type">
-                      <option value="cash">Cash</option>
-                      <option value="credit">Credit</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="col-md-4">
-                  <div class="mbms-field mb-0">
-                    <label class="form-label" for="tx-paid">Paid amount</label>
-                    <input class="form-control" id="tx-paid" name="paid" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
-                  </div>
-                </div>
+            <div class="mbms-sale-pay">
+              <div class="mbms-field mb-0">
+                <label class="form-label" for="tx-payment-type">Payment</label>
+                <select class="form-select" id="tx-payment-type" name="payment_type">
+                  <option value="cash">Cash</option>
+                  <option value="credit">Credit</option>
+                </select>
               </div>
-              <div class="mbms-profit-panel mt-2" id="tx-profit-panel" hidden>
-                <div class="mbms-profit-row">
-                  <span>Est. cost</span>
-                  <strong id="tx-cost-display">—</strong>
-                </div>
-                <div class="mbms-profit-row">
-                  <span>Est. profit</span>
-                  <strong id="tx-profit-display">—</strong>
-                </div>
+              <div class="mbms-field mb-0">
+                <label class="form-label" for="tx-paid">Paid</label>
+                <input class="form-control" id="tx-paid" name="paid" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
               </div>
-              <div class="row g-2 mt-1">
-                <div class="col-md-6">
-                  <div class="mbms-field mb-0">
-                    <label class="form-label" for="tx-remaining">Remaining amount</label>
-                    <input class="form-control" id="tx-remaining" name="remaining" inputmode="decimal" min="0" step="0.01" readonly>
-                  </div>
-                </div>
+              <div class="mbms-field mb-0">
+                <label class="form-label" for="tx-remaining">Remaining</label>
+                <input class="form-control" id="tx-remaining" name="remaining" inputmode="decimal" min="0" step="0.01" readonly>
               </div>
-            </div>
-
-            <div class="mbms-form-section is-sale mb-0">
-              <div class="mbms-form-section-title"><i class="bi bi-calendar3" aria-hidden="true"></i> Date &amp; location</div>
-              <div class="row g-2">
-                <div class="col-md-6">
-                  <div class="mbms-field mb-0">
-                    <label class="form-label" for="tx-date">Sale date</label>
-                    <input class="form-control" id="tx-date" name="date" type="date" required>
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <div class="mbms-field mb-0">
-                    <label class="form-label" for="tx-location">Location</label>
-                    <select class="form-select" id="tx-location" name="location" required></select>
-                  </div>
-                </div>
-              </div>
-              <div class="mbms-field mt-2 mb-0">
+              <div class="mbms-field mb-0 mbms-sale-notes">
                 <label class="form-label" for="tx-notes">Notes <span class="text-secondary fw-normal">(optional)</span></label>
-                <textarea class="form-control" id="tx-notes" name="notes" rows="2" placeholder="Optional note for this sale"></textarea>
+                <input class="form-control" id="tx-notes" name="notes" placeholder="Optional note">
               </div>
+            </div>
+
+            <input type="hidden" id="tx-total" name="total" value="">
+            <div id="tx-profit-panel" hidden>
+              <strong id="tx-cost-display"></strong>
+              <strong id="tx-profit-display"></strong>
             </div>
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" id="tx-reset">Reset</button>
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary" id="tx-save-btn">
-              <i class="bi bi-check2-circle" aria-hidden="true"></i> Save sale &amp; invoice
-            </button>
+          <div class="modal-footer mbms-sale-footer">
+            <div class="mbms-sale-footer-total">
+              <span>Grand total</span>
+              <strong id="tx-total-display">0.00</strong>
+            </div>
+            <div class="mbms-sale-footer-actions">
+              <button type="button" class="btn btn-outline-secondary" id="tx-reset">Reset</button>
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-primary" id="tx-save-btn">
+                <i class="bi bi-check2-circle" aria-hidden="true"></i> Save &amp; invoice
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -184,7 +165,7 @@
   <script defer src="../assets/js/config.js"></script>
   <script defer src="../assets/js/i18n.js"></script>
   <script defer src="../assets/js/api.js"></script>
-  <script defer src="../assets/js/bridge.js"></script>
+  <script defer src="../assets/js/bridge.js?v=20261015j"></script>
   <script defer src="../assets/js/utils.js"></script>
   <script defer src="../assets/js/ui.js"></script>
   <script defer src="../assets/js/nav.js"></script>
@@ -193,7 +174,7 @@
   <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/catalog-lookups.js"></script>
-  <script defer src="../assets/js/pages/transaction-page.js"></script>
+  <script defer src="../assets/js/pages/transaction-page.js?v=20261015j"></script>
   <script defer src="../assets/js/app.js"></script>
 </body>
 </html>
