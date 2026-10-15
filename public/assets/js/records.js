@@ -108,8 +108,11 @@
     var current = selected || select.value;
     select.innerHTML = '<option value="">' + global.MBMS_UTILS.escapeHtml(blankLabel || 'Select') + '</option>' + (items || []).map(function (item) {
       var value = getValue(item);
-      return '<option value="' + global.MBMS_UTILS.escapeHtml(value) + '"' + (value === current ? ' selected' : '') + '>' + global.MBMS_UTILS.escapeHtml(getLabel(item)) + '</option>';
+      return '<option value="' + global.MBMS_UTILS.escapeHtml(value) + '"' + (String(value) === String(current) ? ' selected' : '') + '>' + global.MBMS_UTILS.escapeHtml(getLabel(item)) + '</option>';
     }).join('');
+    if (global.MBMS_AUTOCOMPLETE && typeof global.MBMS_AUTOCOMPLETE.refresh === 'function') {
+      global.MBMS_AUTOCOMPLETE.refresh(select);
+    }
   }
 
   /** Locations the signed-in user may write to (their claimed province only). */
@@ -175,6 +178,42 @@
     }).join('');
   }
 
+  function renderSummary(el, chips) {
+    if (!el) {
+      return;
+    }
+    if (!chips || !chips.length) {
+      el.hidden = true;
+      el.innerHTML = '';
+      return;
+    }
+    el.hidden = false;
+    el.innerHTML = chips.map(function (chip) {
+      return (
+        '<div class="mbms-summary-chip">' +
+        '<div class="label"><i class="bi ' + global.MBMS_UTILS.escapeHtml(chip.icon || 'bi-dot') + '" aria-hidden="true"></i> ' +
+        global.MBMS_UTILS.escapeHtml(chip.label || '') + '</div>' +
+        '<div class="value">' + global.MBMS_UTILS.escapeHtml(chip.value == null ? '—' : chip.value) + '</div>' +
+        '</div>'
+      );
+    }).join('');
+  }
+
+  function actionButton(hrefOrAttrs, label, icon, variant) {
+    var cls = 'btn btn-sm ' + (variant || 'btn-outline-primary');
+    var iconHtml = icon ? '<i class="bi ' + global.MBMS_UTILS.escapeHtml(icon) + '" aria-hidden="true"></i> ' : '';
+    if (typeof hrefOrAttrs === 'string') {
+      return '<a class="' + cls + '" href="' + global.MBMS_UTILS.escapeHtml(hrefOrAttrs) + '">' + iconHtml +
+        global.MBMS_UTILS.escapeHtml(label) + '</a>';
+    }
+    var attrs = hrefOrAttrs || {};
+    var attrHtml = Object.keys(attrs).map(function (key) {
+      return key + '="' + global.MBMS_UTILS.escapeHtml(attrs[key]) + '"';
+    }).join(' ');
+    return '<button type="button" class="' + cls + '" ' + attrHtml + '>' + iconHtml +
+      global.MBMS_UTILS.escapeHtml(label) + '</button>';
+  }
+
   function fetchOrMock(path, mockData, params) {
     params = params || {};
     var hasParams = Object.keys(params).some(function (key) {
@@ -227,6 +266,8 @@
     fillSelect: fillSelect,
     fillWorkLocation: fillWorkLocation,
     renderTable: renderTable,
+    renderSummary: renderSummary,
+    actionButton: actionButton,
     fetchOrMock: fetchOrMock,
     submitOrMock: submitOrMock,
     storeList: storeList,

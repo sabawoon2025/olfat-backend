@@ -148,9 +148,13 @@
     document.getElementById('report-kinds').innerHTML = kinds.map(function (item) {
       var href = 'reports.html?group=' + encodeURIComponent(group) + '&kind=' + encodeURIComponent(item.id);
       var active = item.id === kind ? ' is-active' : '';
-      return '<a class="btn btn-outline-primary btn-sm' + active + '" href="' + href + '">' + global.MBMS_UTILS.escapeHtml(item.label) + '</a>';
+      return '<a class="btn btn-outline-primary btn-sm' + active + '" href="' + href + '"><i class="bi bi-file-earmark-bar-graph" aria-hidden="true"></i> ' + global.MBMS_UTILS.escapeHtml(item.label) + '</a>';
     }).join('');
-    document.getElementById('report-title').textContent = (GROUPS[group] || GROUPS.sales).label + ' reports';
+    global.MBMS_UTILS.setIconHeading(
+      document.getElementById('report-title'),
+      'bi-bar-chart-line',
+      (GROUPS[group] || GROUPS.sales).label + ' reports'
+    );
     var plLink = document.getElementById('pl-link');
     if (plLink) {
       plLink.hidden = !(group === 'financial' && kind === 'profit-loss');

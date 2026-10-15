@@ -40,6 +40,7 @@
     if (!rows.length) {
       document.getElementById('pay-table-wrap').hidden = true;
       document.getElementById('pay-empty').hidden = false;
+      global.MBMS_RECORDS.renderSummary(document.getElementById('list-summary'), []);
       global.MBMS_UI.renderEmpty(document.getElementById('pay-empty'), {
         title: 'No payments yet',
         message: 'Payments you record will show up here.'
@@ -48,6 +49,9 @@
     }
     document.getElementById('pay-empty').hidden = true;
     document.getElementById('pay-table-wrap').hidden = false;
+    global.MBMS_RECORDS.renderSummary(document.getElementById('list-summary'), [
+      { icon: 'bi-cash-coin', label: 'Payments', value: rows.length }
+    ]);
     global.MBMS_RECORDS.renderTable(document.getElementById('pay-list-body'), rows, [
       { key: 'date' },
       { key: 'person' },
@@ -74,7 +78,11 @@
       document.querySelectorAll('[data-pay-tab]').forEach(function (link) {
         link.classList.toggle('is-active', link.getAttribute('data-pay-tab') === type);
       });
-      document.getElementById('pay-title').textContent = isCustomer() ? 'Customer payments' : 'Supplier payments';
+      global.MBMS_UTILS.setIconHeading(
+        document.getElementById('pay-title'),
+        'bi-cash-coin',
+        isCustomer() ? 'Customer payments' : 'Supplier payments'
+      );
       document.getElementById('party-label').textContent = isCustomer() ? 'Customer' : 'Supplier';
 
       global.MBMS_RECORDS.fillSelect(

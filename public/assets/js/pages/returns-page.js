@@ -35,10 +35,11 @@
       kindSelect.value = currentKind;
     }
     syncFormKind();
-    var title = document.getElementById('ret-modal-title');
-    if (title) {
-      title.textContent = currentKind === 'purchase' ? 'Record purchase return' : 'Record sales return';
-    }
+    global.MBMS_UTILS.setIconHeading(
+      document.getElementById('ret-modal-title'),
+      'bi-arrow-return-left',
+      currentKind === 'purchase' ? 'Record purchase return' : 'Record sales return'
+    );
   }
 
   function syncFormKind() {

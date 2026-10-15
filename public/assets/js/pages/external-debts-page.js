@@ -72,14 +72,18 @@
     if (!rows.length) {
       document.getElementById('debt-table-wrap').hidden = true;
       document.getElementById('debt-empty').hidden = false;
+      global.MBMS_RECORDS.renderSummary(document.getElementById('list-summary'), []);
       global.MBMS_UI.renderEmpty(document.getElementById('debt-empty'), {
         title: 'No external debt records',
-        message: 'These records are separate from customers and suppliers. Official balances come from Laravel.'
+        message: 'Add a debtor or creditor to get started.'
       });
       return;
     }
     document.getElementById('debt-empty').hidden = true;
     document.getElementById('debt-table-wrap').hidden = false;
+    global.MBMS_RECORDS.renderSummary(document.getElementById('list-summary'), [
+      { icon: 'bi-bank', label: 'Records', value: rows.length }
+    ]);
     global.MBMS_RECORDS.renderTable(document.getElementById('debt-list-body'), rows, [
       { key: 'person' },
       {
@@ -95,7 +99,7 @@
       { key: 'date' },
       {
         render: function (row) {
-          return '<a class="btn btn-sm btn-outline-primary" href="?id=' + encodeURIComponent(row.id) + '">Open</a>';
+          return global.MBMS_RECORDS.actionButton('?id=' + encodeURIComponent(row.id), 'Open', 'bi-box-arrow-up-right');
         }
       }
     ]);
@@ -103,7 +107,7 @@
 
   function renderDetail(record, source) {
     var info = directionInfo(record.direction);
-    document.getElementById('detail-title').textContent = record.person;
+    global.MBMS_UTILS.setIconHeading(document.getElementById('detail-title'), null, record.person);
     document.getElementById('detail-reason').textContent = record.reason || '';
     document.getElementById('detail-original').textContent = record.original_amount || '—';
     document.getElementById('detail-paid').textContent = record.paid_received || '—';

@@ -37,12 +37,17 @@
     var stock = applyFilters(currentRows());
     var moves = applyFilters(movementRows(), { useType: true });
 
+    global.MBMS_RECORDS.renderSummary(document.getElementById('list-summary'), [
+      { icon: 'bi-boxes', label: 'Stock rows', value: stock.length },
+      { icon: 'bi-arrow-left-right', label: 'Movements', value: moves.length }
+    ]);
+
     if (!stock.length) {
       document.getElementById('stock-table-wrap').hidden = true;
       document.getElementById('stock-empty').hidden = false;
       global.MBMS_UI.renderEmpty(document.getElementById('stock-empty'), {
         title: 'No stock rows',
-        message: 'Stock for every province will show up here.'
+        message: 'Stock will appear after purchases.'
       });
     } else {
       document.getElementById('stock-empty').hidden = true;
@@ -57,7 +62,7 @@
       document.getElementById('move-empty').hidden = false;
       global.MBMS_UI.renderEmpty(document.getElementById('move-empty'), {
         title: 'No movements',
-        message: 'Purchase, sale, return, and damage movements will come from Laravel.'
+        message: 'No movements match these filters.'
       });
     } else {
       document.getElementById('move-empty').hidden = true;

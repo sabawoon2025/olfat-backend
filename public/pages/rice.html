@@ -28,7 +28,7 @@
       <div id="list-view">
         <div class="mbms-page-header">
           <div>
-            <h1>Rice</h1>
+            <h1><i class="bi bi-basket" aria-hidden="true"></i> Rice</h1>
           </div>
           <div class="mbms-page-actions">
             <button type="button" class="btn btn-primary" id="add-product" data-bs-toggle="modal" data-bs-target="#productModal">
@@ -40,7 +40,8 @@
           <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search rice types">
           <select class="form-select mbms-filter" id="module-filter" aria-label="Filter rice types"></select>
         </div>
-        <div class="table-responsive">
+      <div class="mbms-summary-row" id="list-summary" hidden></div>
+<div class="table-responsive">
           <table class="table mbms-table">
             <thead>
               <tr>
@@ -59,14 +60,14 @@
         <div class="mbms-page-header">
           <div>
             <a class="btn btn-outline-secondary btn-sm mb-2" href="rice.html"><i class="bi bi-arrow-left"></i> Back to rice list</a>
-            <h1 id="detail-title">Rice</h1>
+            <h1 id="detail-title"><i class="bi bi-basket" aria-hidden="true"></i> Rice</h1>
             <p id="detail-note"></p>
           </div>
           <div class="mbms-page-actions">
             <button type="button" class="btn btn-outline-secondary" id="edit-product"><i class="bi bi-pencil" aria-hidden="true"></i> Edit</button>
-            <button type="button" class="btn btn-outline-danger" id="toggle-product-active">Deactivate</button>
-            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#purchaseModal">Purchase</button>
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#saleModal">Sale</button>
+            <button type="button" class="btn btn-outline-danger" id="toggle-product-active"><i class="bi bi-pause-circle" aria-hidden="true"></i> Deactivate</button>
+            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#purchaseModal"><i class="bi bi-bag-plus" aria-hidden="true"></i> Purchase</button>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#saleModal"><i class="bi bi-cart-plus" aria-hidden="true"></i> Sale</button>
           </div>
         </div>
 
@@ -127,8 +128,7 @@
           </div>
           <div class="modal-body">
             <input type="hidden" id="product-id" name="id" value="">
-            <p class="mbms-help">Create the rice type and bag sizes first. Then purchase stock and sell it.</p>
-            <div class="mbms-field">
+<div class="mbms-field">
               <label class="form-label" for="product-name">Rice type / quality</label>
               <input class="form-control" id="product-name" name="name" required placeholder="e.g. Basmati">
             </div>
@@ -169,7 +169,7 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <p class="mbms-help">Item: <strong id="purchase-item-label"></strong>. Official totals will be calculated by Laravel.</p>
+            <p class="mbms-help is-compact">Item: <strong id="purchase-item-label"></strong></p>
             <div class="mbms-field">
               <label class="form-label" for="purchase-supplier">Supplier</label>
               <select class="form-select" id="purchase-supplier" name="supplier" required></select>
@@ -229,7 +229,7 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <p class="mbms-help">Item: <strong id="sale-item-label"></strong></p>
+            <p class="mbms-help is-compact">Item: <strong id="sale-item-label"></strong></p>
             <p class="mbms-help" id="sale-credit-note"></p>
             <div class="mbms-field">
               <label class="form-label" for="sale-customer">Customer</label>
@@ -295,6 +295,7 @@
   <script defer src="../assets/js/nav.js"></script>
   <script defer src="../assets/js/auth.js"></script>
   <script defer src="../assets/js/layout.js"></script>
+  <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/pages/catalog-page.js"></script>
   <script defer src="../assets/js/app.js"></script>

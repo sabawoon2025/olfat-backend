@@ -1,22 +1,24 @@
 /* MBMS design tokens. One color system for the whole application. */
 
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
+
 :root {
-  --mbms-font: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
-  --mbms-primary: #2563eb;
-  --mbms-primary-hover: #1d4ed8;
-  --mbms-primary-soft: #eff6ff;
-  --mbms-accent: #0d9488;
+  --mbms-font: "Plus Jakarta Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mbms-primary: #1b4fd8;
+  --mbms-primary-hover: #163fad;
+  --mbms-primary-soft: #eef3ff;
+  --mbms-accent: #0f766e;
   --mbms-accent-soft: #ccfbf1;
-  --mbms-gradient-brand: linear-gradient(145deg, #1e3a8a 0%, #2563eb 42%, #0d9488 100%);
-  --mbms-gradient-page: radial-gradient(900px 480px at 0% 0%, rgba(37, 99, 235, 0.07), transparent 55%),
-    radial-gradient(700px 400px at 100% 0%, rgba(13, 148, 136, 0.06), transparent 50%),
-    linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-  --mbms-secondary: #4b5563;
-  --mbms-bg: #f3f5f8;
+  --mbms-gradient-brand: linear-gradient(145deg, #122b6e 0%, #1b4fd8 48%, #0f766e 100%);
+  --mbms-gradient-page: radial-gradient(900px 480px at 0% 0%, rgba(27, 79, 216, 0.08), transparent 55%),
+    radial-gradient(700px 400px at 100% 0%, rgba(15, 118, 110, 0.07), transparent 50%),
+    linear-gradient(180deg, #f7f9fc 0%, #eef2f7 100%);
+  --mbms-secondary: #475569;
+  --mbms-bg: #eef2f7;
   --mbms-surface: #ffffff;
-  --mbms-text: #111827;
-  --mbms-muted: #4b5563;
-  --mbms-border: #e5e7eb;
+  --mbms-text: #0f172a;
+  --mbms-muted: #64748b;
+  --mbms-border: #e2e8f0;
   --mbms-success: #047857;
   --mbms-success-soft: #ecfdf5;
   --mbms-danger: #b91c1c;
@@ -25,12 +27,12 @@
   --mbms-warning-soft: #fff7ed;
   --mbms-info: #0369a1;
   --mbms-info-soft: #f0f9ff;
-  --mbms-focus: rgba(29, 78, 216, 0.18);
-  --mbms-radius: 0.75rem;
-  --mbms-radius-sm: 0.5rem;
-  --mbms-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  --mbms-focus: rgba(27, 79, 216, 0.2);
+  --mbms-radius: 0.85rem;
+  --mbms-radius-sm: 0.6rem;
+  --mbms-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 4px 12px rgba(15, 23, 42, 0.04);
   --mbms-shadow-lg: 0 18px 48px rgba(15, 23, 42, 0.12);
-  --mbms-header-h: 56px;
+  --mbms-header-h: 58px;
   --mbms-bottom-nav-h: 68px;
   --mbms-sidebar-w: 272px;
   --mbms-touch: 44px;
@@ -39,10 +41,10 @@
   --mbms-text-sm: 0.875rem;
   --mbms-text-md: 1rem;
   --mbms-text-lg: 1.25rem;
-  --mbms-text-xl: 1.4rem;
+  --mbms-text-xl: 1.45rem;
 
-  --bs-primary: #2563eb;
-  --bs-primary-rgb: 37, 99, 235;
+  --bs-primary: #1b4fd8;
+  --bs-primary-rgb: 27, 79, 216;
   --bs-success: #047857;
   --bs-danger: #b91c1c;
   --bs-warning: #b45309;
@@ -66,6 +68,7 @@ body {
   background: var(--mbms-gradient-page);
   background-color: var(--mbms-bg);
   -webkit-tap-highlight-color: transparent;
+  font-feature-settings: "ss01" on, "cv11" on;
 }
 
 body[data-layout="auth"] {

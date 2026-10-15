@@ -51,10 +51,16 @@
       { key: 'user' },
       {
         render: function (row) {
-          return '<button type="button" class="btn btn-sm btn-outline-primary" data-edit-expense="' +
-            global.MBMS_UTILS.escapeHtml(row.id) + '">Edit</button>';
+          return global.MBMS_RECORDS.actionButton(
+            { 'data-edit-expense': row.id },
+            'Edit',
+            'bi-pencil'
+          );
         }
       }
+    ]);
+    global.MBMS_RECORDS.renderSummary(document.getElementById('list-summary'), [
+      { icon: 'bi-receipt', label: 'Expenses', value: rows.length }
     ]);
   }
 
@@ -70,7 +76,7 @@
     var form = document.getElementById('exp-form');
     form.reset();
     document.getElementById('exp-id').value = '';
-    document.getElementById('exp-form-title').textContent = 'Add home expense';
+    global.MBMS_UTILS.setIconHeading(document.getElementById('exp-form-title'), 'bi-plus-lg', 'Add home expense');
     fillCategory();
   }
 
@@ -81,7 +87,7 @@
     }
     fillCategory(record.category);
     global.MBMS_UTILS.fillForm(document.getElementById('exp-form'), record);
-    document.getElementById('exp-form-title').textContent = 'Edit home expense';
+    global.MBMS_UTILS.setIconHeading(document.getElementById('exp-form-title'), 'bi-pencil', 'Edit home expense');
     bootstrap.Modal.getOrCreateInstance(document.getElementById('expModal')).show();
   }
 

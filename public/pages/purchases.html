@@ -26,7 +26,7 @@
       <div class="alert alert-warning mbms-source-banner" id="source-banner" hidden></div>
       <div class="mbms-page-header">
         <div>
-          <h1>Purchases</h1>
+          <h1><i class="bi bi-bag-check" aria-hidden="true"></i> Purchases</h1>
         </div>
         <div class="mbms-page-actions">
           <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#txModal"><i class="bi bi-bag-plus" aria-hidden="true"></i> New purchase</button>
@@ -39,6 +39,7 @@
         <input class="form-control mbms-date" id="date-from" type="date" aria-label="From date">
         <input class="form-control mbms-date" id="date-to" type="date" aria-label="To date">
       </div>
+      <div class="mbms-summary-row" id="list-summary" hidden></div>
       <div id="tx-empty" hidden></div>
       <div class="table-responsive" id="tx-table-wrap">
         <table class="table mbms-table">
@@ -65,12 +66,11 @@
       <div class="modal-content">
         <form id="tx-form" novalidate>
           <div class="modal-header">
-            <h2 class="modal-title h5">New purchase</h2>
+            <h2 class="modal-title h5"><i class="bi bi-bag-plus" aria-hidden="true"></i> New purchase</h2>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <p class="mbms-help">Official payable amounts and stock changes are calculated by Laravel.</p>
-            <div class="mbms-field">
+<div class="mbms-field">
               <label class="form-label" for="tx-party">Supplier</label>
               <select class="form-select" id="tx-party" name="party" required></select>
             </div>
@@ -136,6 +136,7 @@
   <script defer src="../assets/js/nav.js"></script>
   <script defer src="../assets/js/auth.js"></script>
   <script defer src="../assets/js/layout.js"></script>
+  <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/catalog-lookups.js"></script>
   <script defer src="../assets/js/pages/transaction-page.js"></script>

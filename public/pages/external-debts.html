@@ -28,10 +28,10 @@
       <div id="list-view">
         <div class="mbms-page-header">
           <div>
-            <h1>External debtors and creditors</h1>
+            <h1><i class="bi bi-bank" aria-hidden="true"></i> External debtors and creditors</h1>
           </div>
           <div class="mbms-page-actions">
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#debtModal">Add record</button>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#debtModal"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add record</button>
           </div>
         </div>
         <div class="d-flex flex-wrap gap-2 mb-3">
@@ -42,7 +42,8 @@
         <div class="mbms-toolbar">
           <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search person or reason">
         </div>
-        <div id="debt-empty" hidden></div>
+      <div class="mbms-summary-row" id="list-summary" hidden></div>
+      <div id="debt-empty" hidden></div>
         <div class="table-responsive" id="debt-table-wrap">
           <table class="table mbms-table">
             <thead>
@@ -66,17 +67,16 @@
         <div class="mbms-page-header">
           <div>
             <a class="btn btn-outline-secondary btn-sm mb-2" href="external-debts.html"><i class="bi bi-arrow-left"></i> Back to external debts</a>
-            <h1 id="detail-title">External record</h1>
+            <h1 id="detail-title"><i class="bi bi-bank" aria-hidden="true"></i> External record</h1>
             <p id="detail-reason"></p>
           </div>
           <div class="mbms-page-actions">
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#payModal">Record payment</button>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#payModal"><i class="bi bi-cash-coin" aria-hidden="true"></i> Record payment</button>
           </div>
         </div>
         <div id="direction-banner" class="mbms-direction-banner">
           <strong id="direction-label"></strong>
-          <p class="mbms-help mb-0">This module is not a customer or supplier account. Official remaining balances stay on Laravel. Opening balances are still an open question.</p>
-        </div>
+</div>
         <div class="row g-3 mb-3">
           <div class="col-6 col-lg-3">
             <article class="mbms-card card mbms-stat-card"><div class="card-body">
@@ -169,8 +169,7 @@
               <label class="form-label" for="debt-location">Location</label>
               <select class="form-select" id="debt-location" name="location" required></select>
             </div>
-            <p class="mbms-help mb-0">User is the signed-in Laravel account. Opening-balance rules are an open question.</p>
-          </div>
+</div>
           <div class="modal-footer">
             <button type="button" class="btn btn-outline-secondary" id="debt-reset">Reset</button>
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -232,6 +231,7 @@
   <script defer src="../assets/js/nav.js"></script>
   <script defer src="../assets/js/auth.js"></script>
   <script defer src="../assets/js/layout.js"></script>
+  <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/pages/external-debts-page.js"></script>
   <script defer src="../assets/js/app.js"></script>

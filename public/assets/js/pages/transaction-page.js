@@ -164,10 +164,13 @@
           }
           return '<a class="btn btn-outline-primary btn-sm" href="' +
             global.MBMS_UTILS.escapeHtml(billUrl(row.id)) +
-            '" target="_blank" rel="noopener">Bill</a>';
+            '" target="_blank" rel="noopener"><i class="bi bi-receipt" aria-hidden="true"></i> Bill</a>';
         }
       });
     }
+    global.MBMS_RECORDS.renderSummary(document.getElementById('list-summary'), [
+      { icon: isSales() ? 'bi-cart-check' : 'bi-bag-check', label: isSales() ? 'Sales' : 'Purchases', value: rows.length }
+    ]);
     global.MBMS_RECORDS.renderTable(body, rows, columns);
   }
 

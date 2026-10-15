@@ -28,16 +28,17 @@
       <div id="list-view">
         <div class="mbms-page-header">
           <div>
-            <h1>Raw Materials</h1>
+            <h1><i class="bi bi-layers" aria-hidden="true"></i> Raw Materials</h1>
           </div>
           <div class="mbms-page-actions">
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#materialModal">Add raw material</button>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#materialModal"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add raw material</button>
           </div>
         </div>
         <div class="mbms-toolbar">
           <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search raw materials">
         </div>
-        <div id="mat-empty" hidden></div>
+      <div class="mbms-summary-row" id="list-summary" hidden></div>
+      <div id="mat-empty" hidden></div>
         <div class="table-responsive" id="mat-table-wrap">
           <table class="table mbms-table">
             <thead>
@@ -57,7 +58,7 @@
         <div class="mbms-page-header">
           <div>
             <a class="btn btn-outline-secondary btn-sm mb-2" href="raw-materials.html"><i class="bi bi-arrow-left"></i> Back to raw materials</a>
-            <h1 id="detail-title">Raw material</h1>
+            <h1 id="detail-title"><i class="bi bi-layers" aria-hidden="true"></i> Raw material</h1>
             <p id="detail-note"></p>
           </div>
           <div class="mbms-page-actions">
@@ -122,8 +123,7 @@
               <label class="form-label" for="material-name">Raw material</label>
               <input class="form-control" id="material-name" name="name" required>
             </div>
-            <p class="mbms-help mb-0">Current bag sizes are 170kg and 220kg. Future sizes will come from Laravel.</p>
-          </div>
+</div>
           <div class="modal-footer">
             <button type="button" class="btn btn-outline-secondary" id="material-reset">Reset</button>
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -143,7 +143,7 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <p class="mbms-help">Item: <strong id="purchase-item-label"></strong>. Official totals and stock stay on Laravel.</p>
+            <p class="mbms-help is-compact">Item: <strong id="purchase-item-label"></strong></p>
             <div class="mbms-field">
               <label class="form-label" for="purchase-supplier">Supplier</label>
               <select class="form-select" id="purchase-supplier" name="supplier" required></select>
@@ -214,6 +214,7 @@
   <script defer src="../assets/js/nav.js"></script>
   <script defer src="../assets/js/auth.js"></script>
   <script defer src="../assets/js/layout.js"></script>
+  <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/catalog-lookups.js"></script>
   <script defer src="../assets/js/pages/materials-page.js"></script>

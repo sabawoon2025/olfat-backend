@@ -60,13 +60,16 @@
     } else {
       document.getElementById('worker-empty').hidden = true;
       document.getElementById('worker-table-wrap').hidden = false;
+      global.MBMS_RECORDS.renderSummary(document.getElementById('list-summary'), [
+        { icon: 'bi-person-badge', label: 'Workers', value: rows.length }
+      ]);
       global.MBMS_RECORDS.renderTable(document.getElementById('worker-list-body'), rows, [
         { key: 'name' },
         { key: 'location' },
         { key: 'notes' },
         {
           render: function (row) {
-            return '<a class="btn btn-sm btn-outline-primary" href="?id=' + encodeURIComponent(row.id) + '">Open</a>';
+            return global.MBMS_RECORDS.actionButton('?id=' + encodeURIComponent(row.id), 'Open', 'bi-box-arrow-up-right');
           }
         }
       ]);
@@ -84,7 +87,7 @@
       document.getElementById('monthly-empty').hidden = false;
       global.MBMS_UI.renderEmpty(document.getElementById('monthly-empty'), {
         title: 'No monthly report rows',
-        message: 'Official monthly totals will come from Laravel. This UI does not calculate payroll.'
+        message: 'No totals for this month yet.'
       });
       return;
     }
@@ -100,9 +103,9 @@
   }
 
   function renderDetail(worker, source) {
-    document.getElementById('detail-title').textContent = worker.name;
+    global.MBMS_UTILS.setIconHeading(document.getElementById('detail-title'), null, worker.name);
     document.getElementById('detail-location').textContent = worker.location || '—';
-    document.getElementById('detail-notes').textContent = worker.notes || 'Money received is recorded. This is not a payroll profile.';
+    document.getElementById('detail-notes').textContent = worker.notes || '';
     global.MBMS_RECORDS.showBanner(document.getElementById('source-banner'), source);
     var rows = paymentsFor(worker.id);
     if (!rows.length) {

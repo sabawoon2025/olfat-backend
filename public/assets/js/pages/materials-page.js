@@ -74,6 +74,7 @@
     if (!rows.length) {
       document.getElementById('mat-table-wrap').hidden = true;
       document.getElementById('mat-empty').hidden = false;
+      global.MBMS_RECORDS.renderSummary(document.getElementById('list-summary'), []);
       global.MBMS_UI.renderEmpty(document.getElementById('mat-empty'), {
         title: isRaw() ? 'No raw materials yet' : 'No factory materials yet',
         message: 'Materials you add will show up here.'
@@ -103,17 +104,18 @@
       },
       {
         render: function (row) {
-          return '<a class="btn btn-sm btn-outline-primary" href="?id=' + encodeURIComponent(row.id) + '">Open</a>';
+          return global.MBMS_RECORDS.actionButton('?id=' + encodeURIComponent(row.id), 'Open', 'bi-box-arrow-up-right');
         }
       }
+    ]);
+    global.MBMS_RECORDS.renderSummary(document.getElementById('list-summary'), [
+      { icon: isRaw() ? 'bi-layers' : 'bi-gear-wide-connected', label: 'Items', value: (rows || items()).length }
     ]);
   }
 
   function renderDetail(item, source) {
-    document.getElementById('detail-title').textContent = item.name;
-    document.getElementById('detail-note').textContent = item.notes || (isRaw()
-      ? 'Raw-material stock stays separate from finished products. Production consumption is not implemented.'
-      : 'Factory-use material. Whether this has stock tracking is an open question.');
+    global.MBMS_UTILS.setIconHeading(document.getElementById('detail-title'), null, item.name);
+    document.getElementById('detail-note').textContent = item.notes || '';
     global.MBMS_RECORDS.showBanner(document.getElementById('source-banner'), source);
     document.getElementById('purchase-item-label').textContent = item.name;
 
@@ -122,19 +124,17 @@
       if (isRaw()) {
         stockHost.innerHTML =
           '<article class="mbms-card card mbms-stat-card"><div class="card-body">' +
-          '<div class="mbms-stat-label">Raw-material stock display</div>' +
+          '<div class="mbms-stat-label">Stock</div>' +
           '<div class="mbms-stat-value">' + global.MBMS_UTILS.escapeHtml(item.stock_display || '—') + '</div>' +
-          '<p class="mbms-help mb-0">Backend value. Separate from finished detergent stock.</p>' +
           '</div></article>';
       } else if (item.stock_display) {
         stockHost.innerHTML =
           '<article class="mbms-card card mbms-stat-card"><div class="card-body">' +
-          '<div class="mbms-stat-label">Stock display from API</div>' +
+          '<div class="mbms-stat-label">Stock</div>' +
           '<div class="mbms-stat-value">' + global.MBMS_UTILS.escapeHtml(item.stock_display) + '</div>' +
           '</div></article>';
       } else {
-        stockHost.innerHTML =
-          '<div class="alert alert-warning mb-0">OPEN QUESTION: the team has not confirmed whether factory materials require inventory stock tracking. This page does not invent stock.</div>';
+        stockHost.innerHTML = '<div class="text-secondary">No stock display for this item.</div>';
       }
     }
 

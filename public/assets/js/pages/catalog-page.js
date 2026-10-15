@@ -158,6 +158,15 @@
       'All'
     );
 
+    var activeCount = rows.filter(function (item) {
+      return item.is_active !== false && item.is_active !== 0 && item.is_active !== '0';
+    }).length;
+    global.MBMS_RECORDS.renderSummary(document.getElementById('list-summary'), [
+      { icon: 'bi-collection', label: 'Products', value: rows.length },
+      { icon: 'bi-check-circle', label: 'Active', value: activeCount },
+      { icon: 'bi-pause-circle', label: 'Inactive', value: Math.max(0, rows.length - activeCount) }
+    ]);
+
     var body = document.getElementById('catalog-list-body');
     global.MBMS_RECORDS.renderTable(body, rows, [
       {
@@ -184,10 +193,10 @@
       },
       {
         render: function (item) {
-          return '<a class="btn btn-sm btn-outline-primary" href="?id=' + encodeURIComponent(item.id) + '">Open</a>';
+          return global.MBMS_RECORDS.actionButton('?id=' + encodeURIComponent(item.id), 'Open', 'bi-box-arrow-up-right');
         }
       }
-    ], 'No ' + cfg.title.toLowerCase() + ' records yet. Add a product to start purchasing and selling.');
+    ], 'No ' + cfg.title.toLowerCase() + ' records yet.');
   }
 
   function renderHistoryTables(item, purchases, sales) {
@@ -243,7 +252,9 @@
     var toggle = document.getElementById('toggle-product-active');
     if (toggle) {
       var active = isActiveProduct(item);
-      toggle.textContent = active ? 'Deactivate' : 'Activate';
+      toggle.innerHTML = active
+        ? '<i class="bi bi-pause-circle" aria-hidden="true"></i> Deactivate'
+        : '<i class="bi bi-play-circle" aria-hidden="true"></i> Activate';
       toggle.className = active ? 'btn btn-outline-danger' : 'btn btn-outline-success';
       toggle.dataset.active = active ? '1' : '0';
     }
@@ -277,7 +288,7 @@
       activeInput.checked = isActiveProduct(item);
     }
     if (title) {
-      title.textContent = 'Edit ' + (currentConfig().itemLabel || 'product');
+      global.MBMS_UTILS.setIconHeading(title, 'bi-pencil', 'Edit ' + (currentConfig().itemLabel || 'product'));
     }
     if (variantsWrap) {
       variantsWrap.hidden = true;
@@ -293,10 +304,10 @@
       });
       existing.hidden = false;
       existing.innerHTML = labels.length
-        ? '<p class="mbms-help mb-1">Current variants (unchanged):</p><div>' +
+        ? '<div class="mbms-help is-compact mb-1">Variants</div><div>' +
           labels.map(function (label) { return '<span class="mbms-chip me-1">' + label + '</span>'; }).join('') +
-          '</div><p class="mbms-help mt-2 mb-0">To add new bag sizes later, create a new product or ask an admin to add variants.</p>'
-        : '<p class="mbms-help mb-0">No variants on this product yet.</p>';
+          '</div>'
+        : '<p class="mbms-help mb-0">No variants yet.</p>';
     }
     bootstrap.Modal.getOrCreateInstance(document.getElementById('productModal')).show();
   }
@@ -319,7 +330,7 @@
       activeInput.checked = true;
     }
     if (title) {
-      title.textContent = currentConfig().addLabel || 'Add product';
+      global.MBMS_UTILS.setIconHeading(title, 'bi-plus-lg', currentConfig().addLabel || 'Add product');
     }
     if (variantsWrap) {
       variantsWrap.hidden = false;
@@ -342,9 +353,8 @@
 
   function renderDetail(item, data, source) {
     var cfg = currentConfig();
-    document.getElementById('detail-title').textContent = item.name;
-    document.getElementById('detail-note').textContent = (item.example || item.notes || cfg.itemLabel) +
-      (isActiveProduct(item) ? '' : ' · Inactive (hidden from new sales/purchases)');
+    global.MBMS_UTILS.setIconHeading(document.getElementById('detail-title'), null, item.name);
+    document.getElementById('detail-note').textContent = isActiveProduct(item) ? (item.example || item.notes || '') : 'Inactive';
     syncDetailActions(item);
     global.MBMS_RECORDS.showBanner(document.getElementById('source-banner'), source);
 
@@ -357,11 +367,10 @@
             '<article class="mbms-card card mbms-stat-card"><div class="card-body">' +
             '<div class="mbms-stat-label">' + global.MBMS_UTILS.escapeHtml(variantName(row, data)) + '</div>' +
             '<div class="mbms-stat-value">' + global.MBMS_UTILS.escapeHtml(row.stock_display || '—') + '</div>' +
-            '<span class="badge text-bg-secondary">Live stock</span>' +
             '</div></article></div>'
           );
         }).join('')
-      : '<div class="col-12"><p class="text-secondary mb-0">No variants yet. Add variants when creating the product, then purchase stock.</p></div>';
+      : '<div class="col-12"><p class="text-secondary mb-0">No variants yet.</p></div>';
 
     global.MBMS_RECORDS.renderTable(document.getElementById('variants-body'), variants, [
       { render: function (row) { return global.MBMS_UTILS.escapeHtml(variantName(row, data)); } },
@@ -458,11 +467,11 @@
     var cfg = currentConfig();
     var title = document.getElementById('product-modal-title');
     if (title) {
-      title.textContent = cfg.addLabel || 'Add product';
+      global.MBMS_UTILS.setIconHeading(title, 'bi-plus-lg', cfg.addLabel || 'Add product');
     }
     var addAction = document.getElementById('add-product');
     if (addAction) {
-      addAction.textContent = cfg.addLabel || 'Add product';
+      global.MBMS_UTILS.setIconHeading(addAction, 'bi-plus-lg', cfg.addLabel || 'Add product');
     }
 
     if (list) {

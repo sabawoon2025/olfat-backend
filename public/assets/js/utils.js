@@ -187,6 +187,24 @@
     return Array.prototype.slice.call((root || document).querySelectorAll(selector));
   }
 
+  function setIconHeading(el, iconClass, text) {
+    if (!el) {
+      return;
+    }
+    var icon = iconClass;
+    if (!icon) {
+      var existing = el.querySelector('.bi');
+      if (existing) {
+        icon = Array.prototype.filter.call(existing.classList, function (cls) {
+          return cls !== 'bi';
+        })[0];
+      }
+    }
+    icon = icon || el.getAttribute('data-icon') || 'bi-circle';
+    el.setAttribute('data-icon', icon);
+    el.innerHTML = '<i class="bi ' + escapeHtml(icon) + '" aria-hidden="true"></i> ' + escapeHtml(text == null ? '' : text);
+  }
+
   global.MBMS_UTILS = {
     escapeHtml: escapeHtml,
     formatDate: formatDate,
@@ -203,6 +221,7 @@
     setFormErrors: setFormErrors,
     requiredFields: requiredFields,
     qs: qs,
-    qsa: qsa
+    qsa: qsa,
+    setIconHeading: setIconHeading
   };
 })(window);

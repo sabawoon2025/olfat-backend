@@ -101,9 +101,9 @@
   function headerActions() {
     var signedIn = global.MBMS_AUTH && global.MBMS_AUTH.isSignedIn();
     if (signedIn) {
-      return '<button type="button" class="btn btn-outline-secondary btn-sm" data-logout>Sign out</button>';
+      return '<button type="button" class="btn btn-outline-secondary btn-sm" data-logout><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Sign out</button>';
     }
-    return '<a class="btn btn-outline-secondary btn-sm" href="' + asset('pages/login.html') + '">Sign in</a>';
+    return '<a class="btn btn-outline-secondary btn-sm" href="' + asset('pages/login.html') + '"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Sign in</a>';
   }
 
   var SIDEBAR_SCROLL_KEY = 'MBMS_SIDEBAR_SCROLL_TOP';

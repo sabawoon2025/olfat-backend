@@ -26,7 +26,7 @@
       <div class="alert alert-warning mbms-source-banner" id="source-banner" hidden></div>
       <div class="mbms-page-header">
         <div>
-          <h1>Sales</h1>
+          <h1><i class="bi bi-cart-check" aria-hidden="true"></i> Sales</h1>
         </div>
         <div class="mbms-page-actions">
           <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#txModal"><i class="bi bi-cart-plus" aria-hidden="true"></i> New sale</button>
@@ -39,6 +39,7 @@
         <input class="form-control mbms-date" id="date-from" type="date" aria-label="From date">
         <input class="form-control mbms-date" id="date-to" type="date" aria-label="To date">
       </div>
+      <div class="mbms-summary-row" id="list-summary" hidden></div>
       <div id="tx-empty" hidden></div>
       <div class="table-responsive" id="tx-table-wrap">
         <table class="table mbms-table">
@@ -66,11 +67,10 @@
       <div class="modal-content">
         <form id="tx-form" novalidate>
           <div class="modal-header">
-            <h2 class="modal-title h5">New sale</h2>
+            <h2 class="modal-title h5"><i class="bi bi-cart-plus" aria-hidden="true"></i> New sale</h2>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <p class="mbms-help">You can view all provinces. New sales are saved only in your own province.</p>
             <div class="mbms-field">
               <label class="form-label" for="tx-party">Customer</label>
               <select class="form-select" id="tx-party" name="party" required></select>
@@ -90,7 +90,7 @@
             <div class="mbms-field">
               <label class="form-label" for="tx-quantity">Quantity</label>
               <input class="form-control" id="tx-quantity" name="quantity" required>
-              <p class="mbms-help" id="tx-stock-hint">Choose product, variant, and province to see available stock there.</p>
+              <p class="mbms-help is-compact" id="tx-stock-hint"></p>
             </div>
             <div class="mbms-field">
               <label class="form-label" for="tx-price">Price</label>
@@ -149,6 +149,7 @@
   <script defer src="../assets/js/nav.js"></script>
   <script defer src="../assets/js/auth.js"></script>
   <script defer src="../assets/js/layout.js"></script>
+  <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/catalog-lookups.js"></script>
   <script defer src="../assets/js/pages/transaction-page.js"></script>

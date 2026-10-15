@@ -28,17 +28,18 @@
       <div id="list-view">
         <div class="mbms-page-header">
           <div>
-            <h1>Suppliers</h1>
+            <h1><i class="bi bi-truck" aria-hidden="true"></i> Suppliers</h1>
           </div>
           <div class="mbms-page-actions">
-            <button type="button" class="btn btn-primary" id="add-contact" data-bs-toggle="modal" data-bs-target="#contactModal">Add supplier</button>
+            <button type="button" class="btn btn-primary" id="add-contact" data-bs-toggle="modal" data-bs-target="#contactModal"><i class="bi bi-person-plus" aria-hidden="true"></i> Add supplier</button>
           </div>
         </div>
         <div class="mbms-toolbar">
           <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search suppliers">
           <select class="form-select mbms-filter" id="module-filter" aria-label="Filter by location"></select>
         </div>
-        <div class="table-responsive">
+      <div class="mbms-summary-row" id="list-summary" hidden></div>
+<div class="table-responsive">
           <table class="table mbms-table">
             <thead>
               <tr>
@@ -58,7 +59,7 @@
         <div class="mbms-page-header">
           <div>
             <a class="btn btn-outline-secondary btn-sm mb-2" href="suppliers.html"><i class="bi bi-arrow-left"></i> Back to suppliers</a>
-            <h1 id="detail-title">Supplier</h1>
+            <h1 id="detail-title"><i class="bi bi-truck" aria-hidden="true"></i> Supplier</h1>
             <p class="mbms-detail-meta">
               <span id="detail-phone"></span>
               <span>·</span>
@@ -120,7 +121,7 @@
       <div class="modal-content">
         <form id="contact-form" novalidate>
           <div class="modal-header">
-            <h2 class="modal-title h5" id="contact-form-title">Add supplier</h2>
+            <h2 class="modal-title h5" id="contact-form-title"><i class="bi bi-person-plus" aria-hidden="true"></i> Add supplier</h2>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
@@ -162,6 +163,7 @@
   <script defer src="../assets/js/nav.js"></script>
   <script defer src="../assets/js/auth.js"></script>
   <script defer src="../assets/js/layout.js"></script>
+  <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/pages/contacts-page.js"></script>
   <script defer src="../assets/js/app.js"></script>

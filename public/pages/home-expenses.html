@@ -30,16 +30,17 @@
 
       <div class="mbms-page-header">
         <div>
-          <h1>Home Expenses</h1>
+          <h1><i class="bi bi-house-heart" aria-hidden="true"></i> Home Expenses</h1>
         </div>
         <div class="mbms-page-actions">
-          <button type="button" class="btn btn-primary" id="add-expense" data-bs-toggle="modal" data-bs-target="#expModal">Add expense</button>
+          <button type="button" class="btn btn-primary" id="add-expense" data-bs-toggle="modal" data-bs-target="#expModal"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add expense</button>
         </div>
       </div>
       <div class="mbms-toolbar">
         <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search home expenses">
         <select class="form-select mbms-filter" id="list-category" aria-label="Category"></select>
       </div>
+      <div class="mbms-summary-row" id="list-summary" hidden></div>
       <div id="exp-empty" hidden></div>
       <div class="table-responsive" id="exp-table-wrap">
         <table class="table mbms-table">
@@ -111,6 +112,7 @@
   <script defer src="../assets/js/nav.js"></script>
   <script defer src="../assets/js/auth.js"></script>
   <script defer src="../assets/js/layout.js"></script>
+  <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/pages/home-expenses-page.js"></script>
   <script defer src="../assets/js/app.js"></script>

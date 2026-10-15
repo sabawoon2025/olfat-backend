@@ -28,16 +28,17 @@
       <div id="list-view">
         <div class="mbms-page-header">
           <div>
-            <h1>Factory Materials</h1>
+            <h1><i class="bi bi-gear-wide-connected" aria-hidden="true"></i> Factory Materials</h1>
           </div>
           <div class="mbms-page-actions">
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#materialModal">Add factory material</button>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#materialModal"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add factory material</button>
           </div>
         </div>
         <div class="mbms-toolbar">
           <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search factory materials">
         </div>
-        <div id="mat-empty" hidden></div>
+      <div class="mbms-summary-row" id="list-summary" hidden></div>
+      <div id="mat-empty" hidden></div>
         <div class="table-responsive" id="mat-table-wrap">
           <table class="table mbms-table">
             <thead>
@@ -57,7 +58,7 @@
         <div class="mbms-page-header">
           <div>
             <a class="btn btn-outline-secondary btn-sm mb-2" href="factory-materials.html"><i class="bi bi-arrow-left"></i> Back to factory materials</a>
-            <h1 id="detail-title">Factory material</h1>
+            <h1 id="detail-title"><i class="bi bi-gear-wide-connected" aria-hidden="true"></i> Factory material</h1>
             <p id="detail-note"></p>
           </div>
           <div class="mbms-page-actions">
@@ -146,7 +147,7 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <p class="mbms-help">Item: <strong id="purchase-item-label"></strong>. Official payables stay on Laravel.</p>
+            <p class="mbms-help is-compact">Item: <strong id="purchase-item-label"></strong></p>
             <div class="mbms-field">
               <label class="form-label" for="purchase-supplier">Supplier / person</label>
               <select class="form-select" id="purchase-supplier" name="supplier"></select>
@@ -216,6 +217,7 @@
   <script defer src="../assets/js/nav.js"></script>
   <script defer src="../assets/js/auth.js"></script>
   <script defer src="../assets/js/layout.js"></script>
+  <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/catalog-lookups.js"></script>
   <script defer src="../assets/js/pages/materials-page.js"></script>

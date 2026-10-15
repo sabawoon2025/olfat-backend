@@ -28,17 +28,18 @@
       <div id="list-view">
         <div class="mbms-page-header">
           <div>
-            <h1>Workers</h1>
+            <h1><i class="bi bi-person-badge" aria-hidden="true"></i> Workers</h1>
           </div>
           <div class="mbms-page-actions">
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#workerModal">Add worker</button>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#workerModal"><i class="bi bi-person-plus" aria-hidden="true"></i> Add worker</button>
           </div>
         </div>
         <div class="mbms-toolbar">
           <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search workers">
           <select class="form-select mbms-filter" id="list-location" aria-label="Location"></select>
         </div>
-        <ul class="nav nav-tabs mbms-nav-tabs" role="tablist">
+      <div class="mbms-summary-row" id="list-summary" hidden></div>
+      <ul class="nav nav-tabs mbms-nav-tabs" role="tablist">
           <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-workers" type="button">Workers</button></li>
           <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-monthly" type="button">Monthly payment report</button></li>
         </ul>
@@ -60,11 +61,11 @@
             </div>
           </div>
           <div class="tab-pane fade" id="tab-monthly">
-            <p class="mbms-help">Official monthly totals come from Laravel. This screen only displays backend results.</p>
-            <div class="mbms-toolbar">
+<div class="mbms-toolbar">
               <input class="form-control mbms-date" id="report-month" type="month" aria-label="Report month">
             </div>
-            <div id="monthly-empty" hidden></div>
+      <div class="mbms-summary-row" id="monthly-summary" hidden></div>
+      <div id="monthly-empty" hidden></div>
             <div class="table-responsive" id="monthly-table-wrap">
               <table class="table mbms-table">
                 <thead>
@@ -87,14 +88,14 @@
         <div class="mbms-page-header">
           <div>
             <a class="btn btn-outline-secondary btn-sm mb-2" href="workers.html"><i class="bi bi-arrow-left"></i> Back to workers</a>
-            <h1 id="detail-title">Worker</h1>
+            <h1 id="detail-title"><i class="bi bi-person-badge" aria-hidden="true"></i> Worker</h1>
             <p class="mbms-detail-meta">
               <span id="detail-location"></span>
             </p>
             <p id="detail-notes"></p>
           </div>
           <div class="mbms-page-actions">
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#payModal">Record payment</button>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#payModal"><i class="bi bi-cash-coin" aria-hidden="true"></i> Record payment</button>
           </div>
         </div>
         <ul class="nav nav-tabs mbms-nav-tabs" role="tablist">
@@ -144,12 +145,11 @@
       <div class="modal-content">
         <form id="worker-form" novalidate>
           <div class="modal-header">
-            <h2 class="modal-title h5">Add worker</h2>
+            <h2 class="modal-title h5"><i class="bi bi-person-plus" aria-hidden="true"></i> Add worker</h2>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <p class="mbms-help">Only the worker record is stored here. Salary, hours, and payroll rules are not part of this module.</p>
-            <div class="mbms-field">
+<div class="mbms-field">
               <label class="form-label" for="worker-name">Worker name</label>
               <input class="form-control" id="worker-name" name="name" required>
             </div>
@@ -177,7 +177,7 @@
       <div class="modal-content">
         <form id="pay-form" novalidate>
           <div class="modal-header">
-            <h2 class="modal-title h5">Record payment received</h2>
+            <h2 class="modal-title h5"><i class="bi bi-cash-coin" aria-hidden="true"></i> Record payment received</h2>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
@@ -223,6 +223,7 @@
   <script defer src="../assets/js/nav.js"></script>
   <script defer src="../assets/js/auth.js"></script>
   <script defer src="../assets/js/layout.js"></script>
+  <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/pages/workers-page.js"></script>
   <script defer src="../assets/js/app.js"></script>

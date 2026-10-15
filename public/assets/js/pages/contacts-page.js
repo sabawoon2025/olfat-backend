@@ -140,6 +140,13 @@
       location,
       'All locations'
     );
+    global.MBMS_RECORDS.renderSummary(document.getElementById('list-summary'), [
+      { icon: isCustomer() ? 'bi-people' : 'bi-truck', label: isCustomer() ? 'Customers' : 'Suppliers', value: rows.length },
+      { icon: 'bi-geo-alt', label: 'Locations', value: Object.keys(rows.reduce(function (acc, row) {
+        if (row.location) { acc[row.location] = true; }
+        return acc;
+      }, {})).length }
+    ]);
     global.MBMS_RECORDS.renderTable(document.getElementById('contact-list-body'), rows, [
       { key: 'name' },
       { key: 'phone' },
@@ -147,28 +154,29 @@
       { key: 'balance_display' },
       {
         render: function (row) {
-          return '<a class="btn btn-sm btn-outline-primary" href="?id=' + encodeURIComponent(row.id) + '">Open</a>';
+          return global.MBMS_RECORDS.actionButton('?id=' + encodeURIComponent(row.id), 'Open', 'bi-box-arrow-up-right');
         }
       }
     ], 'No records match.');
   }
 
   function renderDetail(record, source) {
-    document.getElementById('detail-title').textContent = record.name;
-    document.getElementById('detail-phone').textContent = record.phone || 'No phone';
-    document.getElementById('detail-address').textContent = record.address || 'No address';
+    global.MBMS_UTILS.setIconHeading(document.getElementById('detail-title'), null, record.name);
+    document.getElementById('detail-phone').textContent = record.phone || '—';
+    document.getElementById('detail-address').textContent = record.address || '—';
     document.getElementById('detail-location').textContent = record.location || '—';
     document.getElementById('detail-balance').textContent = record.balance_display || '—';
-    document.getElementById('detail-balance-note').textContent = record.notes ||
-      (isCustomer()
-        ? 'Receivable balance from unpaid sales minus payments.'
-        : 'Payable balance from unpaid purchases minus payments.');
+    document.getElementById('detail-balance-note').textContent = record.notes || '';
     global.MBMS_RECORDS.showBanner(document.getElementById('source-banner'), source);
 
     loadHistory(record.id);
 
     global.MBMS_UTILS.fillForm(document.getElementById('contact-form'), record);
-    document.getElementById('contact-form-title').textContent = 'Edit ' + (isCustomer() ? 'customer' : 'supplier');
+    global.MBMS_UTILS.setIconHeading(
+      document.getElementById('contact-form-title'),
+      'bi-pencil',
+      'Edit ' + (isCustomer() ? 'customer' : 'supplier')
+    );
   }
 
   function setMode(detail) {
@@ -210,7 +218,11 @@
     var form = document.getElementById('contact-form');
     form.reset();
     document.getElementById('contact-id').value = '';
-    document.getElementById('contact-form-title').textContent = 'Add ' + (isCustomer() ? 'customer' : 'supplier');
+    global.MBMS_UTILS.setIconHeading(
+      document.getElementById('contact-form-title'),
+      'bi-person-plus',
+      'Add ' + (isCustomer() ? 'customer' : 'supplier')
+    );
   }
 
   global.MBMS_PAGE = {
@@ -237,7 +249,11 @@
       var editBtn = document.getElementById('edit-contact');
       if (editBtn) {
         editBtn.addEventListener('click', function () {
-          document.getElementById('contact-form-title').textContent = 'Edit ' + (isCustomer() ? 'customer' : 'supplier');
+          global.MBMS_UTILS.setIconHeading(
+            document.getElementById('contact-form-title'),
+            'bi-pencil',
+            'Edit ' + (isCustomer() ? 'customer' : 'supplier')
+          );
         });
       }
 

@@ -26,10 +26,10 @@
       <div class="alert alert-warning mbms-source-banner" id="source-banner" hidden></div>
       <div class="mbms-page-header">
         <div>
-          <h1>Damaged Stock</h1>
+          <h1><i class="bi bi-exclamation-octagon" aria-hidden="true"></i> Damaged Stock</h1>
         </div>
         <div class="mbms-page-actions">
-          <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#dmgModal">Record damage</button>
+          <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#dmgModal"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Record damage</button>
         </div>
       </div>
       <div id="dmg-empty" hidden></div>
@@ -56,7 +56,7 @@
       <div class="modal-content">
         <form id="dmg-form" novalidate>
           <div class="modal-header">
-            <h2 class="modal-title h5">Record damage</h2>
+            <h2 class="modal-title h5"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Record damage</h2>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
@@ -114,6 +114,7 @@
   <script defer src="../assets/js/nav.js"></script>
   <script defer src="../assets/js/auth.js"></script>
   <script defer src="../assets/js/layout.js"></script>
+  <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/catalog-lookups.js"></script>
   <script defer src="../assets/js/pages/damage-page.js"></script>

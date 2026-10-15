@@ -26,14 +26,14 @@
       <div class="alert alert-warning mbms-source-banner" id="source-banner" hidden></div>
       <div class="mbms-page-header">
         <div>
-          <h1>Settings</h1>
+          <h1><i class="bi bi-gear" aria-hidden="true"></i> Settings</h1>
         </div>
       </div>
 
       <div class="row g-3">
         <div class="col-12 col-lg-6">
           <section class="mbms-card card h-100">
-            <div class="card-header">Profile</div>
+            <div class="card-header mbms-card-header"><i class="bi bi-person-circle" aria-hidden="true"></i> Profile</div>
             <div class="card-body">
               <form id="profile-form" novalidate>
                 <div class="mbms-field">
@@ -48,15 +48,14 @@
                   <label class="form-label" for="profile-location">Province</label>
                   <select class="form-select" id="profile-location" name="location" disabled></select>
                 </div>
-                <p class="mbms-help">Province is claimed at first login and cannot be changed here. All three users still see the same shared activity.</p>
-                <button type="submit" class="btn btn-primary">Save profile</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle" aria-hidden="true"></i> Save profile</button>
               </form>
             </div>
           </section>
         </div>
         <div class="col-12 col-lg-6">
           <section class="mbms-card card h-100">
-            <div class="card-header">Account</div>
+            <div class="card-header mbms-card-header"><i class="bi bi-shield-lock" aria-hidden="true"></i> Account</div>
             <div class="card-body">
               <form id="password-form" novalidate>
                 <div class="mbms-field">
@@ -71,17 +70,15 @@
                   <label class="form-label" for="confirm-password">Confirm new password</label>
                   <input class="form-control" id="confirm-password" name="password_confirmation" type="password" required>
                 </div>
-                <p class="mbms-help">Password changes are sent to Laravel. They are not stored in the browser.</p>
-                <button type="submit" class="btn btn-primary">Update password</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-shield-lock" aria-hidden="true"></i> Update password</button>
               </form>
             </div>
           </section>
         </div>
         <div class="col-12 col-lg-6">
           <section class="mbms-card card h-100">
-            <div class="card-header">Appearance</div>
+            <div class="card-header mbms-card-header"><i class="bi bi-palette" aria-hidden="true"></i> Appearance</div>
             <div class="card-body">
-              <p class="mbms-help">These choices stay on this device. They do not change business data.</p>
               <div class="mbms-field">
                 <label class="form-label">Language</label>
                 <div class="form-check">
@@ -109,17 +106,16 @@
         </div>
         <div class="col-12 col-lg-6">
           <section class="mbms-card card h-100">
-            <div class="card-header">Application</div>
+            <div class="card-header mbms-card-header"><i class="bi bi-hdd-network" aria-hidden="true"></i> Application</div>
             <div class="card-body">
               <form id="app-form" novalidate>
                 <div class="mbms-field">
                   <label class="form-label" for="api-base">API base URL</label>
                   <input class="form-control" id="api-base" name="api_base_url" required>
                 </div>
-                <p class="mbms-help">Default is the local Laravel URL. Do not put database credentials or secrets here.</p>
                 <div class="d-flex flex-wrap gap-2">
-                  <button type="submit" class="btn btn-primary">Save API URL</button>
-                  <button type="button" class="btn btn-outline-secondary" id="reset-api">Reset default</button>
+                  <button type="submit" class="btn btn-primary"><i class="bi bi-hdd-network" aria-hidden="true"></i> Save API URL</button>
+                  <button type="button" class="btn btn-outline-secondary" id="reset-api"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Reset default</button>
                 </div>
               </form>
             </div>
@@ -132,7 +128,7 @@
         <div class="col-12" id="business-section" hidden>
           <section class="mbms-card card">
             <div class="card-header d-flex justify-content-between align-items-center">
-              <span><i class="bi bi-building"></i> Business identity (invoice header)</span>
+              <span class="mbms-card-header"><i class="bi bi-building" aria-hidden="true"></i> Business identity</span>
               <span class="badge text-bg-primary">Admin only</span>
             </div>
             <div class="card-body">
@@ -191,8 +187,7 @@
                     </select>
                   </div>
                 </div>
-                <p class="mbms-help mt-3">These values print on every sale invoice header. Changes apply immediately for new bills.</p>
-                <button type="submit" class="btn btn-primary">Save business identity</button>
+<button type="submit" class="btn btn-primary"><i class="bi bi-building" aria-hidden="true"></i> Save business identity</button>
               </form>
             </div>
           </section>
@@ -204,7 +199,7 @@
         <div class="col-12" id="invoice-section" hidden>
           <section class="mbms-card card">
             <div class="card-header d-flex justify-content-between align-items-center">
-              <span><i class="bi bi-receipt"></i> Invoice content (header note, footer, terms, bank)</span>
+              <span class="mbms-card-header"><i class="bi bi-receipt" aria-hidden="true"></i> Invoice content</span>
               <span class="badge text-bg-primary">Admin only</span>
             </div>
             <div class="card-body">
@@ -245,9 +240,8 @@
                     </div>
                   </div>
                 </div>
-                <p class="mbms-help mt-3">Terms and bank details appear in the invoice footer. Signature labels print under the signature lines.</p>
-                <div class="d-flex flex-wrap gap-2">
-                  <button type="submit" class="btn btn-primary">Save invoice settings</button>
+<div class="d-flex flex-wrap gap-2">
+                  <button type="submit" class="btn btn-primary"><i class="bi bi-receipt" aria-hidden="true"></i> Save invoice settings</button>
                   <a class="btn btn-outline-secondary" href="bill.html" target="_blank" rel="noopener">
                     <i class="bi bi-box-arrow-up-right"></i> Preview a bill
                   </a>
@@ -271,6 +265,7 @@
   <script defer src="../assets/js/nav.js"></script>
   <script defer src="../assets/js/auth.js"></script>
   <script defer src="../assets/js/layout.js"></script>
+  <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/pages/settings-page.js"></script>
   <script defer src="../assets/js/app.js"></script>
