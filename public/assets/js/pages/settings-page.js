@@ -2,7 +2,8 @@
  * Settings page:
  *   • Profile (name, email) + password change (any signed-in user)
  *   • Appearance + API base URL (local to this device)
- *   • Admin-only: Business identity, Invoice defaults, Branch invoice profiles
+ *   • Admin: Invoice branding (logo, header, footer defaults)
+ *   • All users: Branch invoice profiles (per-location logo/header/footer)
  */
 (function (global) {
   'use strict';
@@ -112,6 +113,76 @@
     }).catch(function () {
       return null;
     });
+  }
+
+  function isAdminUser(user) {
+    if (!user) {
+      return false;
+    }
+    var role = user.role;
+    if (role && typeof role === 'object' && role.value != null) {
+      role = role.value;
+    }
+    return String(role || '').toLowerCase() === 'admin';
+  }
+
+  function resolvePreviewUrl(url) {
+    var value = (url == null ? '' : String(url)).trim();
+    if (!value) {
+      return '';
+    }
+    if (/^https?:\/\//i.test(value) || value.indexOf('data:') === 0) {
+      return value;
+    }
+    if (value.charAt(0) === '/') {
+      return global.location.origin + value;
+    }
+    if (value.indexOf('assets/') === 0 && global.MBMS_NAV && typeof global.MBMS_NAV.asset === 'function') {
+      return global.MBMS_NAV.asset(value);
+    }
+    return value;
+  }
+
+  function refreshLogoPreview(inputId, imgId, emptyId) {
+    var input = document.getElementById(inputId);
+    var img = document.getElementById(imgId);
+    var empty = document.getElementById(emptyId);
+    if (!input || !img) {
+      return;
+    }
+    var src = resolvePreviewUrl(input.value);
+    if (!src) {
+      img.hidden = true;
+      img.removeAttribute('src');
+      if (empty) empty.hidden = false;
+      return;
+    }
+    img.onerror = function () {
+      img.hidden = true;
+      if (empty) empty.hidden = false;
+    };
+    img.onload = function () {
+      img.hidden = false;
+      if (empty) empty.hidden = true;
+    };
+    img.src = src;
+  }
+
+  function bindLogoPreview(inputId, imgId, emptyId) {
+    var input = document.getElementById(inputId);
+    if (!input) {
+      return;
+    }
+    if (!input.dataset.previewBound) {
+      input.dataset.previewBound = '1';
+      input.addEventListener('input', function () {
+        refreshLogoPreview(inputId, imgId, emptyId);
+      });
+      input.addEventListener('change', function () {
+        refreshLogoPreview(inputId, imgId, emptyId);
+      });
+    }
+    refreshLogoPreview(inputId, imgId, emptyId);
   }
 
   function fetchSettingsMap() {
@@ -265,95 +336,120 @@
     }
   }
 
-  function bindBranchInvoiceSection() {
+  function bindBranchInvoiceSection(user) {
     var section = document.getElementById('branch-invoice-section');
     var form = document.getElementById('branch-invoice-form');
     var select = document.getElementById('branch-location');
     if (!section || !form || !select) {
-      return;
-    }
-
-    section.hidden = false;
-
-    select.addEventListener('change', function () {
-      var location = findBranchById(select.value);
-      if (!location) {
-        clearBranchProfileForm();
-        return;
-      }
-      fillBranchProfileForm(location.invoice_profile || {});
-    });
-
-    form.addEventListener('submit', function (event) {
-      event.preventDefault();
-      var locationId = select.value;
-      if (!locationId) {
-        global.MBMS_UI.notify({ type: 'warning', message: 'Select a branch before saving its invoice profile.' });
-        return;
-      }
-
-      var btn = document.getElementById('branch-invoice-save') || form.querySelector('button[type="submit"]');
-      global.MBMS_UI.setButtonLoading(btn, true);
-
-      var profile = collectBranchProfile();
-      global.MBMS_API.put('locations/' + locationId, { invoice_profile: profile })
-        .then(function (response) {
-          var updated = global.MBMS_UTILS.unwrap(response.data) || response.data || {};
-          branchLocations = branchLocations.map(function (row) {
-            if (String(row.id) === String(locationId)) {
-              return Object.assign({}, row, {
-                invoice_profile: updated.invoice_profile || profile
-              });
-            }
-            return row;
-          });
-          global.MBMS_UI.notify({
-            type: 'success',
-            message: 'Branch invoice profile saved. New sales invoices for this location will use these details.'
-          });
-        })
-        .catch(function (error) {
-          global.MBMS_UI.notify({
-            type: 'danger',
-            title: 'Could not save branch invoice profile',
-            message: global.MBMS_UTILS.getErrorMessage(error, 'Location could not be updated.')
-          });
-        })
-        .finally(function () {
-          global.MBMS_UI.setButtonLoading(btn, false);
-        });
-    });
-
-    return loadBranchLocations().then(populateBranchSelect);
-  }
-
-  function revealAdminSections(user, settingsMap) {
-    var isAdmin = user && user.role && String(user.role).toLowerCase() === 'admin';
-    if (!isAdmin) {
       return Promise.resolve();
     }
 
+    section.hidden = false;
+    bindLogoPreview('branch-logo-url', 'branch-logo-preview', 'branch-logo-preview-empty');
+
+    if (!select.dataset.bound) {
+      select.dataset.bound = '1';
+      select.addEventListener('change', function () {
+        var location = findBranchById(select.value);
+        if (!location) {
+          clearBranchProfileForm();
+          refreshLogoPreview('branch-logo-url', 'branch-logo-preview', 'branch-logo-preview-empty');
+          return;
+        }
+        fillBranchProfileForm(location.invoice_profile || {});
+        refreshLogoPreview('branch-logo-url', 'branch-logo-preview', 'branch-logo-preview-empty');
+      });
+    }
+
+    if (!form.dataset.bound) {
+      form.dataset.bound = '1';
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        var locationId = select.value;
+        if (!locationId) {
+          global.MBMS_UI.notify({ type: 'warning', message: 'Select a branch before saving its invoice profile.' });
+          return;
+        }
+
+        var btn = document.getElementById('branch-invoice-save') || form.querySelector('button[type="submit"]');
+        global.MBMS_UI.setButtonLoading(btn, true);
+
+        var profile = collectBranchProfile();
+        global.MBMS_API.put('locations/' + locationId, { invoice_profile: profile })
+          .then(function (response) {
+            var updated = global.MBMS_UTILS.unwrap(response.data) || response.data || {};
+            branchLocations = branchLocations.map(function (row) {
+              if (String(row.id) === String(locationId)) {
+                return Object.assign({}, row, {
+                  invoice_profile: updated.invoice_profile || profile
+                });
+              }
+              return row;
+            });
+            global.MBMS_UI.notify({
+              type: 'success',
+              message: 'Branch invoice logo, header & footer saved. New invoices for this location will use them.'
+            });
+          })
+          .catch(function (error) {
+            global.MBMS_UI.notify({
+              type: 'danger',
+              title: 'Could not save branch invoice profile',
+              message: global.MBMS_UTILS.getErrorMessage(error, 'Location could not be updated.')
+            });
+          })
+          .finally(function () {
+            global.MBMS_UI.setButtonLoading(btn, false);
+          });
+      });
+    }
+
+    return loadBranchLocations().then(function () {
+      populateBranchSelect();
+      // Prefer the signed-in user's own branch when opening the form.
+      if (user && user.location_id && findBranchById(user.location_id)) {
+        select.value = String(user.location_id);
+        fillBranchProfileForm(findBranchById(user.location_id).invoice_profile || {});
+        refreshLogoPreview('branch-logo-url', 'branch-logo-preview', 'branch-logo-preview-empty');
+      }
+    });
+  }
+
+  function revealInvoiceBranding(user, settingsMap) {
+    var admin = isAdminUser(user);
+    var hint = document.getElementById('invoice-branding-hint');
     var bizSection = document.getElementById('business-section');
-    var invSection = document.getElementById('invoice-section');
+
+    if (!admin) {
+      if (hint) hint.hidden = false;
+      if (bizSection) bizSection.hidden = true;
+      return bindBranchInvoiceSection(user);
+    }
+
+    if (hint) hint.hidden = true;
     if (bizSection) bizSection.hidden = false;
-    if (invSection) invSection.hidden = false;
 
     hydrateForm('business-form', BUSINESS_KEYS, settingsMap);
     hydrateForm('invoice-form', INVOICE_KEYS, settingsMap);
+    bindLogoPreview('biz-logo-url', 'biz-logo-preview', 'biz-logo-preview-empty');
 
     var businessForm = document.getElementById('business-form');
-    if (businessForm) {
+    if (businessForm && !businessForm.dataset.bound) {
+      businessForm.dataset.bound = '1';
       businessForm.addEventListener('submit', function (event) {
         event.preventDefault();
         var btn = businessForm.querySelector('button[type="submit"]');
         global.MBMS_UI.setButtonLoading(btn, true);
         var payload = collectSettingsFromForm(businessForm, BUSINESS_KEYS);
         saveSettings(payload).then(function () {
-          global.MBMS_UI.notify({ type: 'success', message: 'Business identity saved. New invoices will use these details.' });
+          global.MBMS_UI.notify({
+            type: 'success',
+            message: 'Invoice logo & header saved. Open a sale invoice to see the changes.'
+          });
         }).catch(function (error) {
           global.MBMS_UI.notify({
             type: 'danger',
-            title: 'Could not save business identity',
+            title: 'Could not save invoice header',
             message: global.MBMS_UTILS.getErrorMessage(error, 'Settings could not be saved.')
           });
         }).finally(function () {
@@ -363,18 +459,22 @@
     }
 
     var invoiceForm = document.getElementById('invoice-form');
-    if (invoiceForm) {
+    if (invoiceForm && !invoiceForm.dataset.bound) {
+      invoiceForm.dataset.bound = '1';
       invoiceForm.addEventListener('submit', function (event) {
         event.preventDefault();
         var btn = invoiceForm.querySelector('button[type="submit"]');
         global.MBMS_UI.setButtonLoading(btn, true);
         var payload = collectSettingsFromForm(invoiceForm, INVOICE_KEYS);
         saveSettings(payload).then(function () {
-          global.MBMS_UI.notify({ type: 'success', message: 'Invoice settings saved. Reload an open bill to see changes.' });
+          global.MBMS_UI.notify({
+            type: 'success',
+            message: 'Invoice footer text saved. Reload an open bill to see changes.'
+          });
         }).catch(function (error) {
           global.MBMS_UI.notify({
             type: 'danger',
-            title: 'Could not save invoice settings',
+            title: 'Could not save invoice footer',
             message: global.MBMS_UTILS.getErrorMessage(error, 'Settings could not be saved.')
           });
         }).finally(function () {
@@ -383,7 +483,7 @@
       });
     }
 
-    return bindBranchInvoiceSection();
+    return bindBranchInvoiceSection(user);
   }
 
   global.MBMS_PAGE = {
@@ -468,7 +568,7 @@
       loadProfile();
 
       Promise.all([fetchCurrentUser(), fetchSettingsMap()]).then(function (results) {
-        return revealAdminSections(results[0], results[1]);
+        return revealInvoiceBranding(results[0], results[1]);
       });
     }
   };

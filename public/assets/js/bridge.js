@@ -1312,7 +1312,8 @@
       body = tradeBody(body || {}, 'customer_id', 'sold_at');
     } else if (nextPath === 'purchases' && verb === 'POST') {
       body = tradeBody(body || {}, 'supplier_id', 'purchased_at');
-    } else if (nextPath === 'sales' || nextPath === 'purchases' || nextPath === 'customers' || nextPath === 'suppliers' || nextPath === 'workers' || nextPath === 'home-expenses' || nextPath === 'external-debts') {
+    } else if (nextPath === 'sales' || nextPath === 'purchases' || nextPath === 'customers' || nextPath === 'suppliers' || nextPath === 'workers' || nextPath === 'external-debts') {
+      // home-expenses handled below so POST/PUT can map date → expense_date
       if (verb === 'GET') {
         params.per_page = params.per_page || 100;
       }

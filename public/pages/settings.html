@@ -123,33 +123,49 @@
         </div>
 
         <!-- =====================================================
-             Admin-only: Business identity (printed on invoices)
+             Invoice branding — logo, header & footer (admin)
              ===================================================== -->
+        <div class="col-12" id="invoice-branding-hint" hidden>
+          <div class="alert alert-info mb-0">
+            <strong>Invoice branding:</strong> global logo / header / footer defaults need an admin account.
+            You can still set your <a href="#branch-invoice-section" class="alert-link">branch invoice profile</a> below.
+          </div>
+        </div>
+
         <div class="col-12" id="business-section" hidden>
-          <section class="mbms-card card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-              <span class="mbms-card-header"><i class="bi bi-building" aria-hidden="true"></i> Business identity</span>
-              <span class="badge text-bg-primary">Admin only</span>
+          <section class="mbms-card card" id="invoice-branding">
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <span class="mbms-card-header"><i class="bi bi-receipt-cutoff" aria-hidden="true"></i> Invoice branding — logo, header &amp; footer</span>
+              <span class="badge text-bg-primary">Admin</span>
             </div>
             <div class="card-body">
+              <p class="text-secondary small mb-3">
+                These defaults print on every sale invoice. For different text per province
+                (Kabul, Maidan/Wardak, Ghazni), use <strong>Branch invoice profiles</strong> below.
+              </p>
+
               <form id="business-form" novalidate>
-                <div class="row g-3">
-                  <div class="col-12 col-md-6">
-                    <label class="form-label" for="biz-legal-name">Legal business name</label>
-                    <input class="form-control" id="biz-legal-name" name="business.legal_name">
-                  </div>
-                  <div class="col-12 col-md-6">
-                    <label class="form-label" for="biz-tagline">Tagline / document caption</label>
-                    <input class="form-control" id="biz-tagline" name="business.tagline" placeholder="Sales Invoice">
-                  </div>
-                  <div class="col-12 col-md-6">
-                    <label class="form-label" for="biz-logo-url">Logo URL</label>
+                <h3 class="h6 text-uppercase text-secondary mb-2">Logo &amp; header</h3>
+                <div class="row g-3 mb-3">
+                  <div class="col-12 col-md-8">
+                    <label class="form-label" for="biz-logo-url">Invoice logo URL</label>
                     <input class="form-control" id="biz-logo-url" name="business.logo_url" placeholder="/assets/images/logo.svg">
-                    <small class="text-secondary">Public URL or path relative to the site root.</small>
+                    <small class="text-secondary">Public URL or site path, e.g. <code>/assets/images/logo.svg</code></small>
+                  </div>
+                  <div class="col-12 col-md-4">
+                    <label class="form-label d-block">Preview</label>
+                    <div class="border rounded p-2 bg-white d-flex align-items-center justify-content-center" style="min-height:72px">
+                      <img id="biz-logo-preview" src="../assets/images/logo.svg" alt="Logo preview" style="max-height:56px;max-width:100%;object-fit:contain" hidden>
+                      <span class="small text-secondary" id="biz-logo-preview-empty">No logo yet</span>
+                    </div>
                   </div>
                   <div class="col-12 col-md-6">
-                    <label class="form-label" for="biz-tax-id">Tax ID / registration number</label>
-                    <input class="form-control" id="biz-tax-id" name="business.tax_id">
+                    <label class="form-label" for="biz-legal-name">Business / company name</label>
+                    <input class="form-control" id="biz-legal-name" name="business.legal_name" placeholder="Olfat Trading Company">
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label class="form-label" for="biz-tagline">Header tagline</label>
+                    <input class="form-control" id="biz-tagline" name="business.tagline" placeholder="Sales Invoice">
                   </div>
                   <div class="col-12 col-md-6">
                     <label class="form-label" for="biz-address-1">Address line 1</label>
@@ -166,7 +182,6 @@
                   <div class="col-12 col-md-4">
                     <label class="form-label" for="biz-whatsapp">WhatsApp</label>
                     <input class="form-control" id="biz-whatsapp" name="business.whatsapp" placeholder="9370xxxxxxx">
-                    <small class="text-secondary">Default number; each branch can override below.</small>
                   </div>
                   <div class="col-12 col-md-4">
                     <label class="form-label" for="biz-email">Email</label>
@@ -175,6 +190,10 @@
                   <div class="col-12 col-md-4">
                     <label class="form-label" for="biz-website">Website</label>
                     <input class="form-control" id="biz-website" name="business.website">
+                  </div>
+                  <div class="col-12 col-md-4">
+                    <label class="form-label" for="biz-tax-id">Tax / registration number</label>
+                    <input class="form-control" id="biz-tax-id" name="business.tax_id">
                   </div>
                   <div class="col-12 col-md-4">
                     <label class="form-label" for="biz-currency-code">Currency code</label>
@@ -192,70 +211,55 @@
                     </select>
                   </div>
                 </div>
-                <div class="mt-3">
-                  <button type="submit" class="btn btn-primary"><i class="bi bi-building" aria-hidden="true"></i> Save business identity</button>
+                <div class="mt-1">
+                  <button type="submit" class="btn btn-primary"><i class="bi bi-image" aria-hidden="true"></i> Save logo &amp; header</button>
                 </div>
               </form>
-            </div>
-          </section>
-        </div>
 
-        <!-- =====================================================
-             Admin-only: Invoice / bill content (global defaults)
-             ===================================================== -->
-        <div class="col-12" id="invoice-section" hidden>
-          <section class="mbms-card card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-              <span class="mbms-card-header"><i class="bi bi-receipt" aria-hidden="true"></i> Invoice content (defaults)</span>
-              <span class="badge text-bg-primary">Admin only</span>
-            </div>
-            <div class="card-body">
-              <p class="text-secondary small mb-3">
-                These values apply when a branch does not set its own invoice header or footer.
-                Use <strong>Branch invoice profiles</strong> below for Kabul, Maidan/Wardak, and Ghazni.
-              </p>
+              <hr class="my-4">
+
               <form id="invoice-form" novalidate>
-                <div class="row g-3">
-                  <div class="col-12 col-md-4">
-                    <label class="form-label" for="inv-prefix">Invoice number prefix</label>
-                    <input class="form-control" id="inv-prefix" name="invoice.prefix" placeholder="INV">
-                  </div>
-                  <div class="col-12 col-md-8">
-                    <label class="form-label" for="inv-header-note">Header note (optional)</label>
-                    <input class="form-control" id="inv-header-note" name="invoice.header_note">
-                  </div>
-                  <div class="col-12">
-                    <label class="form-label" for="inv-footer-note">Footer note</label>
-                    <input class="form-control" id="inv-footer-note" name="invoice.footer_note" placeholder="Thank you for your business.">
-                  </div>
-                  <div class="col-12 col-md-6">
-                    <label class="form-label" for="inv-terms">Terms &amp; conditions</label>
-                    <textarea class="form-control" id="inv-terms" name="invoice.terms" rows="4"></textarea>
-                  </div>
-                  <div class="col-12 col-md-6">
-                    <label class="form-label" for="inv-bank">Bank / payment details</label>
-                    <textarea class="form-control" id="inv-bank" name="invoice.bank_details" rows="4" placeholder="Bank name, Account name, Account number"></textarea>
-                  </div>
-                  <div class="col-12 col-md-6">
-                    <label class="form-label" for="inv-sign-customer">Customer signature label</label>
-                    <input class="form-control" id="inv-sign-customer" name="invoice.signature_customer_label" placeholder="Customer signature">
-                  </div>
-                  <div class="col-12 col-md-6">
-                    <label class="form-label" for="inv-sign-authorized">Authorized signature label</label>
-                    <input class="form-control" id="inv-sign-authorized" name="invoice.signature_authorized_label" placeholder="Authorized signature">
-                  </div>
-                  <div class="col-12">
-                    <div class="form-check form-switch">
+                <div id="invoice-section">
+                  <h3 class="h6 text-uppercase text-secondary mb-2">Footer &amp; invoice text</h3>
+                  <div class="row g-3">
+                    <div class="col-12 col-md-4">
+                      <label class="form-label" for="inv-prefix">Invoice number prefix</label>
+                      <input class="form-control" id="inv-prefix" name="invoice.prefix" placeholder="INV">
+                    </div>
+                    <div class="col-12 col-md-8">
+                      <label class="form-label" for="inv-header-note">Header note (under company name)</label>
+                      <input class="form-control" id="inv-header-note" name="invoice.header_note" placeholder="Optional short note">
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label" for="inv-footer-note">Footer thank-you text</label>
+                      <input class="form-control" id="inv-footer-note" name="invoice.footer_note" placeholder="Thank you for your business.">
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <label class="form-label" for="inv-terms">Terms &amp; conditions (footer)</label>
+                      <textarea class="form-control" id="inv-terms" name="invoice.terms" rows="3"></textarea>
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <label class="form-label" for="inv-bank">Bank / payment details (footer)</label>
+                      <textarea class="form-control" id="inv-bank" name="invoice.bank_details" rows="3" placeholder="Bank name, Account name, Account number"></textarea>
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <label class="form-label" for="inv-sign-customer">Customer signature label</label>
+                      <input class="form-control" id="inv-sign-customer" name="invoice.signature_customer_label" placeholder="Customer signature">
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <label class="form-label" for="inv-sign-authorized">Authorized signature label</label>
+                      <input class="form-control" id="inv-sign-authorized" name="invoice.signature_authorized_label" placeholder="Authorized signature">
+                    </div>
+                    <div class="col-12" hidden>
                       <input class="form-check-input" type="checkbox" id="inv-watermark" name="invoice.show_watermark">
-                      <label class="form-check-label" for="inv-watermark">Legacy watermark setting (disabled — invoices stay clean with no background stamp)</label>
                     </div>
                   </div>
-                </div>
-                <div class="d-flex flex-wrap gap-2 mt-3">
-                  <button type="submit" class="btn btn-primary"><i class="bi bi-receipt" aria-hidden="true"></i> Save invoice settings</button>
-                  <a class="btn btn-outline-secondary" href="bill.html" target="_blank" rel="noopener">
-                    <i class="bi bi-box-arrow-up-right"></i> Preview a bill
-                  </a>
+                  <div class="d-flex flex-wrap gap-2 mt-3">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-type" aria-hidden="true"></i> Save footer &amp; invoice text</button>
+                    <a class="btn btn-outline-secondary" href="sales.html" rel="noopener">
+                      <i class="bi bi-receipt"></i> Open sales to preview an invoice
+                    </a>
+                  </div>
                 </div>
               </form>
             </div>
@@ -263,19 +267,18 @@
         </div>
 
         <!-- =====================================================
-             Admin-only: Per-branch invoice header / footer
+             Per-branch invoice header / footer (all users)
              ===================================================== -->
         <div class="col-12" id="branch-invoice-section" hidden>
           <section class="mbms-card card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-              <span class="mbms-card-header"><i class="bi bi-geo-alt" aria-hidden="true"></i> Branch invoice profiles</span>
-              <span class="badge text-bg-primary">Admin only</span>
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <span class="mbms-card-header"><i class="bi bi-geo-alt" aria-hidden="true"></i> Branch invoice profile — logo, header &amp; footer</span>
+              <span class="badge text-bg-success">Per location</span>
             </div>
             <div class="card-body">
               <p class="text-secondary small mb-3">
-                Each location (Kabul, Maidan/Wardak, Ghazni) can show its own logo, name, phone,
-                WhatsApp, address, and footer on sale invoices. Leave a field blank to use the
-                global business / invoice defaults above.
+                Choose a branch and set its invoice logo, company name, phone, WhatsApp, address,
+                header note, and footer text. Leave a field blank to keep the global default above.
               </p>
               <form id="branch-invoice-form" novalidate>
                 <div class="row g-3">
@@ -286,16 +289,22 @@
                     </select>
                   </div>
                   <div class="col-12 col-md-6">
-                    <label class="form-label" for="branch-legal-name">Branch display name</label>
+                    <label class="form-label" for="branch-legal-name">Display name on invoice</label>
                     <input class="form-control" id="branch-legal-name" name="legal_name" placeholder="Olfat Trading — Kabul">
                   </div>
                   <div class="col-12 col-md-6">
-                    <label class="form-label" for="branch-tagline">Tagline</label>
+                    <label class="form-label" for="branch-tagline">Header tagline</label>
                     <input class="form-control" id="branch-tagline" name="tagline" placeholder="Kabul Branch Sales Invoice">
                   </div>
                   <div class="col-12 col-md-6">
                     <label class="form-label" for="branch-logo-url">Logo URL</label>
                     <input class="form-control" id="branch-logo-url" name="logo_url" placeholder="/assets/images/logo.svg">
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <div class="border rounded p-2 bg-white d-flex align-items-center justify-content-center" style="min-height:64px">
+                      <img id="branch-logo-preview" alt="Branch logo preview" style="max-height:48px;max-width:100%;object-fit:contain" hidden>
+                      <span class="small text-secondary" id="branch-logo-preview-empty">Logo preview</span>
+                    </div>
                   </div>
                   <div class="col-12 col-md-6">
                     <label class="form-label" for="branch-address-1">Address line 1</label>
@@ -330,7 +339,7 @@
                     <input class="form-control" id="branch-header-note" name="header_note">
                   </div>
                   <div class="col-12">
-                    <label class="form-label" for="branch-footer-note">Footer note</label>
+                    <label class="form-label" for="branch-footer-note">Footer text</label>
                     <input class="form-control" id="branch-footer-note" name="footer_note" placeholder="Thank you for your business.">
                   </div>
                   <div class="col-12 col-md-6">
@@ -376,7 +385,7 @@
   <script defer src="../assets/js/layout.js"></script>
   <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
-  <script defer src="../assets/js/pages/settings-page.js"></script>
+  <script defer src="../assets/js/pages/settings-page.js?v=20261015g"></script>
   <script defer src="../assets/js/app.js"></script>
 </body>
 </html>

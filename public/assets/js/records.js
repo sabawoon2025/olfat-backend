@@ -400,8 +400,8 @@
     homeExpenses: {
       auth: 'Authorization: Bearer {token}',
       list: { method: 'GET', path: '/home-expenses', params: ['category', 'search', 'date_from', 'date_to'] },
-      create: { method: 'POST', path: '/home-expenses', fields: ['category', 'description', 'amount', 'date'], validation: 'category, amount, date required' },
-      update: { method: 'PUT', path: '/home-expenses/{id}', fields: ['category', 'description', 'amount', 'date'] },
+      create: { method: 'POST', path: '/home-expenses', fields: ['category', 'description', 'amount', 'expense_date', 'date'], validation: 'category, amount, expense_date (or date) required' },
+      update: { method: 'PUT', path: '/home-expenses/{id}', fields: ['category', 'description', 'amount', 'expense_date', 'date'] },
       response: 'id, category, description, amount, date, user',
       note: 'Must not affect business profit/loss. Visibility among users is an open question.'
     },

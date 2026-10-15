@@ -107,4 +107,27 @@ class Phase8ModulesTest extends TestCase
 
         $this->getJson('/api/v1/home-expenses')->assertOk();
     }
+
+    public function test_home_expense_accepts_date_alias_from_ui_form(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+
+        $response = $this->postJson('/api/v1/home-expenses', [
+            'category' => 'Household',
+            'description' => 'Kitchen supplies',
+            'amount' => 2000,
+            'date' => '2026-10-14',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.category', 'Household')
+            ->assertJsonPath('data.amount', '2000.00');
+
+        $this->assertTrue(
+            \App\Models\HomeExpense::query()
+                ->where('category', 'Household')
+                ->whereDate('expense_date', '2026-10-14')
+                ->exists()
+        );
+    }
 }

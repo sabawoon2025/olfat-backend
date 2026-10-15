@@ -263,11 +263,13 @@
 
           var method = id ? 'put' : 'post';
           var path = 'home-expenses' + (id ? '/' + id : '');
+          var expenseDate = values.date || values.expense_date || todayIso();
           var record = {
             category: values.category,
             description: values.description || null,
             amount: amount,
-            date: values.date || todayIso()
+            date: expenseDate,
+            expense_date: expenseDate
           };
 
           return global.MBMS_RECORDS.submitOrMock(method, path, record).then(function (result) {

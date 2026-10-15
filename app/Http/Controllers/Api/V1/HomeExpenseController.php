@@ -40,6 +40,8 @@ class HomeExpenseController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $this->mergeExpenseDateAlias($request);
+
         $data = $request->validate([
             'category' => ['required', 'string', 'max:80'],
             'description' => ['nullable', 'string', 'max:255'],
@@ -64,6 +66,8 @@ class HomeExpenseController extends Controller
 
     public function update(Request $request, HomeExpense $homeExpense): JsonResponse
     {
+        $this->mergeExpenseDateAlias($request);
+
         $data = $request->validate([
             'category' => ['sometimes', 'required', 'string', 'max:80'],
             'description' => ['nullable', 'string', 'max:255'],
@@ -82,5 +86,17 @@ class HomeExpenseController extends Controller
         $homeExpense->delete();
 
         return ApiResponse::success(null, 'Home expense deleted');
+    }
+
+    /**
+     * UI forms historically send `date`; the API column is `expense_date`.
+     */
+    private function mergeExpenseDateAlias(Request $request): void
+    {
+        if (! $request->filled('expense_date') && $request->filled('date')) {
+            $request->merge([
+                'expense_date' => $request->input('date'),
+            ]);
+        }
     }
 }

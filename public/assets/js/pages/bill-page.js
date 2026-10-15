@@ -590,15 +590,21 @@
     renderFooter(sale);
   }
 
+  function customerName(sale) {
+    return textOrFallback(sale && sale.customer, 'Customer');
+  }
+
   function whatsAppText(sale) {
+    var number = invoiceNumber(sale);
+    var customer = customerName(sale);
     var lines = [];
     lines.push('*' + billSettings.businessName + '*');
+    lines.push('Invoice *' + number + '*');
+    lines.push('Customer: *' + customer + '*');
     if (sale.location) {
-      lines.push(sale.location + ' branch');
+      lines.push('Location: ' + sale.location);
     }
-    lines.push('Invoice: ' + invoiceNumber(sale));
     lines.push('Date: ' + (sale.date || ''));
-    lines.push('Customer: ' + (sale.customer || ''));
     lines.push('');
     normalizeItems(sale).forEach(function (line, index) {
       var label = [line.product, line.variant].filter(Boolean).join(' · ') || 'Item';
@@ -621,7 +627,7 @@
       lines.push('Contact: ' + (billSettings.whatsapp || billSettings.phone));
     }
     lines.push('');
-    lines.push('_PDF invoice attached / downloaded_');
+    lines.push('PDF: ' + invoiceFileName(sale));
     return lines.join('\n');
   }
 
@@ -660,48 +666,180 @@
     return pdfLibsPromise;
   }
 
-  function invoiceFileName(sale) {
-    var number = invoiceNumber(sale).replace(/[^\w.-]+/g, '_');
-    return number + '.pdf';
+  function safeFilePart(value) {
+    return String(value == null ? '' : value)
+      .trim()
+      .replace(/[^\w.\-]+/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '');
   }
 
+  function invoiceFileName(sale) {
+    var number = safeFilePart(invoiceNumber(sale)) || 'Invoice';
+    var customer = safeFilePart(customerName(sale));
+    return customer ? (number + '_' + customer + '.pdf') : (number + '.pdf');
+  }
+
+  function waitFrames(count) {
+    return new Promise(function (resolve) {
+      function tick(left) {
+        if (left <= 0) {
+          resolve();
+          return;
+        }
+        global.requestAnimationFrame(function () {
+          tick(left - 1);
+        });
+      }
+      tick(count || 2);
+    });
+  }
+
+  /**
+   * Capture the invoice at a fixed A4 width on every device (phone/desktop),
+   * then embed into a real A4 PDF page (210 × 297 mm).
+   */
   function buildPdfBlob(sale) {
     var paper = document.getElementById('bill-paper');
+    var shell = document.getElementById('bill-root') || document.getElementById('bill-shell');
     if (!paper) {
       return Promise.reject({ message: 'Invoice paper is not ready.' });
     }
 
-    return ensurePdfLibs().then(function () {
-      return global.html2canvas(paper, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        logging: false
-      });
-    }).then(function (canvas) {
-      var imgData = canvas.toDataURL('image/jpeg', 0.95);
-      var JsPDF = global.jspdf.jsPDF;
-      var pdf = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      var pageWidth = pdf.internal.pageSize.getWidth();
-      var pageHeight = pdf.internal.pageSize.getHeight();
-      var imgWidth = pageWidth;
-      var imgHeight = (canvas.height * imgWidth) / canvas.width;
-      var heightLeft = imgHeight;
-      var position = 0;
+    var A4_WIDTH_PX = 794; // 210mm at 96dpi — consistent capture width on all devices
+    var previous = {
+      paperWidth: paper.style.width,
+      paperMaxWidth: paper.style.maxWidth,
+      paperMinWidth: paper.style.minWidth,
+      paperHeight: paper.style.height,
+      paperMinHeight: paper.style.minHeight,
+      paperPadding: paper.style.padding,
+      paperBoxShadow: paper.style.boxShadow,
+      paperBorderRadius: paper.style.borderRadius,
+      paperMargin: paper.style.margin,
+      shellOverflow: shell ? shell.style.overflow : '',
+      shellWidth: shell ? shell.style.width : '',
+      captureClass: paper.classList.contains('is-pdf-capture')
+    };
 
-      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 2) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-        heightLeft -= pageHeight;
+    function restoreLayout() {
+      paper.style.width = previous.paperWidth;
+      paper.style.maxWidth = previous.paperMaxWidth;
+      paper.style.minWidth = previous.paperMinWidth;
+      paper.style.height = previous.paperHeight;
+      paper.style.minHeight = previous.paperMinHeight;
+      paper.style.padding = previous.paperPadding;
+      paper.style.boxShadow = previous.paperBoxShadow;
+      paper.style.borderRadius = previous.paperBorderRadius;
+      paper.style.margin = previous.paperMargin;
+      paper.classList.remove('is-pdf-capture');
+      if (shell) {
+        shell.style.overflow = previous.shellOverflow;
+        shell.style.width = previous.shellWidth;
       }
+    }
 
-      return pdf.output('blob');
-    });
+    paper.classList.add('is-pdf-capture');
+    paper.style.width = A4_WIDTH_PX + 'px';
+    paper.style.maxWidth = A4_WIDTH_PX + 'px';
+    paper.style.minWidth = A4_WIDTH_PX + 'px';
+    paper.style.height = 'auto';
+    paper.style.minHeight = '0';
+    paper.style.padding = '32px 38px';
+    paper.style.boxShadow = 'none';
+    paper.style.borderRadius = '0';
+    paper.style.margin = '0 auto';
+    if (shell) {
+      shell.style.overflow = 'visible';
+      shell.style.width = Math.max(A4_WIDTH_PX + 40, shell.clientWidth || 0) + 'px';
+    }
+
+    return ensurePdfLibs()
+      .then(function () {
+        return waitFrames(3);
+      })
+      .then(function () {
+        return global.html2canvas(paper, {
+          scale: 2,
+          width: A4_WIDTH_PX,
+          windowWidth: A4_WIDTH_PX,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          scrollX: 0,
+          scrollY: 0
+        });
+      })
+      .then(function (canvas) {
+        restoreLayout();
+
+        var imgData = canvas.toDataURL('image/jpeg', 0.96);
+        var JsPDF = global.jspdf.jsPDF;
+        var pdf = new JsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4',
+          compress: true
+        });
+
+        var pageWidth = pdf.internal.pageSize.getWidth();   // 210
+        var pageHeight = pdf.internal.pageSize.getHeight(); // 297
+        var imgWidth = pageWidth;
+        var imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        // Always produce A4 pages. Short invoices sit on one A4 page;
+        // taller invoices continue onto the next A4 page(s).
+        if (imgHeight <= pageHeight) {
+          pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
+        } else {
+          var pageCanvas = document.createElement('canvas');
+          var pageCtx = pageCanvas.getContext('2d');
+          var pxPerMm = canvas.width / imgWidth;
+          var pageSlicePx = Math.floor(pageHeight * pxPerMm);
+          var sourceOffset = 0;
+
+          while (sourceOffset < canvas.height) {
+            var sliceHeight = Math.min(pageSlicePx, canvas.height - sourceOffset);
+            pageCanvas.width = canvas.width;
+            pageCanvas.height = sliceHeight;
+            pageCtx.fillStyle = '#ffffff';
+            pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+            pageCtx.drawImage(
+              canvas,
+              0,
+              sourceOffset,
+              canvas.width,
+              sliceHeight,
+              0,
+              0,
+              canvas.width,
+              sliceHeight
+            );
+
+            var sliceData = pageCanvas.toDataURL('image/jpeg', 0.96);
+            var sliceMm = sliceHeight / pxPerMm;
+            if (sourceOffset > 0) {
+              pdf.addPage('a4', 'portrait');
+            }
+            pdf.addImage(sliceData, 'JPEG', 0, 0, imgWidth, sliceMm, undefined, 'FAST');
+            sourceOffset += sliceHeight;
+          }
+        }
+
+        // Ensure page format metadata is A4 even for single-page invoices.
+        pdf.setProperties({
+          title: invoiceNumber(sale) + ' — ' + customerName(sale),
+          subject: 'Sale invoice',
+          creator: billSettings.businessName || 'MBMS'
+        });
+
+        return pdf.output('blob');
+      })
+      .catch(function (error) {
+        restoreLayout();
+        throw error;
+      });
   }
 
   function downloadBlob(blob, filename) {
@@ -773,14 +911,19 @@
         && typeof navigator.canShare === 'function'
         && navigator.canShare({ files: [file] });
 
+      var shareTitle = invoiceNumber(currentSale) + ' — ' + customerName(currentSale);
+
       if (canShareFiles) {
         return navigator.share({
           files: [file],
-          title: invoiceNumber(currentSale),
+          title: shareTitle,
           text: caption
         }).then(function () {
           if (global.MBMS_UI) {
-            global.MBMS_UI.notify({ type: 'success', message: 'Invoice shared. Choose WhatsApp if prompted.' });
+            global.MBMS_UI.notify({
+              type: 'success',
+              message: 'Shared ' + shareTitle + '. Choose WhatsApp if prompted.'
+            });
           }
         });
       }
@@ -791,7 +934,7 @@
         global.MBMS_UI.notify({
           type: 'success',
           title: 'PDF ready for WhatsApp',
-          message: 'Invoice PDF downloaded. Attach ' + fileName + ' in the WhatsApp chat that just opened.'
+          message: 'Downloaded ' + fileName + '. Attach it in the WhatsApp chat for ' + customerName(currentSale) + '.'
         });
       }
     }).catch(function (error) {
