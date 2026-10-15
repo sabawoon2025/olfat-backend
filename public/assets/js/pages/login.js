@@ -149,6 +149,10 @@
         });
       }
 
+      if (global.MBMS_PASSWORD_RESET && typeof global.MBMS_PASSWORD_RESET.bind === 'function') {
+        global.MBMS_PASSWORD_RESET.bind();
+      }
+
       if (!form) {
         return;
       }

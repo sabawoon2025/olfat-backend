@@ -38,13 +38,17 @@
     }
   }
 
-  global.MBMS_PAGE = {
-    title: 'Reset password',
-    onReady: function () {
-      showStep('request');
+  var bound = false;
 
-      var forgotForm = document.getElementById('forgot-form');
-      var resetForm = document.getElementById('reset-form');
+  function bind() {
+    if (bound) {
+      return;
+    }
+    bound = true;
+    showStep('request');
+
+    var forgotForm = document.getElementById('forgot-form');
+    var resetForm = document.getElementById('reset-form');
 
       if (forgotForm) {
         global.MBMS_UI.bindForm(forgotForm, {
@@ -107,6 +111,14 @@
           }
         });
       }
-    }
-  };
+  }
+
+  global.MBMS_PASSWORD_RESET = { bind: bind };
+
+  if (!document.getElementById('login-form')) {
+    global.MBMS_PAGE = {
+      title: 'Reset password',
+      onReady: bind
+    };
+  }
 })(window);

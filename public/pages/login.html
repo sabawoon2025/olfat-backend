@@ -46,6 +46,7 @@
 
       <section class="auth-card" aria-labelledby="login-heading">
         <div class="auth-card-body">
+          <div id="login-view">
           <header class="auth-card-head">
             <span class="auth-card-badge" aria-hidden="true"><i class="bi bi-shield-lock-fill"></i></span>
             <h2 class="auth-card-title" id="login-heading">Sign in</h2>
@@ -83,7 +84,7 @@
                 <label class="form-label mb-0" for="password">
                   <i class="bi bi-key-fill form-label-icon" aria-hidden="true"></i> Password
                 </label>
-                <a class="auth-link" href="forgot-password.html">Forgot password?</a>
+                <a class="auth-link" id="show-forgot-password" href="#reset">Forgot password?</a>
               </div>
               <div class="mbms-password-wrap mt-2">
                 <input class="form-control auth-input" id="password" name="password" type="password" autocomplete="current-password" required placeholder="Enter your password">
@@ -103,6 +104,58 @@
           </form>
 
           <p class="auth-card-foot">Kabul · Maidan/Wardak · Ghazni — closed accounts for the three brothers</p>
+          </div>
+
+          <div id="forgot-view" hidden>
+            <header class="auth-card-head">
+              <span class="auth-card-badge" aria-hidden="true"><i class="bi bi-envelope-lock-fill"></i></span>
+              <h2 class="auth-card-title" id="reset-heading">Reset password</h2>
+              <p class="auth-card-sub" id="reset-sub">Enter your account email. We will send a 6-digit confirmation code.</p>
+            </header>
+            <div class="alert alert-danger d-flex align-items-start gap-2 auth-alert" id="reset-error" hidden>
+              <i class="bi bi-exclamation-circle-fill flex-shrink-0 mt-1" aria-hidden="true"></i>
+              <span id="reset-error-text"></span>
+            </div>
+            <div class="alert alert-success d-flex align-items-start gap-2 auth-alert" id="reset-success" hidden>
+              <i class="bi bi-check-circle-fill flex-shrink-0 mt-1" aria-hidden="true"></i>
+              <span id="reset-success-text"></span>
+            </div>
+            <form id="forgot-form" novalidate>
+              <div class="mbms-field auth-field">
+                <label class="form-label" for="forgot-email">Email</label>
+                <input class="form-control auth-input" id="forgot-email" name="email" type="email" required autocomplete="email" placeholder="your@email.com">
+                <div class="invalid-feedback" data-error-for="email">Enter your email.</div>
+              </div>
+              <button type="submit" class="btn btn-primary mbms-btn-block auth-submit">
+                <span class="auth-submit-label"><i class="bi bi-send" aria-hidden="true"></i> Send code</span>
+              </button>
+            </form>
+            <form id="reset-form" novalidate hidden>
+              <div class="mbms-field auth-field">
+                <label class="form-label" for="reset-email">Email</label>
+                <input class="form-control auth-input" id="reset-email" name="email" type="email" required autocomplete="email">
+              </div>
+              <div class="mbms-field auth-field">
+                <label class="form-label" for="reset-code">Confirmation code</label>
+                <input class="form-control auth-input" id="reset-code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required placeholder="6-digit code" autocomplete="one-time-code">
+                <div class="invalid-feedback" data-error-for="code">Enter the 6-digit code from your email.</div>
+              </div>
+              <div class="mbms-field auth-field">
+                <label class="form-label" for="reset-password">New password</label>
+                <input class="form-control auth-input" id="reset-password" name="password" type="password" required autocomplete="new-password" placeholder="New password">
+              </div>
+              <div class="mbms-field auth-field">
+                <label class="form-label" for="reset-password-confirmation">Confirm new password</label>
+                <input class="form-control auth-input" id="reset-password-confirmation" name="password_confirmation" type="password" required autocomplete="new-password" placeholder="Confirm password">
+              </div>
+              <button type="submit" class="btn btn-primary mbms-btn-block auth-submit">
+                <span class="auth-submit-label"><i class="bi bi-shield-check" aria-hidden="true"></i> Set new password</span>
+              </button>
+            </form>
+            <p class="auth-card-foot">
+              <a class="auth-link" id="back-to-login" href="#signin"><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to sign in</a>
+            </p>
+          </div>
         </div>
       </section>
     </div>
@@ -119,7 +172,48 @@
   <script defer src="../assets/js/nav.js"></script>
   <script defer src="../assets/js/auth.js?v=20261015m"></script>
   <script defer src="../assets/js/layout.js"></script>
-  <script defer src="../assets/js/pages/login.js?v=20261015m"></script>
-  <script defer src="../assets/js/app.js?v=20261015p"></script>
+  <script>
+    (function () {
+      var loginView = document.getElementById('login-view');
+      var forgotView = document.getElementById('forgot-view');
+      var showLink = document.getElementById('show-forgot-password');
+      var backLink = document.getElementById('back-to-login');
+      if (!loginView || !forgotView || !showLink) {
+        return;
+      }
+      function showForgot(event) {
+        if (event) {
+          event.preventDefault();
+        }
+        loginView.hidden = true;
+        forgotView.hidden = false;
+        var selected = document.getElementById('email');
+        var email = document.getElementById('forgot-email');
+        if (selected && email && selected.value && !email.value) {
+          email.value = selected.value;
+        }
+        if (email) {
+          email.focus();
+        }
+      }
+      function showLogin(event) {
+        if (event) {
+          event.preventDefault();
+        }
+        forgotView.hidden = true;
+        loginView.hidden = false;
+      }
+      showLink.addEventListener('click', showForgot);
+      if (backLink) {
+        backLink.addEventListener('click', showLogin);
+      }
+      if (location.hash === '#reset') {
+        showForgot();
+      }
+    })();
+  </script>
+  <script defer src="../assets/js/pages/forgot-password-page.js?v=20261015q"></script>
+  <script defer src="../assets/js/pages/login.js?v=20261015q"></script>
+  <script defer src="../assets/js/app.js?v=20261015q"></script>
 </body>
 </html>
