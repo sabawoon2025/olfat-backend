@@ -84,10 +84,10 @@ html[dir="rtl"] body.bill-page {
 
 .bill-paper {
   position: relative;
-  display: flex;
-  flex-direction: column;
+  display: block; /* not flex-column — avoids empty stretch between table and footer */
   width: var(--bill-page-width);
-  min-height: var(--bill-page-height);
+  height: auto;
+  min-height: 0;
   padding: var(--bill-page-margin);
   background: var(--bill-paper);
   border: 1px solid var(--bill-line);
@@ -96,7 +96,7 @@ html[dir="rtl"] body.bill-page {
   color: var(--bill-ink);
   font-size: 9pt;
   line-height: 1.35;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* No watermark — keep background clean for print/PDF */
@@ -108,7 +108,6 @@ html[dir="rtl"] body.bill-page {
 
 .bill-header {
   margin: 0 0 6pt;
-  flex: 0 0 auto;
 }
 
 .bill-header-grid {
@@ -243,7 +242,6 @@ html[dir="rtl"] body.bill-page {
   grid-template-columns: 1fr 1fr;
   gap: 6pt;
   margin-block-end: 6pt;
-  flex: 0 0 auto;
 }
 
 .bill-info-box {
@@ -294,14 +292,16 @@ html[dir="rtl"] body.bill-page {
 
 /* ---------- Items table --------------------------------------------------- */
 
-/* Table height follows rows only — never stretch into a blank block */
+/* Table height = row count only. Footer follows immediately after. */
 .bill-table-wrap {
-  flex: 0 0 auto;
+  display: block;
   border: 1px solid var(--bill-line);
   border-radius: 6px;
   overflow: hidden;
-  min-height: 0;
-  height: auto;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  flex: none !important;
 }
 
 .bill-table {
@@ -383,7 +383,6 @@ html[dir="rtl"] body.bill-page {
   gap: 8pt;
   margin-block-start: 7pt;
   align-items: start;
-  flex: 0 0 auto;
 }
 
 .bill-after-start {
@@ -499,12 +498,11 @@ html[dir="rtl"] .bill-notes {
 /* ---------- Footer (single slim band) ------------------------------------- */
 
 .bill-footer {
-  /* Keep footer after content; empty space sits below footer, not inside the table */
+  display: block;
   margin-block-start: 10pt;
   padding-block-start: 6pt;
   border-block-start: 1px solid var(--bill-line);
   text-align: center;
-  flex: 0 0 auto;
 }
 
 .bill-footer-terms,
@@ -613,12 +611,20 @@ html[dir="rtl"] .bill-notes {
 
   .bill-paper {
     width: 210mm;
-    min-height: 297mm;
+    height: auto !important;
+    min-height: 0 !important;
     padding: 8mm 10mm 7mm;
     border: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
     margin: 0 auto;
+    display: block !important;
+  }
+
+  .bill-table-wrap {
+    height: auto !important;
+    min-height: 0 !important;
+    flex: none !important;
   }
 
   .bill-table thead {
