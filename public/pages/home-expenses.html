@@ -18,7 +18,7 @@
   </script>
   <link rel="stylesheet" href="../assets/css/tokens.css">
   <link rel="stylesheet" href="../assets/css/layout.css">
-  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/components.css?v=20261015k">
 </head>
 <body data-page="home-expenses">
   <div id="page-content">
@@ -38,7 +38,7 @@
 
       <div class="mbms-toolbar">
         <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search category or description…" autocomplete="off">
-        <select class="form-select mbms-filter" id="list-category" aria-label="Category"></select>
+        <select class="form-select mbms-filter" id="list-category" aria-label="Category" data-ac="0"></select>
         <input class="form-control mbms-date" id="date-from" type="date" aria-label="From date">
         <input class="form-control mbms-date" id="date-to" type="date" aria-label="To date">
       </div>
@@ -74,21 +74,18 @@
             <input type="hidden" name="id" id="exp-id">
             <div class="mbms-form-section is-expense">
               <div class="mbms-form-section-title"><i class="bi bi-tag" aria-hidden="true"></i> Expense</div>
+
               <div class="mbms-field">
                 <label class="form-label" for="exp-category">Category</label>
-                <div class="d-flex flex-wrap gap-2 align-items-stretch">
-                  <select class="form-select flex-grow-1" id="exp-category" name="category" required style="min-width: min(100%, 12rem);"></select>
-                  <button type="button" class="btn btn-outline-primary text-nowrap" id="exp-add-category-btn">
-                    <i class="bi bi-plus-lg" aria-hidden="true"></i> Add new category
-                  </button>
-                </div>
-                <p class="mbms-help mb-0 mt-1">Pick a saved category, or click Add new category to type a name.</p>
+                <select class="form-select" id="exp-category" name="category" data-ac="0"></select>
               </div>
-              <div class="mbms-field mbms-new-category-panel" id="exp-category-new-wrap" hidden>
-                <label class="form-label" for="exp-category-new">New category name</label>
+
+              <div class="mbms-field mbms-new-category-panel" id="exp-category-new-wrap">
+                <label class="form-label" for="exp-category-new">Or type a new category</label>
                 <input class="form-control" id="exp-category-new" name="category_new" maxlength="80" placeholder="e.g. Rent, School fees, Utilities" autocomplete="off">
-                <small class="text-secondary">Saved with this expense and kept in the category list for next time.</small>
+                <small class="text-secondary d-block mt-1">Leave the dropdown on “Select category”, type a name here, then save. It will stay in the list next time.</small>
               </div>
+
               <div class="mbms-field mb-0">
                 <label class="form-label" for="exp-description">Description <span class="text-secondary fw-normal">(optional)</span></label>
                 <input class="form-control" id="exp-description" name="description" placeholder="What was this for?">
@@ -128,7 +125,7 @@
   <script defer src="../assets/js/config.js"></script>
   <script defer src="../assets/js/i18n.js"></script>
   <script defer src="../assets/js/api.js"></script>
-  <script defer src="../assets/js/bridge.js?v=20261015i"></script>
+  <script defer src="../assets/js/bridge.js?v=20261015k"></script>
   <script defer src="../assets/js/utils.js"></script>
   <script defer src="../assets/js/ui.js"></script>
   <script defer src="../assets/js/nav.js"></script>
@@ -136,7 +133,7 @@
   <script defer src="../assets/js/layout.js"></script>
   <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
-  <script defer src="../assets/js/pages/home-expenses-page.js?v=20261015i"></script>
+  <script defer src="../assets/js/pages/home-expenses-page.js?v=20261015k"></script>
   <script defer src="../assets/js/app.js"></script>
 </body>
 </html>

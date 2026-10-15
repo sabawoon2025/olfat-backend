@@ -956,6 +956,24 @@ body[data-page="home-expenses"] #expModal .modal-title .bi {
   background: #fff7fb;
 }
 
+.mbms-expense-modal #exp-category,
+.mbms-expense-modal #exp-category-new {
+  width: 100%;
+}
+
+.mbms-expense-modal #exp-category.mbms-ac-native,
+.mbms-expense-modal #list-category.mbms-ac-native {
+  position: static !important;
+  width: 100% !important;
+  height: auto !important;
+  padding: 0.375rem 2.25rem 0.375rem 0.75rem !important;
+  margin: 0 !important;
+  overflow: visible !important;
+  clip: auto !important;
+  white-space: normal !important;
+  border: var(--bs-border-width) solid var(--bs-border-color) !important;
+}
+
 .mbms-expense-modal .mbms-field .form-control,
 .mbms-expense-modal .mbms-field .form-select {
   min-height: 2.6rem;
