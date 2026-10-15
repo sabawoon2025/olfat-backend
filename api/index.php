@@ -79,6 +79,17 @@ if (getenv('VERCEL') !== false || getenv('VERCEL_ENV') !== false) {
         $_ENV['SESSION_DRIVER'] = 'array';
         $_SERVER['SESSION_DRIVER'] = 'array';
     }
+
+    // The log mailer writes through a log channel. storage/logs is read-only
+    // here, so an unset channel becomes a 500 on forgot-password.
+    $mailer = getenv('MAIL_MAILER');
+    $mailLogChannel = getenv('MAIL_LOG_CHANNEL');
+    if (($mailer === false || $mailer === '' || $mailer === 'log')
+        && ($mailLogChannel === false || $mailLogChannel === '')) {
+        putenv('MAIL_LOG_CHANNEL=stderr');
+        $_ENV['MAIL_LOG_CHANNEL'] = 'stderr';
+        $_SERVER['MAIL_LOG_CHANNEL'] = 'stderr';
+    }
 }
 
 // Laravel only treats cache paths starting with "/" as absolute, so this block is

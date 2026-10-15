@@ -28,6 +28,30 @@ class PasswordResetTest extends TestCase
         Mail::assertNothingSent();
     }
 
+    public function test_forgot_password_returns_a_clear_error_when_mail_cannot_be_sent(): void
+    {
+        User::factory()->create([
+            'email' => 'brother@example.com',
+            'is_active' => true,
+        ]);
+
+        Mail::shouldReceive('to')->once()->andReturnUsing(function () {
+            return new class
+            {
+                public function send(mixed $mailable): void
+                {
+                    throw new \RuntimeException('Unable to write the mail log.');
+                }
+            };
+        });
+
+        $this->postJson('/api/v1/auth/forgot-password', [
+            'email' => 'brother@example.com',
+        ])
+            ->assertStatus(503)
+            ->assertJsonPath('message', 'The confirmation email could not be sent. Try again in a moment.');
+    }
+
     public function test_forgot_password_sends_code_for_active_user(): void
     {
         Mail::fake();

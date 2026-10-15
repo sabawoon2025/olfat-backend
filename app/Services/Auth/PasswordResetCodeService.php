@@ -4,10 +4,14 @@ namespace App\Services\Auth;
 
 use App\Mail\PasswordResetCodeMail;
 use App\Models\User;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+use Throwable;
 
 class PasswordResetCodeService
 {
@@ -33,6 +37,8 @@ class PasswordResetCodeService
 
         $code = (string) random_int(100000, 999999);
 
+        $this->ensureTable();
+
         DB::table('password_reset_codes')->where('email', $email)->delete();
 
         DB::table('password_reset_codes')->insert([
@@ -44,7 +50,30 @@ class PasswordResetCodeService
             'updated_at' => now(),
         ]);
 
-        Mail::to($user->email)->send(new PasswordResetCodeMail($user->name, $code));
+        try {
+            Mail::to($user->email)->send(new PasswordResetCodeMail($user->name, $code));
+        } catch (Throwable $exception) {
+            throw new HttpException(503, 'The confirmation email could not be sent. Try again in a moment.', $exception);
+        }
+    }
+
+    /**
+     * Production hosts that cannot run Artisan during deploy still need this table.
+     */
+    private function ensureTable(): void
+    {
+        if (Schema::hasTable('password_reset_codes')) {
+            return;
+        }
+
+        Schema::create('password_reset_codes', function (Blueprint $table) {
+            $table->id();
+            $table->string('email')->index();
+            $table->string('code_hash');
+            $table->timestamp('expires_at');
+            $table->timestamp('consumed_at')->nullable();
+            $table->timestamps();
+        });
     }
 
     /**
@@ -54,6 +83,8 @@ class PasswordResetCodeService
     {
         $email = strtolower(trim($email));
         $code = trim($code);
+
+        $this->ensureTable();
 
         $row = DB::table('password_reset_codes')
             ->where('email', $email)
