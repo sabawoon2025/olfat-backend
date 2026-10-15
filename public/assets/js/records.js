@@ -189,8 +189,10 @@
     }
     el.hidden = false;
     el.innerHTML = chips.map(function (chip) {
+      var tone = chip.tone ? String(chip.tone).replace(/[^a-z0-9_-]/gi, '') : '';
+      var toneClass = tone ? ' is-' + tone : '';
       return (
-        '<div class="mbms-summary-chip">' +
+        '<div class="mbms-summary-chip' + toneClass + '">' +
         '<div class="label"><i class="bi ' + global.MBMS_UTILS.escapeHtml(chip.icon || 'bi-dot') + '" aria-hidden="true"></i> ' +
         global.MBMS_UTILS.escapeHtml(chip.label || '') + '</div>' +
         '<div class="value">' + global.MBMS_UTILS.escapeHtml(chip.value == null ? '—' : chip.value) + '</div>' +

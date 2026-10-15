@@ -29,11 +29,13 @@
           <h1><i class="bi bi-cart-check" aria-hidden="true"></i> Sales</h1>
         </div>
         <div class="mbms-page-actions">
-          <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#txModal"><i class="bi bi-cart-plus" aria-hidden="true"></i> New sale</button>
+          <button type="button" class="btn btn-primary" id="tx-open-new" data-bs-toggle="modal" data-bs-target="#txModal">
+            <i class="bi bi-cart-plus" aria-hidden="true"></i> New sale
+          </button>
         </div>
       </div>
       <div class="mbms-toolbar">
-        <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search sales">
+        <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search customer, product, variant…" autocomplete="off">
         <select class="form-select mbms-filter" id="list-category" aria-label="Category"></select>
         <select class="form-select mbms-filter" id="list-location" aria-label="Location"></select>
         <input class="form-control mbms-date" id="date-from" type="date" aria-label="From date">
@@ -50,10 +52,12 @@
               <th>Product</th>
               <th>Variant</th>
               <th>Customer</th>
-              <th>Quantity</th>
+              <th>Qty</th>
               <th>Total</th>
+              <th>Paid</th>
+              <th>Type</th>
               <th>Location</th>
-              <th>Bill</th>
+              <th>Invoice</th>
             </tr>
           </thead>
           <tbody id="tx-list-body"></tbody>
@@ -63,75 +67,137 @@
   </div>
 
   <div class="modal fade" id="txModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-      <div class="modal-content">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content mbms-sale-modal">
         <form id="tx-form" novalidate>
           <div class="modal-header">
             <h2 class="modal-title h5"><i class="bi bi-cart-plus" aria-hidden="true"></i> New sale</h2>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <div class="mbms-field">
-              <label class="form-label" for="tx-party">Customer</label>
-              <select class="form-select" id="tx-party" name="party" required></select>
+            <div class="mbms-form-section is-sale">
+              <div class="mbms-form-section-title"><i class="bi bi-person" aria-hidden="true"></i> Customer</div>
+              <div class="d-flex flex-wrap gap-2 align-items-end">
+                <div class="mbms-field flex-grow-1 mb-0" style="min-width: min(100%, 16rem);">
+                  <label class="form-label" for="tx-party">Select customer</label>
+                  <select class="form-select" id="tx-party" name="party" required data-ac="1" data-ac-placeholder="Type customer name…"></select>
+                </div>
+                <a class="btn btn-outline-primary" id="tx-add-customer" href="customers.html?add=1&amp;return=sales.html">
+                  <i class="bi bi-person-plus" aria-hidden="true"></i> Add customer
+                </a>
+              </div>
+              <p class="mbms-help mt-2 mb-0">New customer? Add them first — you’ll return here automatically.</p>
             </div>
-            <div class="mbms-field">
-              <label class="form-label" for="tx-category">Product category</label>
-              <select class="form-select" id="tx-category" name="category" required></select>
+
+            <div class="mbms-form-section is-sale">
+              <div class="mbms-form-section-title"><i class="bi bi-box-seam" aria-hidden="true"></i> Product</div>
+              <div class="row g-2">
+                <div class="col-md-4">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="tx-category">Category</label>
+                    <select class="form-select" id="tx-category" name="category" required></select>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="tx-product">Product</label>
+                    <select class="form-select" id="tx-product" name="product" required data-ac="1" data-ac-placeholder="Search product…"></select>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="tx-variant">Variant / unit</label>
+                    <select class="form-select" id="tx-variant" name="variant" required></select>
+                  </div>
+                </div>
+              </div>
+              <div class="mbms-field mt-2 mb-0">
+                <label class="form-label" for="tx-quantity">Quantity</label>
+                <input class="form-control" id="tx-quantity" name="quantity" required inputmode="decimal" min="0.01" step="0.01" placeholder="0">
+                <p class="mbms-help is-compact mb-0" id="tx-stock-hint">Choose category, product, variant, and location to see stock.</p>
+                <p class="text-danger small mb-0 mt-1" id="tx-stock-error" hidden></p>
+              </div>
             </div>
-            <div class="mbms-field">
-              <label class="form-label" for="tx-product">Product</label>
-              <select class="form-select" id="tx-product" name="product" required></select>
+
+            <div class="mbms-form-section is-sale">
+              <div class="mbms-form-section-title"><i class="bi bi-cash-coin" aria-hidden="true"></i> Price &amp; payment</div>
+              <div class="row g-2">
+                <div class="col-md-4">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="tx-price">Selling price</label>
+                    <input class="form-control" id="tx-price" name="price" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="tx-total">Total</label>
+                    <input class="form-control" id="tx-total" name="total" inputmode="decimal" min="0" step="0.01" readonly>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="tx-payment-type">Cash / Credit</label>
+                    <select class="form-select" id="tx-payment-type" name="payment_type">
+                      <option value="cash">Cash</option>
+                      <option value="credit">Credit</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div class="mbms-profit-panel mt-2" id="tx-profit-panel" hidden>
+                <div class="mbms-profit-row">
+                  <span>Last cost</span>
+                  <strong id="tx-cost-display">—</strong>
+                </div>
+                <div class="mbms-profit-row">
+                  <span>Est. profit</span>
+                  <strong id="tx-profit-display">—</strong>
+                </div>
+              </div>
+              <div class="row g-2 mt-1">
+                <div class="col-md-6">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="tx-paid">Paid amount</label>
+                    <input class="form-control" id="tx-paid" name="paid" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="tx-remaining">Remaining amount</label>
+                    <input class="form-control" id="tx-remaining" name="remaining" inputmode="decimal" min="0" step="0.01" readonly>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="mbms-field">
-              <label class="form-label" for="tx-variant">Variant / unit</label>
-              <select class="form-select" id="tx-variant" name="variant" required></select>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="tx-quantity">Quantity</label>
-              <input class="form-control" id="tx-quantity" name="quantity" required>
-              <p class="mbms-help is-compact" id="tx-stock-hint"></p>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="tx-price">Price</label>
-              <input class="form-control" id="tx-price" name="price">
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="tx-total">Total</label>
-              <input class="form-control" id="tx-total" name="total">
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="tx-payment-type">Cash / Credit</label>
-              <select class="form-select" id="tx-payment-type" name="payment_type">
-                <option value="cash">Cash</option>
-                <option value="credit">Credit</option>
-              </select>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="tx-paid">Paid amount</label>
-              <input class="form-control" id="tx-paid" name="paid">
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="tx-remaining">Remaining amount</label>
-              <input class="form-control" id="tx-remaining" name="remaining">
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="tx-date">Date</label>
-              <input class="form-control" id="tx-date" name="date" type="date" required>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="tx-location">Location</label>
-              <select class="form-select" id="tx-location" name="location" required></select>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="tx-notes">Notes</label>
-              <textarea class="form-control" id="tx-notes" name="notes" rows="2"></textarea>
+
+            <div class="mbms-form-section is-sale mb-0">
+              <div class="mbms-form-section-title"><i class="bi bi-calendar3" aria-hidden="true"></i> Date &amp; location</div>
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="tx-date">Sale date</label>
+                    <input class="form-control" id="tx-date" name="date" type="date" required>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="tx-location">Location</label>
+                    <select class="form-select" id="tx-location" name="location" required></select>
+                  </div>
+                </div>
+              </div>
+              <div class="mbms-field mt-2 mb-0">
+                <label class="form-label" for="tx-notes">Notes <span class="text-secondary fw-normal">(optional)</span></label>
+                <textarea class="form-control" id="tx-notes" name="notes" rows="2" placeholder="Optional note for this sale"></textarea>
+              </div>
             </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-outline-secondary" id="tx-reset">Reset</button>
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save sale</button>
+            <button type="submit" class="btn btn-primary" id="tx-save-btn">
+              <i class="bi bi-check2-circle" aria-hidden="true"></i> Save sale &amp; invoice
+            </button>
           </div>
         </form>
       </div>

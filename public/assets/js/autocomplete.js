@@ -8,6 +8,7 @@
   var AUTO_IDS = {
     'tx-party': true,
     'tx-product': true,
+    'tx-variant': true,
     'pay-person': true,
     'purchase-supplier': true,
     'sale-customer': true,

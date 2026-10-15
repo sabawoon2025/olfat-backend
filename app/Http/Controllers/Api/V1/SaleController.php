@@ -38,6 +38,16 @@ class SaleController extends Controller
             $query->where('payment_type', $request->string('payment_type'));
         }
 
+        if ($request->filled('product_id')) {
+            $productId = $request->integer('product_id');
+            $query->whereHas('items.variant', fn ($q) => $q->where('product_id', $productId));
+        }
+
+        if ($request->filled('product_variant_id')) {
+            $variantId = $request->integer('product_variant_id');
+            $query->whereHas('items', fn ($q) => $q->where('product_variant_id', $variantId));
+        }
+
         if ($request->filled('from')) {
             $query->where('sold_at', '>=', $request->date('from')->startOfDay());
         }

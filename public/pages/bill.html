@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Sale Bill · MBMS</title>
+  <title>Sale Invoice · MBMS</title>
   <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="../assets/vendor/bootstrap-icons/bootstrap-icons.css">
   <script>
@@ -21,11 +21,11 @@
 </head>
 <body class="bill-page" data-layout="auth" data-page="bill">
   <div class="bill-toolbar bill-no-print">
-    <div class="d-flex align-items-center gap-2">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
       <a class="btn btn-outline-secondary btn-sm" id="bill-back" href="sales.html">
         <i class="bi bi-arrow-left"></i> Back to sales
       </a>
-      <span class="small text-secondary" id="bill-toolbar-title">Sale bill</span>
+      <span class="small text-secondary" id="bill-toolbar-title">Sale invoice</span>
     </div>
     <div class="bill-toolbar-actions">
       <button type="button" class="btn btn-outline-primary btn-sm" id="bill-whatsapp">
@@ -41,108 +41,114 @@
 
   <div class="bill-shell" id="bill-root" hidden>
     <article class="bill-paper" id="bill-paper">
-      <!-- Diagonal paid/unpaid watermark -->
       <div class="bill-watermark" id="bill-watermark" hidden></div>
 
-      <!-- Header: logo + business block + invoice meta box -->
-      <header class="bill-header">
-        <div class="bill-brand">
-          <img class="bill-logo" id="bill-logo" src="../assets/images/logo.svg" alt="">
-          <div class="bill-brand-text">
-            <h1 class="bill-brand-name" id="bill-business-name">Business Name</h1>
-            <p class="bill-brand-tag" id="bill-business-tag">Sales Invoice</p>
-            <address class="bill-brand-contact" id="bill-business-address"></address>
-            <p class="bill-brand-contact" id="bill-business-contact"></p>
-            <p class="bill-brand-tax" id="bill-business-tax" hidden></p>
+      <div class="bill-topbar" aria-hidden="true"></div>
+
+      <div class="bill-main">
+        <header class="bill-header">
+          <div class="bill-brand">
+            <div class="bill-logo-frame" id="bill-logo-frame">
+              <img class="bill-logo" id="bill-logo" src="../assets/images/logo.svg" alt="Business logo">
+              <div class="bill-logo-fallback" id="bill-logo-fallback" hidden>MB</div>
+            </div>
+            <div class="bill-brand-text">
+              <h1 class="bill-brand-name" id="bill-business-name">Business Name</h1>
+              <p class="bill-brand-tag" id="bill-business-tag">Sales Invoice</p>
+              <address class="bill-brand-address" id="bill-business-address"></address>
+              <ul class="bill-contact-list" id="bill-contact-list"></ul>
+              <p class="bill-brand-tax" id="bill-business-tax" hidden></p>
+            </div>
+          </div>
+
+          <div class="bill-meta-box">
+            <div class="bill-doc-label">Tax Invoice</div>
+            <h2 class="bill-doc-title">INVOICE</h2>
+            <dl class="bill-meta-list">
+              <dt>Invoice No</dt><dd id="bill-number">—</dd>
+              <dt>Date</dt><dd id="bill-date">—</dd>
+              <dt>Location</dt><dd id="bill-province">—</dd>
+              <dt>Currency</dt><dd id="bill-currency">—</dd>
+              <dt>Status</dt><dd><span class="bill-status" id="bill-status">—</span></dd>
+            </dl>
+            <p class="bill-header-note" id="bill-header-note" hidden></p>
+          </div>
+        </header>
+
+        <section class="bill-parties">
+          <div class="bill-party">
+            <h2><i class="bi bi-person-badge" aria-hidden="true"></i> Bill To</h2>
+            <p class="bill-party-name" id="bill-customer-name">—</p>
+            <p class="bill-party-line" id="bill-customer-phone"></p>
+            <p class="bill-party-line" id="bill-customer-address"></p>
+          </div>
+          <div class="bill-party">
+            <h2><i class="bi bi-shop" aria-hidden="true"></i> Issued By</h2>
+            <p class="bill-party-name" id="bill-seller-name">—</p>
+            <p class="bill-party-line" id="bill-seller-province"></p>
+            <p class="bill-party-line" id="bill-payment-type"></p>
+          </div>
+        </section>
+
+        <div class="bill-table-wrap">
+          <table class="bill-table">
+            <thead>
+              <tr>
+                <th class="bill-col-num">#</th>
+                <th class="bill-col-item">Description</th>
+                <th class="bill-col-qty num">Qty</th>
+                <th class="bill-col-price num">Unit Price</th>
+                <th class="bill-col-total num">Amount</th>
+              </tr>
+            </thead>
+            <tbody id="bill-items-body">
+              <tr><td colspan="5" class="text-secondary">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="bill-summary">
+          <div class="bill-amount-words">
+            <span class="bill-amount-label">Amount in words</span>
+            <strong id="bill-amount-words">—</strong>
+          </div>
+          <div class="bill-totals-card">
+            <div class="bill-totals-row">
+              <span>Subtotal</span>
+              <span id="bill-subtotal">—</span>
+            </div>
+            <div class="bill-totals-row">
+              <span>Paid</span>
+              <span id="bill-paid">—</span>
+            </div>
+            <div class="bill-totals-row">
+              <span>Balance due</span>
+              <span id="bill-remaining">—</span>
+            </div>
+            <div class="bill-totals-row is-grand">
+              <span>Grand Total</span>
+              <span id="bill-total">—</span>
+            </div>
           </div>
         </div>
-        <div class="bill-meta-box">
-          <div class="bill-doc-label">Invoice</div>
-          <dl class="bill-meta-list">
-            <dt>Bill No</dt><dd id="bill-number">—</dd>
-            <dt>Date</dt><dd id="bill-date">—</dd>
-            <dt>Province</dt><dd id="bill-province">—</dd>
-            <dt>Status</dt><dd><span class="bill-status" id="bill-status">—</span></dd>
-          </dl>
-          <p class="bill-header-note" id="bill-header-note" hidden></p>
-        </div>
-      </header>
 
-      <!-- Parties: bill-to + issued-by -->
-      <section class="bill-parties">
-        <div class="bill-party">
-          <h2>Bill To</h2>
-          <p class="bill-party-name" id="bill-customer-name">—</p>
-          <p id="bill-customer-phone"></p>
-          <p id="bill-customer-address"></p>
+        <div class="bill-notes" id="bill-notes-wrap" hidden>
+          <strong>Notes</strong>
+          <p id="bill-notes"></p>
         </div>
-        <div class="bill-party">
-          <h2>Issued By</h2>
-          <p class="bill-party-name" id="bill-seller-name">—</p>
-          <p id="bill-seller-province"></p>
-          <p id="bill-payment-type"></p>
-        </div>
-      </section>
 
-      <!-- Line items table -->
-      <div class="bill-table-wrap">
-        <table class="bill-table">
-          <thead>
-            <tr>
-              <th class="bill-col-num">#</th>
-              <th class="bill-col-item">Item</th>
-              <th class="bill-col-qty num">Qty</th>
-              <th class="bill-col-price num">Unit Price</th>
-              <th class="bill-col-total num">Amount</th>
-            </tr>
-          </thead>
-          <tbody id="bill-items-body">
-            <tr><td colspan="5" class="text-secondary">Loading…</td></tr>
-          </tbody>
-        </table>
+        <section class="bill-sign">
+          <div class="bill-sign-box">
+            <span class="bill-sign-line"></span>
+            <span class="bill-sign-label" id="bill-sign-customer">Customer signature</span>
+          </div>
+          <div class="bill-sign-box">
+            <span class="bill-sign-line"></span>
+            <span class="bill-sign-label" id="bill-sign-authorized">Authorized signature</span>
+          </div>
+        </section>
       </div>
 
-      <!-- Totals -->
-      <div class="bill-totals">
-        <div class="bill-totals-card">
-          <div class="bill-totals-row">
-            <span>Subtotal</span>
-            <span id="bill-subtotal">—</span>
-          </div>
-          <div class="bill-totals-row">
-            <span>Paid</span>
-            <span id="bill-paid">—</span>
-          </div>
-          <div class="bill-totals-row">
-            <span>Remaining</span>
-            <span id="bill-remaining">—</span>
-          </div>
-          <div class="bill-totals-row is-grand">
-            <span>Total</span>
-            <span id="bill-total">—</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Optional per-sale notes -->
-      <div class="bill-notes" id="bill-notes-wrap" hidden>
-        <strong>Notes:</strong>
-        <span id="bill-notes"></span>
-      </div>
-
-      <!-- Signatures -->
-      <section class="bill-sign">
-        <div class="bill-sign-box">
-          <span class="bill-sign-line"></span>
-          <span class="bill-sign-label" id="bill-sign-customer">Customer signature</span>
-        </div>
-        <div class="bill-sign-box">
-          <span class="bill-sign-line"></span>
-          <span class="bill-sign-label" id="bill-sign-authorized">Authorized signature</span>
-        </div>
-      </section>
-
-      <!-- Footer: terms + bank + note + meta -->
       <footer class="bill-footer">
         <div class="bill-footer-grid">
           <div class="bill-footer-block" id="bill-footer-terms-wrap" hidden>
@@ -154,8 +160,10 @@
             <p id="bill-footer-bank"></p>
           </div>
         </div>
-        <p class="bill-footer-note" id="bill-footer-note"></p>
-        <p class="bill-footer-meta" id="bill-footer-meta"></p>
+        <div class="bill-footer-band">
+          <p class="bill-footer-note" id="bill-footer-note"></p>
+          <p class="bill-footer-meta" id="bill-footer-meta"></p>
+        </div>
       </footer>
     </article>
   </div>

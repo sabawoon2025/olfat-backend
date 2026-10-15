@@ -166,6 +166,8 @@ class DashboardAndReportTest extends TestCase
             ->assertJsonStructure([
                 'data' => [
                     'summary' => [
+                        'gross_sales',
+                        'returns_amount',
                         'revenue',
                         'cost',
                         'gross_profit',
@@ -175,6 +177,42 @@ class DashboardAndReportTest extends TestCase
                     'rows',
                 ],
             ]);
+    }
+
+    public function test_profit_loss_nets_sales_returns(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $location = Location::factory()->create();
+        $variant = ProductVariant::factory()->create();
+        $this->seedStock($variant->id, $location->id, $user, 20);
+
+        $sale = $this->postJson('/api/v1/sales', [
+            'customer_id' => Customer::factory()->create()->id,
+            'location_id' => $location->id,
+            'paid_amount' => 0,
+            'items' => [
+                ['product_variant_id' => $variant->id, 'quantity' => 4, 'unit_price' => 25],
+            ],
+        ])->assertCreated()->json('data');
+
+        $this->postJson('/api/v1/sales-returns', [
+            'sale_id' => $sale['id'],
+            'items' => [
+                ['sale_item_id' => $sale['items'][0]['id'], 'quantity' => 1],
+            ],
+        ])->assertCreated();
+
+        $response = $this->getJson('/api/v1/reports/profit-loss?location_id='.$location->id);
+
+        $response->assertOk()
+            ->assertJsonPath('data.summary.gross_sales', 100)
+            ->assertJsonPath('data.summary.returns_amount', 25)
+            ->assertJsonPath('data.summary.revenue', 75);
+
+        $this->assertSame(0.0, (float) $response->json('data.summary.cost'));
+        $this->assertSame(75.0, (float) $response->json('data.summary.net_profit'));
     }
 
     private function seedStock(int $variantId, int $locationId, User $user, float $qty): void

@@ -47,7 +47,12 @@ class SaleService
             $normalizedItems = [];
 
             foreach ($data['items'] as $item) {
-                $variant = ProductVariant::query()->findOrFail($item['product_variant_id']);
+                $variant = ProductVariant::query()->with('product')->findOrFail($item['product_variant_id']);
+                if ($variant->product && $variant->product->is_active === false) {
+                    throw new InvalidArgumentException(
+                        'Cannot sell inactive product: '.($variant->product->name ?: '#'.$variant->product_id)
+                    );
+                }
                 $quantity = (float) $item['quantity'];
                 $unitPrice = (float) $item['unit_price'];
 

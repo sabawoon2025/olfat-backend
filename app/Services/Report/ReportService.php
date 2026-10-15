@@ -399,7 +399,7 @@ class ReportService
         [$from, $to] = $this->normalizeDateRange($from, $to);
 
         $query = SalesReturn::query()
-            ->with(['sale', 'customer', 'location'])
+            ->with(['sale', 'customer', 'location', 'items.variant.product'])
             ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
             ->when($from, fn ($q) => $q->where('returned_at', '>=', $from->copy()->startOfDay()))
             ->when($to, fn ($q) => $q->where('returned_at', '<=', $to->copy()->endOfDay()));
@@ -482,31 +482,38 @@ class ReportService
 
     private function calculateProfitLoss(Carbon $from, Carbon $to, ?int $locationId): array
     {
-        $revenue = round((float) Sale::query()
-            ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
-            ->whereBetween('sold_at', [$from, $to])
-            ->sum('total_amount'), 2);
-
+        // Net purchase qty/cost after purchase returns (weighted-average denominator).
         $avgCosts = PurchaseItem::query()
             ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
             ->when($locationId, fn ($q) => $q->where('purchases.location_id', $locationId))
             ->where('purchases.purchased_at', '<=', $to)
             ->selectRaw('purchase_items.product_variant_id as product_variant_id')
-            ->selectRaw('SUM(purchase_items.line_total) as cost_total')
-            ->selectRaw('SUM(purchase_items.quantity) as qty_total')
+            ->selectRaw('SUM(purchase_items.unit_price * (purchase_items.quantity - COALESCE(purchase_items.returned_quantity, 0))) as cost_total')
+            ->selectRaw('SUM(purchase_items.quantity - COALESCE(purchase_items.returned_quantity, 0)) as qty_total')
             ->groupBy('purchase_items.product_variant_id')
             ->get()
             ->keyBy('product_variant_id');
 
+        // Gross sold qty/revenue before sales returns (for transparency).
         $soldItems = SaleItem::query()
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
             ->when($locationId, fn ($q) => $q->where('sales.location_id', $locationId))
             ->whereBetween('sales.sold_at', [$from, $to])
             ->selectRaw('sale_items.product_variant_id as product_variant_id')
+            ->selectRaw('SUM(sale_items.quantity) as sold_qty_gross')
+            ->selectRaw('SUM(COALESCE(sale_items.returned_quantity, 0)) as returned_qty')
             ->selectRaw('SUM(sale_items.quantity - COALESCE(sale_items.returned_quantity, 0)) as sold_qty')
-            ->selectRaw('SUM(sale_items.line_total) as revenue_total')
+            ->selectRaw('SUM(sale_items.unit_price * sale_items.quantity) as revenue_gross')
+            ->selectRaw('SUM(sale_items.unit_price * COALESCE(sale_items.returned_quantity, 0)) as returns_amount')
+            ->selectRaw('SUM(sale_items.unit_price * (sale_items.quantity - COALESCE(sale_items.returned_quantity, 0))) as revenue_total')
             ->groupBy('sale_items.product_variant_id')
             ->get();
+
+        $returnsSummary = SalesReturn::query()
+            ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
+            ->whereBetween('returned_at', [$from, $to])
+            ->selectRaw('COUNT(*) as returns_count, COALESCE(SUM(total_amount), 0) as returns_amount')
+            ->first();
 
         $variantNames = ProductVariant::query()
             ->with('product:id,name,module')
@@ -515,7 +522,13 @@ class ReportService
             ->keyBy('id');
 
         $cogs = 0.0;
+        $revenue = 0.0;
+        $grossSales = 0.0;
+        $returnsFromLines = 0.0;
         $rows = [];
+        $locationLabel = $locationId
+            ? (string) (Location::query()->whereKey($locationId)->value('name') ?: $locationId)
+            : 'All';
 
         foreach ($soldItems as $item) {
             $avg = $avgCosts->get($item->product_variant_id);
@@ -525,7 +538,16 @@ class ReportService
             $soldQty = max(0, (float) $item->sold_qty);
             $lineCogs = round($unitCost * $soldQty, 2);
             $lineRevenue = round((float) $item->revenue_total, 2);
+            $lineGross = round((float) $item->revenue_gross, 2);
+            $lineReturns = round((float) $item->returns_amount, 2);
             $cogs += $lineCogs;
+            $revenue += $lineRevenue;
+            $grossSales += $lineGross;
+            $returnsFromLines += $lineReturns;
+
+            if ($soldQty <= 0 && $lineReturns <= 0) {
+                continue;
+            }
 
             $variant = $variantNames->get($item->product_variant_id);
             $productName = $variant?->product?->name;
@@ -538,14 +560,22 @@ class ReportService
             $rows[] = [
                 'module' => $moduleLabel,
                 'product' => trim(($productName ?? 'Product').($variantName ? ' · '.$variantName : '')),
-                'location' => $locationId ? (string) $locationId : 'All',
+                'location' => $locationLabel,
+                'sold_qty' => round(max(0, (float) $item->sold_qty_gross), 4),
+                'returned_qty' => round(max(0, (float) $item->returned_qty), 4),
                 'revenue' => $lineRevenue,
+                'returns' => $lineReturns,
                 'cost' => $lineCogs,
                 'result' => round($lineRevenue - $lineCogs, 2),
             ];
         }
 
         $cogs = round($cogs, 2);
+        $revenue = round($revenue, 2);
+        $grossSales = round($grossSales, 2);
+        // Keep returns aligned with net line revenue (sale-period returned qty), not return-date totals.
+        $returnsAmount = round($returnsFromLines, 2);
+        $returnsCount = (int) ($returnsSummary->returns_count ?? 0);
         $gross = round($revenue - $cogs, 2);
         $operating = 0.0;
         $net = $gross;
@@ -556,13 +586,16 @@ class ReportService
             'method_label' => 'Weighted Average',
             'filters' => $this->filtersPayload($from, $to, $locationId),
             'summary' => [
+                'gross_sales' => $grossSales,
+                'returns_amount' => $returnsAmount,
+                'returns_count' => $returnsCount,
                 'revenue' => $revenue,
                 'cost' => $cogs,
                 'cogs' => $cogs,
                 'gross_profit' => $gross,
                 'operating_expenses' => $operating,
                 'net_profit' => $net,
-                'note' => 'COGS uses weighted-average purchase unit cost through the period end. Home expenses are excluded from business P&L.',
+                'note' => 'Net sales after returns. COGS uses weighted-average purchase unit cost through the period end. Home expenses are excluded from business P&L.',
             ],
             'rows' => $rows,
         ];

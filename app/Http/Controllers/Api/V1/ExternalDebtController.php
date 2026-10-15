@@ -16,9 +16,7 @@ use Throwable;
 
 class ExternalDebtController extends Controller
 {
-    public function __construct(private readonly ExternalDebtService $debtService)
-    {
-    }
+    public function __construct(private readonly ExternalDebtService $debtService) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -74,7 +72,7 @@ class ExternalDebtController extends Controller
     public function show(ExternalDebt $externalDebt): JsonResponse
     {
         return ApiResponse::success(
-            $externalDebt->load(['party', 'location', 'user', 'payments'])
+            $externalDebt->load(['party', 'location', 'user', 'payments.location', 'payments.user'])
         );
     }
 

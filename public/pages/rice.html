@@ -37,17 +37,22 @@
           </div>
         </div>
         <div class="mbms-toolbar">
-          <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search rice types">
+          <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search rice types" autocomplete="off">
           <select class="form-select mbms-filter" id="module-filter" aria-label="Filter rice types"></select>
+          <select class="form-select mbms-filter" id="module-status" aria-label="Filter by status">
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
         </div>
-      <div class="mbms-summary-row" id="list-summary" hidden></div>
-<div class="table-responsive">
+        <div class="mbms-summary-row" id="list-summary" hidden></div>
+        <div class="table-responsive">
           <table class="table mbms-table">
             <thead>
               <tr>
-                <th>Type</th>
-                <th>Variants</th>
-                <th>Stock display</th>
+                <th>Type / quality</th>
+                <th>Bag sizes</th>
+                <th>Stock</th>
                 <th></th>
               </tr>
             </thead>
@@ -71,7 +76,9 @@
           </div>
         </div>
 
-        <h2 class="h6 mb-2">Stock display</h2>
+        <div class="mbms-summary-row" id="detail-summary" hidden></div>
+
+        <h2 class="h6 mb-2">Stock by bag size</h2>
         <div class="row g-3 mb-3" id="variant-stock"></div>
 
         <ul class="nav nav-tabs mbms-nav-tabs" role="tablist">
@@ -119,41 +126,58 @@
   </div>
 
   <div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content">
         <form id="product-form" novalidate>
           <div class="modal-header">
-            <h2 class="modal-title h5" id="product-modal-title">Add rice type</h2>
+            <h2 class="modal-title h5" id="product-modal-title"><i class="bi bi-basket" aria-hidden="true"></i> Add rice type</h2>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
             <input type="hidden" id="product-id" name="id" value="">
-<div class="mbms-field">
-              <label class="form-label" for="product-name">Rice type / quality</label>
-              <input class="form-control" id="product-name" name="name" required placeholder="e.g. Basmati">
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="product-notes">Notes</label>
-              <textarea class="form-control" id="product-notes" name="notes" rows="2" placeholder="Optional"></textarea>
-            </div>
-            <div class="form-check mb-3">
-              <input class="form-check-input" type="checkbox" id="product-active" name="is_active" value="1" checked>
-              <label class="form-check-label" for="product-active">Active (available for purchase and sale)</label>
-            </div>
-            <div id="product-existing-variants" class="mb-3" hidden></div>
-            <div id="product-variants-wrap">
-              <div class="d-flex align-items-center justify-content-between mb-2">
-                <strong>Variants / bag sizes</strong>
-                <button type="button" class="btn btn-outline-primary btn-sm" id="product-add-variant">
-                  <i class="bi bi-plus-lg" aria-hidden="true"></i> Add variant
-                </button>
+
+            <div class="mbms-form-section is-rice">
+              <div class="mbms-form-section-title"><i class="bi bi-tag" aria-hidden="true"></i> Rice details</div>
+              <div class="mbms-field">
+                <label class="form-label" for="product-name">Rice type / quality</label>
+                <input class="form-control form-control-lg" id="product-name" name="name" required maxlength="190" autocomplete="off" placeholder="e.g. Basmati, Sella, 1121">
+                <div class="form-text">Use the quality name staff will recognize on purchases and sales.</div>
               </div>
-              <div id="product-variants-list" class="mbms-scroll-panel"></div>
+              <div class="mbms-field">
+                <label class="form-label" for="product-notes">Notes <span class="text-secondary fw-normal">(optional)</span></label>
+                <textarea class="form-control" id="product-notes" name="notes" rows="2" maxlength="2000" placeholder="Grade, origin, or packing notes"></textarea>
+              </div>
+              <div class="mbms-active-switch form-check mb-0">
+                <input class="form-check-input" type="checkbox" id="product-active" name="is_active" value="1" checked>
+                <label class="form-check-label" for="product-active">
+                  Active for purchase &amp; sale
+                  <span class="hint">Turn off to hide this rice from new purchases and sales. History stays.</span>
+                </label>
+              </div>
+            </div>
+
+            <div id="product-existing-variants" class="mbms-form-section" hidden></div>
+
+            <div id="product-variants-wrap">
+              <div class="mbms-form-section is-rice mb-0">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                  <div class="mbms-form-section-title mb-0"><i class="bi bi-box-seam" aria-hidden="true"></i> Bag sizes</div>
+                  <button type="button" class="btn btn-outline-primary btn-sm" id="product-add-variant">
+                    <i class="bi bi-plus-lg" aria-hidden="true"></i> Custom size
+                  </button>
+                </div>
+                <p class="mbms-help mb-2">Tap common bag sizes to include them. Edit quantity or unit if needed — the label updates automatically.</p>
+                <div class="mbms-preset-chips" id="product-variant-presets" aria-label="Common rice bag sizes"></div>
+                <div id="product-variants-list" class="mbms-scroll-panel"></div>
+                <p class="mbms-help mt-2 mb-0" id="product-variants-hint">Selected sizes will be saved as variants for stock, purchase, and sale.</p>
+              </div>
             </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save product</button>
+            <button type="submit" class="btn btn-primary" id="product-save-btn">
+              <i class="bi bi-check2-circle" aria-hidden="true"></i> Save rice type
+            </button>
           </div>
         </form>
       </div>
@@ -180,35 +204,53 @@
             </div>
             <div class="mbms-field" data-bags-field>
               <label class="form-label" for="purchase-bags">Number of bags</label>
-              <input class="form-control" id="purchase-bags" name="bags" inputmode="numeric">
+              <input class="form-control" id="purchase-bags" name="bags" inputmode="numeric" min="0" step="1" placeholder="e.g. 10">
             </div>
             <div class="mbms-field">
-              <label class="form-label" for="purchase-quantity">Total quantity</label>
-              <input class="form-control" id="purchase-quantity" name="quantity" required>
+              <label class="form-label" for="purchase-quantity">Total quantity (kg)</label>
+              <input class="form-control" id="purchase-quantity" name="quantity" required inputmode="decimal" min="0" step="0.01" placeholder="Auto from bags × size">
             </div>
-            <div class="mbms-field">
-              <label class="form-label" for="purchase-price">Purchase price</label>
-              <input class="form-control" id="purchase-price" name="price">
+            <div class="row g-2">
+              <div class="col-md-6">
+                <div class="mbms-field">
+                  <label class="form-label" for="purchase-price">Purchase price / unit</label>
+                  <input class="form-control" id="purchase-price" name="price" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mbms-field">
+                  <label class="form-label" for="purchase-total">Total amount</label>
+                  <input class="form-control" id="purchase-total" name="total" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+                </div>
+              </div>
             </div>
-            <div class="mbms-field">
-              <label class="form-label" for="purchase-total">Total amount</label>
-              <input class="form-control" id="purchase-total" name="total">
+            <div class="row g-2">
+              <div class="col-md-6">
+                <div class="mbms-field">
+                  <label class="form-label" for="purchase-paid">Paid amount</label>
+                  <input class="form-control" id="purchase-paid" name="paid" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mbms-field" data-remaining-field>
+                  <label class="form-label" for="purchase-remaining">Remaining payable</label>
+                  <input class="form-control" id="purchase-remaining" name="remaining" inputmode="decimal" min="0" step="0.01" readonly>
+                </div>
+              </div>
             </div>
-            <div class="mbms-field">
-              <label class="form-label" for="purchase-paid">Paid amount</label>
-              <input class="form-control" id="purchase-paid" name="paid">
-            </div>
-            <div class="mbms-field" data-remaining-field>
-              <label class="form-label" for="purchase-remaining">Remaining payable</label>
-              <input class="form-control" id="purchase-remaining" name="remaining">
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="purchase-date">Date</label>
-              <input class="form-control" id="purchase-date" name="date" type="date" required>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="purchase-location">Location</label>
-              <select class="form-select" id="purchase-location" name="location" required></select>
+            <div class="row g-2">
+              <div class="col-md-6">
+                <div class="mbms-field">
+                  <label class="form-label" for="purchase-date">Date</label>
+                  <input class="form-control" id="purchase-date" name="date" type="date" required>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mbms-field">
+                  <label class="form-label" for="purchase-location">Location</label>
+                  <select class="form-select" id="purchase-location" name="location" required></select>
+                </div>
+              </div>
             </div>
           </div>
           <div class="modal-footer">
@@ -241,23 +283,35 @@
             </div>
             <div class="mbms-field">
               <label class="form-label" for="sale-quantity">Quantity</label>
-              <input class="form-control" id="sale-quantity" name="quantity" required>
+              <input class="form-control" id="sale-quantity" name="quantity" required inputmode="decimal" min="0" step="0.01" placeholder="0">
             </div>
-            <div class="mbms-field">
-              <label class="form-label" for="sale-price">Price</label>
-              <input class="form-control" id="sale-price" name="price">
+            <div class="row g-2">
+              <div class="col-md-6">
+                <div class="mbms-field">
+                  <label class="form-label" for="sale-price">Price</label>
+                  <input class="form-control" id="sale-price" name="price" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mbms-field">
+                  <label class="form-label" for="sale-total">Total</label>
+                  <input class="form-control" id="sale-total" name="total" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+                </div>
+              </div>
             </div>
-            <div class="mbms-field">
-              <label class="form-label" for="sale-total">Total</label>
-              <input class="form-control" id="sale-total" name="total">
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="sale-paid">Paid</label>
-              <input class="form-control" id="sale-paid" name="paid">
-            </div>
-            <div class="mbms-field" data-remaining-field>
-              <label class="form-label" for="sale-remaining">Remaining debt</label>
-              <input class="form-control" id="sale-remaining" name="remaining">
+            <div class="row g-2">
+              <div class="col-md-6">
+                <div class="mbms-field">
+                  <label class="form-label" for="sale-paid">Paid</label>
+                  <input class="form-control" id="sale-paid" name="paid" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mbms-field" data-remaining-field>
+                  <label class="form-label" for="sale-remaining">Remaining debt</label>
+                  <input class="form-control" id="sale-remaining" name="remaining" inputmode="decimal" min="0" step="0.01" readonly>
+                </div>
+              </div>
             </div>
             <div class="mbms-field">
               <label class="form-label" for="sale-payment-type">Payment type</label>
@@ -266,13 +320,19 @@
                 <option value="credit">Credit</option>
               </select>
             </div>
-            <div class="mbms-field">
-              <label class="form-label" for="sale-date">Date</label>
-              <input class="form-control" id="sale-date" name="date" type="date" required>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="sale-location">Location</label>
-              <select class="form-select" id="sale-location" name="location" required></select>
+            <div class="row g-2">
+              <div class="col-md-6">
+                <div class="mbms-field">
+                  <label class="form-label" for="sale-date">Date</label>
+                  <input class="form-control" id="sale-date" name="date" type="date" required>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mbms-field">
+                  <label class="form-label" for="sale-location">Location</label>
+                  <select class="form-select" id="sale-location" name="location" required></select>
+                </div>
+              </div>
             </div>
           </div>
           <div class="modal-footer">
@@ -301,4 +361,3 @@
   <script defer src="../assets/js/app.js"></script>
 </body>
 </html>
-

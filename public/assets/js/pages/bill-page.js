@@ -1,20 +1,8 @@
 /**
- * Professional A4 sale bill:
- *   • pulls the full business + invoice branding from GET /api/v1/settings
- *   • renders the sale with print-ready A4 layout
- *   • prints via browser (Save as PDF) and shares via WhatsApp
- *
- * Setting keys read (all optional, defaults fall back cleanly):
- *   business.legal_name, business.tagline, business.logo_url,
- *   business.address_line1, business.address_line2, business.phone,
- *   business.email, business.website, business.tax_id,
- *   invoice.prefix, invoice.header_note, invoice.footer_note,
- *   invoice.terms, invoice.bank_details,
- *   invoice.signature_customer_label, invoice.signature_authorized_label,
- *   invoice.show_watermark,
- *   app.name, app.currency_code, app.currency_symbol, app.currency_position
- *
- * Legacy fallbacks: bill.phone, bill.address, bill.footer_note.
+ * Professional A4 sale invoice:
+ *   • business branding from GET /api/v1/settings
+ *   • print-ready A4 layout (browser Save as PDF)
+ *   • WhatsApp share
  */
 (function (global) {
   'use strict';
@@ -31,24 +19,25 @@
     email: '',
     website: '',
     taxId: '',
-
     invoicePrefix: 'INV',
     headerNote: '',
     footerNote: 'Thank you for your business. Please keep this bill for your records.',
-    terms: '',
+    terms: 'Goods once sold are not refundable unless damaged on delivery. All disputes must be reported within 48 hours.',
     bankDetails: '',
     signatureCustomer: 'Customer signature',
     signatureAuthorized: 'Authorized signature',
     showWatermark: true,
-
     currencyCode: 'AFN',
     currencySymbol: '',
-    currencyPosition: 'suffix' // 'prefix' | 'suffix'
+    currencyPosition: 'suffix'
   };
 
-  // ------------------------------------------------------------------
-  // Utilities
-  // ------------------------------------------------------------------
+  var ONES = [
+    '', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
+    'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen',
+    'seventeen', 'eighteen', 'nineteen'
+  ];
+  var TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
 
   function saleIdFromQuery() {
     try {
@@ -99,12 +88,6 @@
     return false;
   }
 
-  function toggle(el, show) {
-    if (el) {
-      el.hidden = !show;
-    }
-  }
-
   function setText(id, value) {
     var el = document.getElementById(id);
     if (el) {
@@ -124,9 +107,133 @@
     }
   }
 
-  // ------------------------------------------------------------------
-  // Settings loader (reads bulk /settings)
-  // ------------------------------------------------------------------
+  function defaultLogoUrl() {
+    if (global.MBMS_NAV && typeof global.MBMS_NAV.asset === 'function') {
+      return global.MBMS_NAV.asset('assets/images/logo.svg');
+    }
+    return '../assets/images/logo.svg';
+  }
+
+  function resolveLogoUrl(url) {
+    var value = textOrFallback(url, '');
+    if (!value) {
+      return defaultLogoUrl();
+    }
+    if (/^https?:\/\//i.test(value) || value.indexOf('data:') === 0) {
+      return value;
+    }
+    if (value.charAt(0) === '/') {
+      return global.location.origin + value;
+    }
+    if (value.indexOf('assets/') === 0 && global.MBMS_NAV && typeof global.MBMS_NAV.asset === 'function') {
+      return global.MBMS_NAV.asset(value);
+    }
+    return value;
+  }
+
+  function twoDigits(n) {
+    if (n < 20) {
+      return ONES[n];
+    }
+    var t = Math.floor(n / 10);
+    var o = n % 10;
+    return TENS[t] + (o ? '-' + ONES[o] : '');
+  }
+
+  function chunkToWords(n) {
+    var words = [];
+    var hundreds = Math.floor(n / 100);
+    var rest = n % 100;
+    if (hundreds) {
+      words.push(ONES[hundreds] + ' hundred');
+    }
+    if (rest) {
+      words.push(twoDigits(rest));
+    }
+    return words.join(' ');
+  }
+
+  function amountInWords(value) {
+    var n = Number(value);
+    if (!Number.isFinite(n)) {
+      return '—';
+    }
+    var negative = n < 0;
+    n = Math.abs(n);
+    var whole = Math.floor(n + 1e-9);
+    var cents = Math.round((n - whole) * 100);
+    if (whole === 0 && cents === 0) {
+      return 'Zero only';
+    }
+
+    var parts = [];
+    var billions = Math.floor(whole / 1000000000);
+    var millions = Math.floor((whole % 1000000000) / 1000000);
+    var thousands = Math.floor((whole % 1000000) / 1000);
+    var remainder = whole % 1000;
+
+    if (billions) {
+      parts.push(chunkToWords(billions) + ' billion');
+    }
+    if (millions) {
+      parts.push(chunkToWords(millions) + ' million');
+    }
+    if (thousands) {
+      parts.push(chunkToWords(thousands) + ' thousand');
+    }
+    if (remainder || !parts.length) {
+      parts.push(chunkToWords(remainder) || 'zero');
+    }
+
+    var currency = billSettings.currencyCode || 'AFN';
+    var text = parts.join(' ') + ' ' + currency;
+    if (cents > 0) {
+      text += ' and ' + twoDigits(cents) + ' cents';
+    }
+    text += ' only';
+    if (negative) {
+      text = 'Minus ' + text;
+    }
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  }
+
+  function invoiceNumber(sale) {
+    var ref = textOrFallback(sale.reference_no, '');
+    var prefix = textOrFallback(billSettings.invoicePrefix, '');
+    if (!ref) {
+      return prefix ? (prefix + '-' + sale.id) : ('#' + sale.id);
+    }
+    if (prefix && ref.toUpperCase().indexOf(prefix.toUpperCase()) === 0) {
+      return ref;
+    }
+    return prefix ? (prefix + '-' + ref) : ref;
+  }
+
+  function paymentLabel(sale, status) {
+    var type = String(sale.payment_type || '').toLowerCase();
+    if (type === 'cash') {
+      return 'Cash';
+    }
+    if (type === 'credit') {
+      return 'Credit';
+    }
+    if (type === 'mixed' || type === 'partial') {
+      return 'Partial / Mixed';
+    }
+    return status.label;
+  }
+
+  function paymentStatus(sale) {
+    var remaining = Number(sale.remaining_raw != null ? sale.remaining_raw : sale.remaining || 0);
+    var paid = Number(sale.paid_raw != null ? sale.paid_raw : sale.paid || 0);
+    if (remaining <= 0.0001) {
+      return { label: 'Paid', className: 'is-paid', watermark: 'PAID' };
+    }
+    if (paid <= 0.0001) {
+      return { label: 'Unpaid', className: 'is-credit', watermark: 'UNPAID' };
+    }
+    return { label: 'Partial', className: 'is-mixed', watermark: 'PARTIAL' };
+  }
 
   function loadSettings() {
     if (!global.MBMS_API || typeof global.MBMS_API.get !== 'function') {
@@ -167,14 +274,13 @@
       billSettings.email = textOrFallback(map['business.email'], '');
       billSettings.website = textOrFallback(map['business.website'], '');
       billSettings.taxId = textOrFallback(map['business.tax_id'], '');
-
       billSettings.invoicePrefix = textOrFallback(map['invoice.prefix'], billSettings.invoicePrefix);
       billSettings.headerNote = textOrFallback(map['invoice.header_note'], '');
       billSettings.footerNote = textOrFallback(
         map['invoice.footer_note'],
         textOrFallback(map['bill.footer_note'], billSettings.footerNote)
       );
-      billSettings.terms = textOrFallback(map['invoice.terms'], '');
+      billSettings.terms = textOrFallback(map['invoice.terms'], billSettings.terms);
       billSettings.bankDetails = textOrFallback(map['invoice.bank_details'], '');
       billSettings.signatureCustomer = textOrFallback(
         map['invoice.signature_customer_label'],
@@ -187,76 +293,88 @@
       if (map['invoice.show_watermark'] != null) {
         billSettings.showWatermark = truthy(map['invoice.show_watermark']);
       }
-
       billSettings.currencyCode = textOrFallback(map['app.currency_code'], billSettings.currencyCode);
       billSettings.currencySymbol = textOrFallback(map['app.currency_symbol'], billSettings.currencySymbol);
       billSettings.currencyPosition = textOrFallback(map['app.currency_position'], billSettings.currencyPosition);
     }).catch(function () {
-      /* Bill still renders with defaults when settings are unavailable. */
+      /* defaults remain */
     });
   }
 
-  // ------------------------------------------------------------------
-  // Rendering
-  // ------------------------------------------------------------------
-
-  function paymentStatus(sale) {
-    var remaining = Number(sale.remaining_raw != null ? sale.remaining_raw : sale.remaining || 0);
-    var paid = Number(sale.paid_raw != null ? sale.paid_raw : sale.paid || 0);
-    if (remaining <= 0.0001) {
-      return { label: 'Paid', className: 'is-paid', watermark: 'PAID' };
+  function renderContactList() {
+    var list = document.getElementById('bill-contact-list');
+    if (!list) {
+      return;
     }
-    if (paid <= 0.0001) {
-      return { label: 'Credit', className: 'is-credit', watermark: 'UNPAID' };
+    var rows = [];
+    if (billSettings.phone) {
+      rows.push({ label: 'Phone', value: billSettings.phone });
     }
-    return { label: 'Partial', className: 'is-mixed', watermark: 'PARTIAL' };
+    if (billSettings.email) {
+      rows.push({ label: 'Email', value: billSettings.email });
+    }
+    if (billSettings.website) {
+      rows.push({ label: 'Web', value: billSettings.website });
+    }
+    list.innerHTML = rows.map(function (row) {
+      return '<li><span class="label">' + global.MBMS_UTILS.escapeHtml(row.label) +
+        '</span><span>' + global.MBMS_UTILS.escapeHtml(row.value) + '</span></li>';
+    }).join('');
   }
 
   function renderHeader(sale, status) {
-    // Logo
     var logo = document.getElementById('bill-logo');
+    var fallback = document.getElementById('bill-logo-fallback');
+    var logoUrl = resolveLogoUrl(billSettings.logoUrl);
     if (logo) {
-      if (billSettings.logoUrl) {
-        logo.src = billSettings.logoUrl;
-        logo.hidden = false;
-      } else {
+      logo.hidden = false;
+      logo.onerror = function () {
         logo.hidden = true;
-      }
+        if (fallback) {
+          fallback.hidden = false;
+          var initials = (billSettings.businessName || 'MB')
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map(function (part) { return part.charAt(0).toUpperCase(); })
+            .join('');
+          fallback.textContent = initials || 'MB';
+        }
+      };
+      logo.onload = function () {
+        if (fallback) {
+          fallback.hidden = true;
+        }
+        logo.hidden = false;
+      };
+      logo.src = logoUrl;
+      logo.alt = billSettings.businessName || 'Business logo';
     }
 
     setText('bill-business-name', billSettings.businessName);
-    setText('bill-business-tag', billSettings.tagline);
+    setText('bill-business-tag', billSettings.tagline || 'Sales Invoice');
 
-    // Address lines joined with newline so pre-line CSS keeps them on new lines
     var addressLines = [billSettings.addressLine1, billSettings.addressLine2]
       .filter(function (line) { return !!line; });
     setText('bill-business-address', addressLines.join('\n'));
+    renderContactList();
 
-    // Phone · email · website
-    var contactBits = [];
-    if (billSettings.phone) contactBits.push(billSettings.phone);
-    if (billSettings.email) contactBits.push(billSettings.email);
-    if (billSettings.website) contactBits.push(billSettings.website);
-    setText('bill-business-contact', contactBits.join(' · '));
-
-    // Tax / registration number
     var taxEl = document.getElementById('bill-business-tax');
     if (taxEl) {
       if (billSettings.taxId) {
-        taxEl.textContent = 'Tax ID: ' + billSettings.taxId;
+        taxEl.textContent = 'Tax / Reg: ' + billSettings.taxId;
         taxEl.hidden = false;
       } else {
         taxEl.hidden = true;
       }
     }
 
-    // Meta box
-    var invoiceNumber = sale.reference_no
-      ? (billSettings.invoicePrefix ? billSettings.invoicePrefix + '-' + sale.reference_no : sale.reference_no)
-      : ('#' + sale.id);
-    setText('bill-number', invoiceNumber);
+    setText('bill-number', invoiceNumber(sale));
     setText('bill-date', sale.date || '—');
     setText('bill-province', sale.location || '—');
+    setText('bill-currency', billSettings.currencySymbol
+      ? (billSettings.currencyCode + ' (' + billSettings.currencySymbol + ')')
+      : (billSettings.currencyCode || '—'));
 
     var statusEl = document.getElementById('bill-status');
     if (statusEl) {
@@ -275,26 +393,35 @@
     }
   }
 
-  function renderParties(sale) {
+  function renderParties(sale, status) {
     setText('bill-customer-name', sale.customer || 'Walk-in customer');
-    setText(
-      'bill-customer-phone',
-      sale.customer_phone ? ('Phone: ' + sale.customer_phone) : ''
-    );
-    setText(
-      'bill-customer-address',
-      sale.customer_address ? ('Address: ' + sale.customer_address) : ''
-    );
+    setText('bill-customer-phone', sale.customer_phone ? ('Phone: ' + sale.customer_phone) : '');
+    setText('bill-customer-address', sale.customer_address ? ('Address: ' + sale.customer_address) : '');
 
-    setText('bill-seller-name', sale.seller || 'Staff');
-    setText(
-      'bill-seller-province',
-      sale.location ? ('Province: ' + sale.location) : ''
-    );
-    setText(
-      'bill-payment-type',
-      sale.payment_type ? ('Payment: ' + sale.payment_type) : ''
-    );
+    setText('bill-seller-name', sale.seller || billSettings.businessName || 'Staff');
+    setText('bill-seller-province', sale.location ? ('Location: ' + sale.location) : '');
+    setText('bill-payment-type', 'Payment: ' + paymentLabel(sale, status));
+  }
+
+  function normalizeItems(sale) {
+    var items = sale.items || [];
+    if (items.length) {
+      return items;
+    }
+    if (sale.product || sale.variant || sale.quantity) {
+      return [{
+        product: sale.product,
+        variant: sale.variant,
+        unit: '',
+        quantity: sale.quantity,
+        quantity_raw: sale.quantity,
+        unit_price: sale.price,
+        unit_price_raw: sale.price_raw != null ? sale.price_raw : sale.price,
+        line_total: sale.total,
+        line_total_raw: sale.total_raw != null ? sale.total_raw : sale.total
+      }];
+    }
+    return [];
   }
 
   function renderItems(sale) {
@@ -302,22 +429,32 @@
     if (!body) {
       return;
     }
-    var items = sale.items || [];
+    var items = normalizeItems(sale);
     if (!items.length) {
       body.innerHTML = '<tr><td colspan="5" class="text-secondary">No line items on this sale.</td></tr>';
       return;
     }
 
     body.innerHTML = items.map(function (line, index) {
-      var label = [line.product, line.variant].filter(Boolean).join(' · ') || 'Item';
+      var product = line.product || '';
+      var variant = line.variant || '';
+      var title = product || variant || 'Item';
+      var sub = product && variant ? variant : '';
       var qtyRaw = line.quantity_raw != null ? line.quantity_raw : line.quantity;
       var qty = (qtyRaw == null ? '' : qtyRaw) + (line.unit ? (' ' + line.unit) : '');
       var unitPrice = line.unit_price_raw != null ? line.unit_price_raw : line.unit_price;
-      var lineTotal = line.line_total_raw != null ? line.line_total_raw : line.line_total;
+      var lineTotal = line.line_total_raw != null
+        ? line.line_total_raw
+        : (line.line_total != null
+          ? line.line_total
+          : (Number(qtyRaw || 0) * Number(unitPrice || 0)));
       return (
         '<tr>' +
         '<td class="bill-col-num">' + (index + 1) + '</td>' +
-        '<td class="bill-col-item">' + global.MBMS_UTILS.escapeHtml(label) + '</td>' +
+        '<td class="bill-col-item"><span class="bill-item-title">' +
+        global.MBMS_UTILS.escapeHtml(title) + '</span>' +
+        (sub ? '<span class="bill-item-sub">' + global.MBMS_UTILS.escapeHtml(sub) + '</span>' : '') +
+        '</td>' +
         '<td class="bill-col-qty num">' + global.MBMS_UTILS.escapeHtml(String(qty)) + '</td>' +
         '<td class="bill-col-price num">' + global.MBMS_UTILS.escapeHtml(withCurrency(unitPrice)) + '</td>' +
         '<td class="bill-col-total num">' + global.MBMS_UTILS.escapeHtml(withCurrency(lineTotal)) + '</td>' +
@@ -334,6 +471,7 @@
     setText('bill-paid', withCurrency(paid));
     setText('bill-remaining', withCurrency(remaining));
     setText('bill-total', withCurrency(total));
+    setText('bill-amount-words', amountInWords(total));
   }
 
   function renderNotes(sale) {
@@ -375,11 +513,14 @@
       }
     }
 
-    setText('bill-footer-note', billSettings.footerNote);
+    setText('bill-footer-note', billSettings.footerNote || 'Thank you for your business.');
 
     var metaBits = [billSettings.businessName];
-    if (sale.location) metaBits.push(sale.location);
-    metaBits.push('Generated by MBMS');
+    if (sale.location) {
+      metaBits.push(sale.location);
+    }
+    metaBits.push(invoiceNumber(sale));
+    metaBits.push('Computer generated invoice');
     setText('bill-footer-meta', metaBits.join(' · '));
   }
 
@@ -409,11 +550,12 @@
     }
 
     var status = paymentStatus(sale);
-    document.title = (sale.reference_no || 'Sale') + ' · Bill';
-    setText('bill-toolbar-title', sale.reference_no || 'Sale bill');
+    var number = invoiceNumber(sale);
+    document.title = number + ' · Invoice';
+    setText('bill-toolbar-title', number);
 
     renderHeader(sale, status);
-    renderParties(sale);
+    renderParties(sale, status);
     renderItems(sale);
     renderTotals(sale);
     renderNotes(sale);
@@ -422,19 +564,15 @@
     renderWatermark(status);
   }
 
-  // ------------------------------------------------------------------
-  // WhatsApp share
-  // ------------------------------------------------------------------
-
   function whatsAppText(sale) {
     var lines = [];
     lines.push('*' + billSettings.businessName + '*');
-    lines.push('Sale Bill: ' + (sale.reference_no || sale.id));
+    lines.push('Invoice: ' + invoiceNumber(sale));
     lines.push('Date: ' + (sale.date || ''));
-    lines.push('Province: ' + (sale.location || ''));
+    lines.push('Location: ' + (sale.location || ''));
     lines.push('Customer: ' + (sale.customer || ''));
     lines.push('');
-    (sale.items || []).forEach(function (line, index) {
+    normalizeItems(sale).forEach(function (line, index) {
       var label = [line.product, line.variant].filter(Boolean).join(' · ') || 'Item';
       var qtyRaw = line.quantity_raw != null ? line.quantity_raw : line.quantity;
       var unitPrice = line.unit_price_raw != null ? line.unit_price_raw : line.unit_price;
@@ -449,7 +587,7 @@
     var remaining = sale.remaining_raw != null ? sale.remaining_raw : sale.remaining;
     lines.push('Total: ' + withCurrency(total));
     lines.push('Paid: ' + withCurrency(paid));
-    lines.push('Remaining: ' + withCurrency(remaining));
+    lines.push('Balance: ' + withCurrency(remaining));
     if (sale.customer_phone) {
       lines.push('');
       lines.push('Customer phone: ' + sale.customer_phone);
@@ -469,14 +607,10 @@
     global.open(url, '_blank', 'noopener');
   }
 
-  // ------------------------------------------------------------------
-  // Bootstrap
-  // ------------------------------------------------------------------
-
   function loadBill() {
     var id = saleIdFromQuery();
     if (!id) {
-      showError('Missing sale id. Open a bill from the Sales page.');
+      showError('Missing sale id. Open an invoice from the Sales page.');
       return Promise.resolve();
     }
     if (!global.MBMS_CONFIG || !global.MBMS_CONFIG.getAuthToken || !global.MBMS_CONFIG.getAuthToken()) {
@@ -491,16 +625,16 @@
     }).then(function (response) {
       var sale = global.MBMS_UTILS.unwrap(response.data) || response.data || {};
       if (!sale.id) {
-        throw { message: 'Sale bill was not found.' };
+        throw { message: 'Sale invoice was not found.' };
       }
       renderSale(sale);
     }).catch(function (error) {
-      showError(global.MBMS_UTILS.getErrorMessage(error, 'Unable to load this sale bill.'));
+      showError(global.MBMS_UTILS.getErrorMessage(error, 'Unable to load this sale invoice.'));
     });
   }
 
   global.MBMS_PAGE = {
-    title: 'Sale Bill',
+    title: 'Sale Invoice',
     prefetchLocations: false,
     onReady: function () {
       var printBtn = document.getElementById('bill-print');

@@ -16,14 +16,12 @@ use Throwable;
 
 class SalesReturnController extends Controller
 {
-    public function __construct(private readonly SalesReturnService $salesReturnService)
-    {
-    }
+    public function __construct(private readonly SalesReturnService $salesReturnService) {}
 
     public function index(Request $request): JsonResponse
     {
         $query = SalesReturn::query()
-            ->with(['sale', 'customer', 'location', 'user'])
+            ->with(['sale', 'customer', 'location', 'user', 'items.variant.product'])
             ->withCount('items')
             ->latest('returned_at')
             ->latest('id');
@@ -64,7 +62,7 @@ class SalesReturnController extends Controller
     public function show(SalesReturn $salesReturn): JsonResponse
     {
         return ApiResponse::success(
-            $salesReturn->load(['items.variant', 'sale', 'customer', 'location', 'user'])
+            $salesReturn->load(['items.variant.product', 'sale', 'customer', 'location', 'user'])
         );
     }
 }

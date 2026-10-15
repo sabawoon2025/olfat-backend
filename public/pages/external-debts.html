@@ -13,7 +13,7 @@
         document.documentElement.dir = 'rtl';
         var sheet = document.querySelector('link[href*="bootstrap.min.css"]');
         if (sheet) sheet.href = sheet.href.replace('bootstrap.min.css', 'bootstrap.rtl.min.css');
-}
+      }
     } catch (err) {}
   </script>
   <link rel="stylesheet" href="../assets/css/tokens.css">
@@ -28,30 +28,40 @@
       <div id="list-view">
         <div class="mbms-page-header">
           <div>
-            <h1><i class="bi bi-bank" aria-hidden="true"></i> External debtors and creditors</h1>
+            <h1><i class="bi bi-bank" aria-hidden="true"></i> External debts</h1>
           </div>
           <div class="mbms-page-actions">
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#debtModal"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add record</button>
+            <button type="button" class="btn btn-primary" id="open-debt-modal" data-bs-toggle="modal" data-bs-target="#debtModal">
+              <i class="bi bi-plus-lg" aria-hidden="true"></i> Add record
+            </button>
           </div>
         </div>
-        <div class="d-flex flex-wrap gap-2 mb-3">
-          <a class="btn btn-outline-primary" data-debt-tab="all" href="external-debts.html">All</a>
-          <a class="btn btn-outline-danger" data-debt-tab="business_owes" href="external-debts.html?direction=business_owes">Business owes this person</a>
-          <a class="btn btn-outline-success" data-debt-tab="person_owes" href="external-debts.html?direction=person_owes">This person owes the business</a>
-        </div>
+
+        <ul class="nav nav-tabs mbms-nav-tabs" role="tablist">
+          <li class="nav-item">
+            <a class="nav-link" data-debt-tab="all" href="external-debts.html">All</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" data-debt-tab="business_owes" href="external-debts.html?direction=business_owes">We owe</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" data-debt-tab="person_owes" href="external-debts.html?direction=person_owes">They owe us</a>
+          </li>
+        </ul>
+
         <div class="mbms-toolbar">
-          <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search person or reason">
+          <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search person or reason…" autocomplete="off">
         </div>
-      <div class="mbms-summary-row" id="list-summary" hidden></div>
-      <div id="debt-empty" hidden></div>
-        <div class="table-responsive" id="debt-table-wrap">
+        <div class="mbms-summary-row" id="list-summary" hidden></div>
+        <div id="debt-empty" hidden></div>
+        <div class="table-responsive mbms-scroll-panel" id="debt-table-wrap">
           <table class="table mbms-table">
             <thead>
               <tr>
-                <th>Person / entity</th>
+                <th>Person</th>
                 <th>Direction</th>
                 <th>Reason</th>
-                <th>Original amount</th>
+                <th>Original</th>
                 <th>Paid / received</th>
                 <th>Remaining</th>
                 <th>Date</th>
@@ -66,44 +76,22 @@
       <div id="detail-view" hidden>
         <div class="mbms-page-header">
           <div>
-            <a class="btn btn-outline-secondary btn-sm mb-2" href="external-debts.html"><i class="bi bi-arrow-left"></i> Back to external debts</a>
-            <h1 id="detail-title"><i class="bi bi-bank" aria-hidden="true"></i> External record</h1>
-            <p id="detail-reason"></p>
+            <a class="btn btn-outline-secondary btn-sm mb-2" href="external-debts.html"><i class="bi bi-arrow-left"></i> Back</a>
+            <h1 id="detail-title"><i class="bi bi-bank" aria-hidden="true"></i> Record</h1>
+            <p class="mbms-detail-meta" id="detail-reason"></p>
           </div>
           <div class="mbms-page-actions">
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#payModal"><i class="bi bi-cash-coin" aria-hidden="true"></i> Record payment</button>
+            <button type="button" class="btn btn-primary" id="open-pay-modal" data-bs-toggle="modal" data-bs-target="#payModal">
+              <i class="bi bi-cash-coin" aria-hidden="true"></i> Record payment
+            </button>
           </div>
         </div>
+
         <div id="direction-banner" class="mbms-direction-banner">
           <strong id="direction-label"></strong>
-</div>
-        <div class="row g-3 mb-3">
-          <div class="col-6 col-lg-3">
-            <article class="mbms-card card mbms-stat-card"><div class="card-body">
-              <div class="mbms-stat-label">Original amount</div>
-              <div class="mbms-stat-value" id="detail-original">—</div>
-            </div></article>
-          </div>
-          <div class="col-6 col-lg-3">
-            <article class="mbms-card card mbms-stat-card"><div class="card-body">
-              <div class="mbms-stat-label">Paid / received</div>
-              <div class="mbms-stat-value" id="detail-paid">—</div>
-            </div></article>
-          </div>
-          <div class="col-6 col-lg-3">
-            <article class="mbms-card card mbms-stat-card"><div class="card-body">
-              <div class="mbms-stat-label">Remaining display</div>
-              <div class="mbms-stat-value" id="detail-remaining">—</div>
-            </div></article>
-          </div>
-          <div class="col-6 col-lg-3">
-            <article class="mbms-card card mbms-stat-card"><div class="card-body">
-              <div class="mbms-stat-label">Date · user · location</div>
-              <p class="mb-0"><span id="detail-date"></span></p>
-              <p class="mbms-help mb-0"><span id="detail-user"></span> · <span id="detail-location"></span></p>
-            </div></article>
-          </div>
         </div>
+        <div class="mbms-summary-row" id="detail-summary"></div>
+
         <h2 class="h6 mb-2">Payment history</h2>
         <div id="hist-empty" hidden></div>
         <div class="table-responsive" id="hist-table-wrap">
@@ -112,9 +100,10 @@
               <tr>
                 <th>Date</th>
                 <th>Amount</th>
-                <th>Description</th>
-                <th>User</th>
+                <th>Remaining after</th>
+                <th>Note</th>
                 <th>Location</th>
+                <th>By</th>
               </tr>
             </thead>
             <tbody id="hist-body"></tbody>
@@ -126,50 +115,76 @@
 
   <div class="modal fade" id="debtModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-      <div class="modal-content">
+      <div class="modal-content mbms-debt-modal">
         <form id="debt-form" novalidate>
           <div class="modal-header">
-            <h2 class="modal-title h5">Add external debt record</h2>
+            <h2 class="modal-title h5"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add record</h2>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <div class="mbms-field">
-              <label class="form-label" for="debt-person">Person / entity</label>
-              <input class="form-control" id="debt-person" name="person" required>
+            <div class="mbms-form-section is-debt">
+              <div class="mbms-form-section-title"><i class="bi bi-person" aria-hidden="true"></i> Party</div>
+              <div class="mbms-field">
+                <label class="form-label" for="debt-person">Person / entity</label>
+                <input class="form-control" id="debt-person" name="person" required autocomplete="name" placeholder="Name">
+              </div>
+              <div class="mbms-field mb-0">
+                <label class="form-label" for="debt-direction">Direction</label>
+                <select class="form-select" id="debt-direction" name="direction" required>
+                  <option value="">Select…</option>
+                  <option value="business_owes">We owe this person</option>
+                  <option value="person_owes">This person owes us</option>
+                </select>
+              </div>
             </div>
-            <div class="mbms-field">
-              <label class="form-label" for="debt-direction">Direction</label>
-              <select class="form-select" id="debt-direction" name="direction" required>
-                <option value="">Select direction</option>
-                <option value="business_owes">Business owes this person</option>
-                <option value="person_owes">This person owes the business</option>
-              </select>
+
+            <div class="mbms-form-section is-debt">
+              <div class="mbms-form-section-title"><i class="bi bi-cash-stack" aria-hidden="true"></i> Amount</div>
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="debt-original">Original amount</label>
+                    <input class="form-control" id="debt-original" name="original_amount" required inputmode="decimal" min="0.01" step="0.01" placeholder="0.00">
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="debt-paid">Already paid / received</label>
+                    <input class="form-control" id="debt-paid" name="paid_received" inputmode="decimal" min="0" step="0.01" placeholder="0.00" value="0">
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="debt-remaining">Remaining</label>
+                    <input class="form-control" id="debt-remaining" name="remaining" readonly value="0.00">
+                  </div>
+                </div>
+              </div>
+              <p class="text-danger small mb-0 mt-2" id="debt-amount-error" hidden></p>
             </div>
-            <div class="mbms-field">
-              <label class="form-label" for="debt-reason">Reason</label>
-              <textarea class="form-control" id="debt-reason" name="reason" rows="2" required></textarea>
+
+            <div class="mbms-form-section is-debt">
+              <div class="mbms-form-section-title"><i class="bi bi-journal-text" aria-hidden="true"></i> Details</div>
+              <div class="mbms-field">
+                <label class="form-label" for="debt-reason">Reason</label>
+                <input class="form-control" id="debt-reason" name="reason" required placeholder="Why this debt exists">
+              </div>
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="debt-date">Date</label>
+                    <input class="form-control" id="debt-date" name="date" type="date" required>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="debt-location">Location</label>
+                    <select class="form-select" id="debt-location" name="location" required></select>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="mbms-field">
-              <label class="form-label" for="debt-original">Original amount</label>
-              <input class="form-control" id="debt-original" name="original_amount" required>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="debt-paid">Paid / received amount</label>
-              <input class="form-control" id="debt-paid" name="paid_received">
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="debt-remaining">Remaining balance</label>
-              <input class="form-control" id="debt-remaining" name="remaining" placeholder="Entered or later provided by Laravel">
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="debt-date">Date</label>
-              <input class="form-control" id="debt-date" name="date" type="date" required>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="debt-location">Location</label>
-              <select class="form-select" id="debt-location" name="location" required></select>
-            </div>
-</div>
+          </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-outline-secondary" id="debt-reset">Reset</button>
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -182,32 +197,57 @@
 
   <div class="modal fade" id="payModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-      <div class="modal-content">
+      <div class="modal-content mbms-debt-modal">
         <form id="pay-form" novalidate>
           <div class="modal-header">
-            <h2 class="modal-title h5">Record payment</h2>
+            <h2 class="modal-title h5"><i class="bi bi-cash-coin" aria-hidden="true"></i> Record payment</h2>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <div class="mbms-field">
-              <label class="form-label" for="pay-amount" id="pay-amount-label">Amount</label>
-              <input class="form-control" id="pay-amount" name="amount" required>
+            <div class="mbms-form-section is-debt">
+              <div class="mbms-form-section-title"><i class="bi bi-wallet2" aria-hidden="true"></i> Payment</div>
+              <p class="mbms-help is-compact" id="pay-remaining-hint">Remaining: —</p>
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="pay-amount" id="pay-amount-label">Amount</label>
+                    <input class="form-control" id="pay-amount" name="amount" required inputmode="decimal" min="0.01" step="0.01" placeholder="0.00">
+                    <p class="text-danger small mb-0 mt-1" id="pay-amount-error" hidden></p>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="pay-date">Date</label>
+                    <input class="form-control" id="pay-date" name="date" type="date" required>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="pay-location">Location</label>
+                    <select class="form-select" id="pay-location" name="location" required></select>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="pay-description">Note <span class="text-secondary fw-normal">(optional)</span></label>
+                    <input class="form-control" id="pay-description" name="description" placeholder="Optional">
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="mbms-field">
-              <label class="form-label" for="pay-date">Date</label>
-              <input class="form-control" id="pay-date" name="date" type="date" required>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="pay-description">Description</label>
-              <textarea class="form-control" id="pay-description" name="description" rows="2"></textarea>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="pay-user">User</label>
-              <input class="form-control" id="pay-user" name="user" value="Signed-in user" readonly>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="pay-location">Location</label>
-              <select class="form-select" id="pay-location" name="location" required></select>
+            <div class="mbms-profit-panel mbms-debt-preview" id="pay-preview" hidden>
+              <div class="mbms-profit-row">
+                <span>Remaining now</span>
+                <strong id="pay-preview-before">—</strong>
+              </div>
+              <div class="mbms-profit-row">
+                <span>Paying</span>
+                <strong id="pay-preview-amount">—</strong>
+              </div>
+              <div class="mbms-profit-row">
+                <span>After payment</span>
+                <strong id="pay-preview-after">—</strong>
+              </div>
             </div>
           </div>
           <div class="modal-footer">

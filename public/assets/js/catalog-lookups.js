@@ -57,21 +57,40 @@
     var product = products(category).filter(function (row) {
       return String(row.id) === String(productId);
     })[0];
-    if (product && product.units && product.units.length) {
-      return product.units;
-    }
-    if (category === 'tea' || category === 'rice') {
+
+    if (category === 'tea' || category === 'rice' || category === 'detergents') {
       var catalog = mock()[category] || {};
       var fromCatalog = (catalog.variants || []).filter(function (row) {
         return String(row.type_id) === String(productId) || String(row.product_id) === String(productId);
       });
       if (fromCatalog.length) {
         return fromCatalog.map(function (row) {
-          return { id: row.id, label: row.label || row.size_id || row.unit_id };
+          return {
+            id: row.id,
+            label: row.label || row.name || row.size_id || row.unit_id,
+            package_qty: row.package_qty,
+            base_unit: row.base_unit
+          };
         });
       }
     }
-    if (category === 'detergents' || category === 'raw-materials' || category === 'factory-materials') {
+
+    if (product && product.variants && product.variants.length) {
+      return product.variants.map(function (row) {
+        return {
+          id: row.id,
+          label: row.label || row.name,
+          package_qty: row.package_qty,
+          base_unit: row.base_unit
+        };
+      });
+    }
+
+    if (product && product.units && product.units.length) {
+      return product.units;
+    }
+
+    if (category === 'raw-materials' || category === 'factory-materials') {
       return (product && product.units) || [];
     }
     return [];
