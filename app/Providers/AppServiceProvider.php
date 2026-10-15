@@ -13,6 +13,7 @@ use App\Models\Location;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Purchase;
+use App\Models\PurchaseReturn;
 use App\Models\Sale;
 use App\Models\SalesReturn;
 use App\Models\Setting;
@@ -72,6 +73,7 @@ class AppServiceProvider extends ServiceProvider
             CustomerPayment::class,
             SupplierPayment::class,
             SalesReturn::class,
+            PurchaseReturn::class,
             DamagedStock::class,
             WorkerPayment::class,
             HomeExpense::class,

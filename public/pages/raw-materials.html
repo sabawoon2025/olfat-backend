@@ -13,7 +13,7 @@
         document.documentElement.dir = 'rtl';
         var sheet = document.querySelector('link[href*="bootstrap.min.css"]');
         if (sheet) sheet.href = sheet.href.replace('bootstrap.min.css', 'bootstrap.rtl.min.css');
-}
+      }
     } catch (err) {}
   </script>
   <link rel="stylesheet" href="../assets/css/tokens.css">
@@ -28,23 +28,31 @@
       <div id="list-view">
         <div class="mbms-page-header">
           <div>
-            <h1>Raw Materials</h1>
+            <h1><i class="bi bi-layers" aria-hidden="true"></i> Raw Materials</h1>
           </div>
           <div class="mbms-page-actions">
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#materialModal">Add raw material</button>
+            <button type="button" class="btn btn-primary" id="add-material" data-bs-toggle="modal" data-bs-target="#materialModal">
+              <i class="bi bi-plus-lg" aria-hidden="true"></i> Add raw material
+            </button>
           </div>
         </div>
         <div class="mbms-toolbar">
-          <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search raw materials">
+          <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search raw materials…" autocomplete="off">
+          <select class="form-select mbms-filter" id="module-status" aria-label="Filter by status">
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
         </div>
+        <div class="mbms-summary-row" id="list-summary" hidden></div>
         <div id="mat-empty" hidden></div>
-        <div class="table-responsive" id="mat-table-wrap">
+        <div class="table-responsive mbms-scroll-panel" id="mat-table-wrap">
           <table class="table mbms-table">
             <thead>
               <tr>
                 <th>Raw material</th>
                 <th>Bag sizes</th>
-                <th>Stock display</th>
+                <th>Stock</th>
                 <th></th>
               </tr>
             </thead>
@@ -57,22 +65,39 @@
         <div class="mbms-page-header">
           <div>
             <a class="btn btn-outline-secondary btn-sm mb-2" href="raw-materials.html"><i class="bi bi-arrow-left"></i> Back to raw materials</a>
-            <h1 id="detail-title">Raw material</h1>
-            <p id="detail-note"></p>
+            <h1 id="detail-title"><i class="bi bi-layers" aria-hidden="true"></i> Raw material</h1>
+            <p id="detail-note" class="text-secondary mb-0"></p>
           </div>
           <div class="mbms-page-actions">
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#purchaseModal">Record purchase</button>
+            <button type="button" class="btn btn-outline-secondary" id="edit-material"><i class="bi bi-pencil" aria-hidden="true"></i> Edit</button>
+            <button type="button" class="btn btn-outline-danger" id="toggle-material-active"><i class="bi bi-pause-circle" aria-hidden="true"></i> Deactivate</button>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#purchaseModal">
+              <i class="bi bi-bag-plus" aria-hidden="true"></i> Purchase
+            </button>
           </div>
         </div>
-        <div class="mb-3" id="stock-display"></div>
+
+        <div class="mbms-summary-row" id="detail-summary" hidden></div>
+        <h2 class="h6 mb-2">Stock by bag size</h2>
+        <div class="row g-3 mb-3" id="variant-stock"></div>
+
         <ul class="nav nav-tabs mbms-nav-tabs" role="tablist">
-          <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-purchases" type="button">Purchases</button></li>
-          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-suppliers" type="button">Supplier information</button></li>
-          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-payments" type="button">Payment information</button></li>
+          <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-variants" type="button">Bag sizes</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-purchases" type="button">Purchases</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-suppliers" type="button">Suppliers</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-payments" type="button">Payments</button></li>
           <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-history" type="button">History</button></li>
         </ul>
         <div class="tab-content">
-          <div class="tab-pane fade show active" id="tab-purchases">
+          <div class="tab-pane fade show active" id="tab-variants">
+            <div class="table-responsive">
+              <table class="table mbms-table">
+                <thead><tr><th>Bag size</th><th>Stock</th></tr></thead>
+                <tbody id="variants-body"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="tab-pane fade" id="tab-purchases">
             <div class="table-responsive">
               <table class="table mbms-table">
                 <thead><tr><th>Date</th><th>Supplier</th><th>Bag size</th><th>Quantity</th><th>Total</th><th>Paid</th><th>Remaining</th><th>Location</th></tr></thead>
@@ -83,7 +108,7 @@
           <div class="tab-pane fade" id="tab-suppliers">
             <div class="table-responsive">
               <table class="table mbms-table">
-                <thead><tr><th>Date</th><th>Supplier</th><th>Total</th><th>Paid</th><th>Remaining</th></tr></thead>
+                <thead><tr><th>Supplier</th><th>Purchases</th><th>Total</th><th>Paid</th><th>Remaining</th></tr></thead>
                 <tbody id="supplier-body"></tbody>
               </table>
             </div>
@@ -110,24 +135,55 @@
   </div>
 
   <div class="modal fade" id="materialModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content">
         <form id="material-form" novalidate>
           <div class="modal-header">
-            <h2 class="modal-title h5">Add raw material</h2>
+            <h2 class="modal-title h5" id="material-modal-title"><i class="bi bi-layers" aria-hidden="true"></i> Add raw material</h2>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <div class="mbms-field">
-              <label class="form-label" for="material-name">Raw material</label>
-              <input class="form-control" id="material-name" name="name" required>
+            <input type="hidden" id="material-id" name="id" value="">
+            <div class="mbms-form-section">
+              <div class="mbms-form-section-title"><i class="bi bi-tag" aria-hidden="true"></i> Material</div>
+              <div class="mbms-field">
+                <label class="form-label" for="material-name">Raw material name</label>
+                <input class="form-control form-control-lg" id="material-name" name="name" required maxlength="190" autocomplete="off" placeholder="e.g. Palm oil, Soda ash">
+              </div>
+              <div class="mbms-field">
+                <label class="form-label" for="material-notes">Notes <span class="text-secondary fw-normal">(optional)</span></label>
+                <textarea class="form-control" id="material-notes" name="notes" rows="2" maxlength="2000" placeholder="Supplier grade, packing, or use notes"></textarea>
+              </div>
+              <div class="mbms-active-switch form-check mb-0">
+                <input class="form-check-input" type="checkbox" id="material-active" name="is_active" value="1" checked>
+                <label class="form-check-label" for="material-active">
+                  Active for purchase
+                  <span class="hint">Turn off to hide from new purchases. History stays.</span>
+                </label>
+              </div>
             </div>
-            <p class="mbms-help mb-0">Current bag sizes are 170kg and 220kg. Future sizes will come from Laravel.</p>
+
+            <div id="material-existing-units" class="mbms-form-section" hidden></div>
+
+            <div id="material-units-wrap">
+              <div class="mbms-form-section mb-0">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                  <div class="mbms-form-section-title mb-0"><i class="bi bi-box-seam" aria-hidden="true"></i> Bag sizes</div>
+                  <button type="button" class="btn btn-outline-primary btn-sm" id="material-add-unit">
+                    <i class="bi bi-plus-lg" aria-hidden="true"></i> Custom size
+                  </button>
+                </div>
+                <p class="mbms-help mb-2">Tap common bag sizes, or add a custom size. Purchases use bags × kg per bag.</p>
+                <div class="mbms-preset-chips" id="material-unit-presets" aria-label="Common bag sizes"></div>
+                <div id="material-units-list" class="mbms-scroll-panel"></div>
+              </div>
+            </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" id="material-reset">Reset</button>
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save</button>
+            <button type="submit" class="btn btn-primary" id="material-save-btn">
+              <i class="bi bi-check2-circle" aria-hidden="true"></i> Save raw material
+            </button>
           </div>
         </form>
       </div>
@@ -139,62 +195,71 @@
       <div class="modal-content">
         <form id="purchase-form" novalidate>
           <div class="modal-header">
-            <h2 class="modal-title h5">Raw material purchase</h2>
+            <h2 class="modal-title h5"><i class="bi bi-bag-plus" aria-hidden="true"></i> Raw material purchase</h2>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <p class="mbms-help">Item: <strong id="purchase-item-label"></strong>. Official totals and stock stay on Laravel.</p>
+            <p class="mbms-help is-compact">Item: <strong id="purchase-item-label"></strong></p>
             <div class="mbms-field">
               <label class="form-label" for="purchase-supplier">Supplier</label>
               <select class="form-select" id="purchase-supplier" name="supplier" required></select>
             </div>
             <div class="mbms-field">
-              <label class="form-label" for="purchase-unit">KG per bag / bag size</label>
-              <select class="form-select" id="purchase-unit" name="unit" required></select>
+              <label class="form-label" for="purchase-variant">Bag size</label>
+              <select class="form-select" id="purchase-variant" name="variant" required></select>
             </div>
-            <div class="mbms-field">
+            <div class="mbms-field" data-bags-field>
               <label class="form-label" for="purchase-bags">Number of bags</label>
-              <input class="form-control" id="purchase-bags" name="bags" required>
+              <input class="form-control" id="purchase-bags" name="bags" inputmode="numeric" min="0" step="1" placeholder="e.g. 10">
             </div>
             <div class="mbms-field">
-              <label class="form-label" for="purchase-kg">KG per bag</label>
-              <input class="form-control" id="purchase-kg" name="kg_per_bag" placeholder="170 or 220">
+              <label class="form-label" for="purchase-quantity">Total quantity (kg)</label>
+              <input class="form-control" id="purchase-quantity" name="quantity" required inputmode="decimal" min="0" step="0.01" placeholder="Auto from bags × size">
             </div>
-            <div class="mbms-field">
-              <label class="form-label" for="purchase-total-kg">Total KG</label>
-              <input class="form-control" id="purchase-total-kg" name="total_kg">
+            <div class="row g-2">
+              <div class="col-md-6">
+                <div class="mbms-field">
+                  <label class="form-label" for="purchase-price">Price / kg</label>
+                  <input class="form-control" id="purchase-price" name="price" inputmode="decimal" min="0" step="0.01" placeholder="0.00" required>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mbms-field">
+                  <label class="form-label" for="purchase-total">Total amount</label>
+                  <input class="form-control" id="purchase-total" name="total" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+                </div>
+              </div>
             </div>
-            <div class="mbms-field">
-              <label class="form-label" for="purchase-quantity">Quantity display</label>
-              <input class="form-control" id="purchase-quantity" name="quantity">
+            <div class="row g-2">
+              <div class="col-md-6">
+                <div class="mbms-field">
+                  <label class="form-label" for="purchase-paid">Paid amount</label>
+                  <input class="form-control" id="purchase-paid" name="paid" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mbms-field">
+                  <label class="form-label" for="purchase-remaining">Remaining payable</label>
+                  <input class="form-control" id="purchase-remaining" name="remaining" inputmode="decimal" min="0" step="0.01" readonly>
+                </div>
+              </div>
             </div>
-            <div class="mbms-field">
-              <label class="form-label" for="purchase-price">Purchase price</label>
-              <input class="form-control" id="purchase-price" name="price">
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="purchase-total">Total amount</label>
-              <input class="form-control" id="purchase-total" name="total">
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="purchase-paid">Paid amount</label>
-              <input class="form-control" id="purchase-paid" name="paid">
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="purchase-remaining">Remaining amount</label>
-              <input class="form-control" id="purchase-remaining" name="remaining">
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="purchase-date">Date</label>
-              <input class="form-control" id="purchase-date" name="date" type="date" required>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="purchase-location">Location</label>
-              <select class="form-select" id="purchase-location" name="location" required></select>
+            <div class="row g-2">
+              <div class="col-md-6">
+                <div class="mbms-field">
+                  <label class="form-label" for="purchase-date">Date</label>
+                  <input class="form-control" id="purchase-date" name="date" type="date" required>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mbms-field">
+                  <label class="form-label" for="purchase-location">Location</label>
+                  <select class="form-select" id="purchase-location" name="location" required></select>
+                </div>
+              </div>
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" id="purchase-reset">Reset</button>
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
             <button type="submit" class="btn btn-primary">Save purchase</button>
           </div>
@@ -214,6 +279,7 @@
   <script defer src="../assets/js/nav.js"></script>
   <script defer src="../assets/js/auth.js"></script>
   <script defer src="../assets/js/layout.js"></script>
+  <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/catalog-lookups.js"></script>
   <script defer src="../assets/js/pages/materials-page.js"></script>

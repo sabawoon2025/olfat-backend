@@ -83,26 +83,10 @@ class SupplierPaymentService
             if ($purchase) {
                 $purchase->paid_amount = round((float) $purchase->paid_amount + $amount, 2);
                 $purchase->remaining_amount = round((float) $purchase->remaining_amount - $amount, 2);
-                $purchase->payment_type = $this->resolvePaymentType(
-                    (float) $purchase->paid_amount,
-                    (float) $purchase->remaining_amount
-                );
                 $purchase->save();
             }
 
             return $payment->load(['supplier', 'location', 'user', 'purchase']);
         }, attempts: self::DEADLOCK_RETRIES);
-    }
-
-    private function resolvePaymentType(float $paid, float $remaining): string
-    {
-        if ($remaining <= 0) {
-            return 'cash';
-        }
-        if ($paid <= 0) {
-            return 'credit';
-        }
-
-        return 'mixed';
     }
 }

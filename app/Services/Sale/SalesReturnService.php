@@ -158,7 +158,7 @@ class SalesReturnService
             $customer->balance = round((float) $customer->balance - $fromRemaining, 2);
             $customer->save();
 
-            return $salesReturn->load(['items.variant', 'sale', 'customer', 'location', 'user']);
+            return $salesReturn->load(['items.variant.product', 'sale', 'customer', 'location', 'user']);
         }, attempts: self::DEADLOCK_RETRIES);
     }
 

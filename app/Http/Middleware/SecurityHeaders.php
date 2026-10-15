@@ -41,8 +41,8 @@ class SecurityHeaders
                     // (RTL swap, token guard). Keeping 'unsafe-inline' here because the UI
                     // currently relies on it; tighten with a nonce in a follow-up.
                     "script-src 'self' 'unsafe-inline'",
-                    "style-src 'self' 'unsafe-inline'",
-                    "font-src 'self' data:",
+                    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+                    "font-src 'self' data: https://fonts.gstatic.com",
                     "connect-src 'self'",
                     "frame-ancestors 'none'",
                     "base-uri 'self'",

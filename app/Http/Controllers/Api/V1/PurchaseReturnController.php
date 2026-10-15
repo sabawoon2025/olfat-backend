@@ -62,7 +62,7 @@ class PurchaseReturnController extends Controller
     public function show(PurchaseReturn $purchaseReturn): JsonResponse
     {
         return ApiResponse::success(
-            $purchaseReturn->load(['items.variant', 'purchase', 'supplier', 'location', 'user'])
+            $purchaseReturn->load(['items.variant.product', 'purchase', 'supplier', 'location', 'user'])
         );
     }
 }

@@ -13,7 +13,7 @@
         document.documentElement.dir = 'rtl';
         var sheet = document.querySelector('link[href*="bootstrap.min.css"]');
         if (sheet) sheet.href = sheet.href.replace('bootstrap.min.css', 'bootstrap.rtl.min.css');
-}
+      }
     } catch (err) {}
   </script>
   <link rel="stylesheet" href="../assets/css/tokens.css">
@@ -26,31 +26,46 @@
       <div class="alert alert-warning mbms-source-banner" id="source-banner" hidden></div>
       <div class="mbms-page-header">
         <div>
-          <h1 id="pay-title">Payments</h1>
-          <p>Customer and supplier payments. Official balances stay on the backend.</p>
+          <h1 id="pay-title"><i class="bi bi-cash-coin" aria-hidden="true"></i> Payments</h1>
         </div>
         <div class="mbms-page-actions">
-          <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#payModal"><i class="bi bi-cash-coin" aria-hidden="true"></i> New payment</button>
+          <a class="btn btn-outline-secondary" id="pay-party-link" href="customers.html">
+            <i class="bi bi-people" aria-hidden="true"></i> Customers
+          </a>
+          <button type="button" class="btn btn-primary" id="open-pay-modal" data-bs-toggle="modal" data-bs-target="#payModal">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i> New payment
+          </button>
         </div>
       </div>
-      <div class="d-flex flex-wrap gap-2 mb-3">
-        <a class="btn btn-outline-primary" data-pay-tab="customer" href="payments.html">Customer payments</a>
-        <a class="btn btn-outline-primary" data-pay-tab="supplier" href="payments.html?type=supplier">Supplier payments</a>
-      </div>
+
+      <ul class="nav nav-tabs mbms-nav-tabs" role="tablist">
+        <li class="nav-item">
+          <a class="nav-link" data-pay-tab="customer" href="payments.html">Customer payments</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" data-pay-tab="supplier" href="payments.html?type=supplier">Supplier payments</a>
+        </li>
+      </ul>
+
       <div class="mbms-toolbar">
-        <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search payments">
+        <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search name or note…" autocomplete="off">
+        <input class="form-control mbms-date" id="date-from" type="date" aria-label="From date">
+        <input class="form-control mbms-date" id="date-to" type="date" aria-label="To date">
       </div>
+      <div class="mbms-summary-row" id="list-summary" hidden></div>
       <div id="pay-empty" hidden></div>
-      <div class="table-responsive" id="pay-table-wrap">
+      <div class="table-responsive mbms-scroll-panel" id="pay-table-wrap">
         <table class="table mbms-table">
           <thead>
             <tr>
               <th>Date</th>
-              <th>Person / entity</th>
+              <th>Ref</th>
+              <th id="pay-person-col">Customer</th>
               <th>Amount</th>
-              <th>Description</th>
-              <th>User</th>
+              <th>Balance after</th>
+              <th>Note</th>
               <th>Location</th>
+              <th>By</th>
             </tr>
           </thead>
           <tbody id="pay-list-body"></tbody>
@@ -61,38 +76,72 @@
 
   <div class="modal fade" id="payModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-      <div class="modal-content">
+      <div class="modal-content mbms-payment-modal">
         <form id="pay-form" novalidate>
           <div class="modal-header">
-            <h2 class="modal-title h5">Record payment</h2>
+            <h2 class="modal-title h5" id="pay-modal-title"><i class="bi bi-cash-coin" aria-hidden="true"></i> New payment</h2>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <div class="mbms-field">
-              <label class="form-label" for="pay-person" id="party-label">Customer</label>
-              <select class="form-select" id="pay-person" name="person" required></select>
+            <div class="mbms-form-section is-payment">
+              <div class="mbms-form-section-title"><i class="bi bi-person" aria-hidden="true"></i> <span id="party-section-label">Customer</span></div>
+              <div class="d-flex flex-wrap gap-2 align-items-end">
+                <div class="mbms-field flex-grow-1 mb-0" style="min-width: min(100%, 14rem);">
+                  <label class="form-label" for="pay-person" id="party-label">Customer</label>
+                  <select class="form-select" id="pay-person" name="person" required data-ac="1" data-ac-placeholder="Search name…"></select>
+                </div>
+                <a class="btn btn-outline-primary" id="pay-add-party" href="customers.html?add=1&amp;return=payments.html">
+                  <i class="bi bi-person-plus" aria-hidden="true"></i> Add
+                </a>
+              </div>
+              <p class="mbms-help is-compact mt-2 mb-0" id="pay-balance-hint">Select a party to see outstanding balance.</p>
+              <p class="text-danger small mb-0 mt-1" id="pay-balance-error" hidden></p>
             </div>
-            <div class="mbms-field">
-              <label class="form-label" for="pay-amount">Amount</label>
-              <input class="form-control" id="pay-amount" name="amount" required>
+
+            <div class="mbms-form-section is-payment">
+              <div class="mbms-form-section-title"><i class="bi bi-wallet2" aria-hidden="true"></i> Payment</div>
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="pay-amount">Amount</label>
+                    <input class="form-control" id="pay-amount" name="amount" required inputmode="decimal" min="0.01" step="0.01" placeholder="0.00">
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="pay-date">Date</label>
+                    <input class="form-control" id="pay-date" name="date" type="date" required>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="pay-location">Location</label>
+                    <select class="form-select" id="pay-location" name="location" required></select>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="pay-description">Note <span class="text-secondary fw-normal">(optional)</span></label>
+                    <input class="form-control" id="pay-description" name="description" placeholder="Optional">
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="mbms-field">
-              <label class="form-label" for="pay-date">Date</label>
-              <input class="form-control" id="pay-date" name="date" type="date" required>
+
+            <div class="mbms-profit-panel mbms-payment-preview" id="pay-preview" hidden>
+              <div class="mbms-profit-row">
+                <span>Outstanding</span>
+                <strong id="pay-preview-before">—</strong>
+              </div>
+              <div class="mbms-profit-row">
+                <span>Paying</span>
+                <strong id="pay-preview-amount">—</strong>
+              </div>
+              <div class="mbms-profit-row">
+                <span>Balance after</span>
+                <strong id="pay-preview-after">—</strong>
+              </div>
             </div>
-            <div class="mbms-field">
-              <label class="form-label" for="pay-description">Description</label>
-              <textarea class="form-control" id="pay-description" name="description" rows="2"></textarea>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="pay-location">Location</label>
-              <select class="form-select" id="pay-location" name="location" required></select>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="pay-user">User</label>
-              <input class="form-control" id="pay-user" name="user" value="Signed-in user" readonly>
-            </div>
-            <p class="mbms-help mb-0">Official balances stay on Laravel. This form does not calculate them.</p>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-outline-secondary" id="pay-reset">Reset</button>
@@ -115,6 +164,7 @@
   <script defer src="../assets/js/nav.js"></script>
   <script defer src="../assets/js/auth.js"></script>
   <script defer src="../assets/js/layout.js"></script>
+  <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/catalog-lookups.js"></script>
   <script defer src="../assets/js/pages/payments-page.js"></script>

@@ -5,6 +5,27 @@
 (function (global) {
   'use strict';
 
+  function num(value) {
+    var n = Number(String(value == null ? '' : value).replace(/,/g, '').trim());
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function moneyText(n) {
+    return num(n).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  function todayIso() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  function currentMonth() {
+    return todayIso().slice(0, 7);
+  }
+
   function seedWorkers() {
     return (global.MBMS_MOCK && global.MBMS_MOCK.workers) || [];
   }
@@ -14,7 +35,59 @@
   }
 
   function seedMonthly() {
-    return (global.MBMS_MOCK && global.MBMS_MOCK.workerMonthlyReports) || [];
+    if (global.MBMS_MOCK && Array.isArray(global.MBMS_MOCK.workerMonthlyReports)) {
+      return global.MBMS_MOCK.workerMonthlyReports;
+    }
+    return buildMonthly(seedPayments());
+  }
+
+  function buildMonthly(payments) {
+    if (global.MBMS_API && typeof global.MBMS_API.monthlyFromPayments === 'function') {
+      return global.MBMS_API.monthlyFromPayments(payments);
+    }
+    var groups = {};
+    (payments || []).forEach(function (row) {
+      var workerId = String(row.worker_id || '');
+      var month = row.month || String(row.date || '').slice(0, 7);
+      if (!workerId || !month) {
+        return;
+      }
+      var key = workerId + '|' + month;
+      if (!groups[key]) {
+        groups[key] = {
+          id: key,
+          worker_id: workerId,
+          worker: row.worker || '',
+          month: month,
+          dates: [],
+          amounts: [],
+          total: 0
+        };
+      }
+      if (row.date) {
+        groups[key].dates.push(row.date);
+      }
+      groups[key].amounts.push(row.amount != null ? String(row.amount) : moneyText(row.amount_raw));
+      groups[key].total += row.amount_raw != null ? num(row.amount_raw) : num(row.amount);
+    });
+    return Object.keys(groups).map(function (key) {
+      var group = groups[key];
+      return {
+        id: group.id,
+        worker_id: group.worker_id,
+        worker: group.worker,
+        month: group.month,
+        dates: group.dates.join(', '),
+        amounts: group.amounts.join(', '),
+        monthly_total_display: moneyText(group.total),
+        monthly_total_raw: group.total
+      };
+    }).sort(function (a, b) {
+      if (a.month === b.month) {
+        return String(a.worker).localeCompare(String(b.worker));
+      }
+      return String(b.month).localeCompare(String(a.month));
+    });
   }
 
   function workers() {
@@ -26,15 +99,31 @@
   }
 
   function monthlyRows() {
-    return seedMonthly();
+    var rows = seedMonthly();
+    if ((!rows || !rows.length) && payments().length) {
+      rows = buildMonthly(payments());
+      global.MBMS_MOCK = global.MBMS_MOCK || {};
+      global.MBMS_MOCK.workerMonthlyReports = rows;
+    }
+    return rows || [];
   }
 
   function findWorker(id) {
-    return workers().filter(function (row) { return row.id === id; })[0] || null;
+    return workers().filter(function (row) {
+      return String(row.id) === String(id);
+    })[0] || null;
   }
 
   function paymentsFor(workerId) {
-    return payments().filter(function (row) { return row.worker_id === workerId; });
+    return payments().filter(function (row) {
+      return String(row.worker_id) === String(workerId);
+    });
+  }
+
+  function paidTotalFor(workerId) {
+    return paymentsFor(workerId).reduce(function (sum, row) {
+      return sum + (row.amount_raw != null ? num(row.amount_raw) : num(row.amount));
+    }, 0);
   }
 
   function setMode(detail) {
@@ -42,31 +131,62 @@
     document.getElementById('detail-view').hidden = !detail;
   }
 
-  function renderList(source) {
+  function filteredWorkers() {
     var query = String((document.getElementById('module-search') || {}).value || '').toLowerCase();
-    var location = (document.getElementById('list-location') || {}).value || '';
-    var rows = workers().filter(function (row) {
-      return (!query || String(row.name).toLowerCase().indexOf(query) !== -1)
-        && (!location || row.location === location);
+    return workers().filter(function (row) {
+      if (!query) {
+        return true;
+      }
+      var text = [row.name, row.phone, row.notes].join(' ').toLowerCase();
+      return text.indexOf(query) !== -1;
     });
+  }
+
+  function renderList(source) {
+    var rows = filteredWorkers();
     global.MBMS_RECORDS.showBanner(document.getElementById('source-banner'), source);
+
+    var allPaid = 0;
+    rows.forEach(function (row) {
+      allPaid += paidTotalFor(row.id);
+    });
+
+    global.MBMS_RECORDS.renderSummary(document.getElementById('list-summary'), [
+      { icon: 'bi-person-badge', label: 'Workers', value: rows.length, tone: 'primary' },
+      { icon: 'bi-cash-coin', label: 'Paid (listed)', value: moneyText(allPaid), tone: 'success' },
+      { icon: 'bi-calendar3', label: 'Payment rows', value: payments().length, tone: 'info' }
+    ]);
+
     if (!rows.length) {
       document.getElementById('worker-table-wrap').hidden = true;
       document.getElementById('worker-empty').hidden = false;
       global.MBMS_UI.renderEmpty(document.getElementById('worker-empty'), {
         title: 'No workers yet',
-        message: 'Workers you add will show up here.'
+        message: 'Add a worker, then record payments from their profile.'
       });
     } else {
       document.getElementById('worker-empty').hidden = true;
       document.getElementById('worker-table-wrap').hidden = false;
       global.MBMS_RECORDS.renderTable(document.getElementById('worker-list-body'), rows, [
         { key: 'name' },
-        { key: 'location' },
-        { key: 'notes' },
         {
           render: function (row) {
-            return '<a class="btn btn-sm btn-outline-primary" href="?id=' + encodeURIComponent(row.id) + '">Open</a>';
+            return global.MBMS_UTILS.escapeHtml(row.phone || '—');
+          }
+        },
+        {
+          render: function (row) {
+            return global.MBMS_UTILS.escapeHtml(row.notes || '—');
+          }
+        },
+        {
+          render: function (row) {
+            return global.MBMS_UTILS.escapeHtml(moneyText(paidTotalFor(row.id)));
+          }
+        },
+        {
+          render: function (row) {
+            return global.MBMS_RECORDS.actionButton('?id=' + encodeURIComponent(row.id), 'Open', 'bi-box-arrow-up-right');
           }
         }
       ]);
@@ -77,14 +197,37 @@
   function renderMonthly() {
     var month = (document.getElementById('report-month') || {}).value || '';
     var rows = monthlyRows().filter(function (row) {
-      return !month || row.month === month;
+      return !month || String(row.month) === String(month);
     });
+
+    var total = 0;
+    rows.forEach(function (row) {
+      total += row.monthly_total_raw != null ? num(row.monthly_total_raw) : num(row.monthly_total_display);
+    });
+
+    global.MBMS_RECORDS.renderSummary(document.getElementById('monthly-summary'), [
+      {
+        icon: 'bi-calendar3',
+        label: month || 'All months',
+        value: rows.length + ' worker' + (rows.length === 1 ? '' : 's'),
+        tone: 'primary'
+      },
+      {
+        icon: 'bi-cash-stack',
+        label: 'Month total',
+        value: moneyText(total),
+        tone: 'success'
+      }
+    ]);
+
     if (!rows.length) {
       document.getElementById('monthly-table-wrap').hidden = true;
       document.getElementById('monthly-empty').hidden = false;
       global.MBMS_UI.renderEmpty(document.getElementById('monthly-empty'), {
         title: 'No monthly report rows',
-        message: 'Official monthly totals will come from Laravel. This UI does not calculate payroll.'
+        message: month
+          ? 'No payments recorded for ' + month + '.'
+          : 'Record worker payments to build the monthly report.'
       });
       return;
     }
@@ -100,17 +243,24 @@
   }
 
   function renderDetail(worker, source) {
-    document.getElementById('detail-title').textContent = worker.name;
-    document.getElementById('detail-location').textContent = worker.location || '—';
-    document.getElementById('detail-notes').textContent = worker.notes || 'Money received is recorded. This is not a payroll profile.';
+    global.MBMS_UTILS.setIconHeading(document.getElementById('detail-title'), null, worker.name);
+    document.getElementById('detail-phone').textContent = worker.phone || 'No phone';
+    document.getElementById('detail-notes').textContent = worker.notes || '';
     global.MBMS_RECORDS.showBanner(document.getElementById('source-banner'), source);
+
     var rows = paymentsFor(worker.id);
+    var total = paidTotalFor(worker.id);
+    global.MBMS_RECORDS.renderSummary(document.getElementById('detail-summary'), [
+      { icon: 'bi-receipt', label: 'Payments', value: rows.length, tone: 'info' },
+      { icon: 'bi-cash-coin', label: 'Total paid', value: moneyText(total), tone: 'success' }
+    ]);
+
     if (!rows.length) {
       document.getElementById('pay-table-wrap').hidden = true;
       document.getElementById('pay-empty').hidden = false;
       global.MBMS_UI.renderEmpty(document.getElementById('pay-empty'), {
         title: 'No payments yet',
-        message: 'Worker payments you record will show up here.'
+        message: 'Use Record payment to log money paid to this worker.'
       });
     } else {
       document.getElementById('pay-empty').hidden = true;
@@ -119,22 +269,16 @@
         { key: 'date' }, { key: 'amount' }, { key: 'description' }, { key: 'user' }, { key: 'location' }
       ]);
     }
-    var personal = monthlyRows().filter(function (row) { return row.worker_id === worker.id; });
+
+    var personal = monthlyRows().filter(function (row) {
+      return String(row.worker_id) === String(worker.id);
+    });
     global.MBMS_RECORDS.renderTable(document.getElementById('detail-monthly-body'), personal, [
       { key: 'month' }, { key: 'dates' }, { key: 'amounts' }, { key: 'monthly_total_display' }
-    ], 'No monthly report yet. Official totals stay on Laravel.');
+    ], 'No monthly totals yet.');
   }
 
   function fillLocationSelects() {
-    global.MBMS_RECORDS.fillSelect(
-      document.getElementById('list-location'),
-      global.MBMS_RECORDS.locations(),
-      function (row) { return row.name; },
-      function (row) { return row.name; },
-      (document.getElementById('list-location') || {}).value || '',
-      'All locations'
-    );
-    global.MBMS_RECORDS.fillWorkLocation(document.getElementById('worker-location'));
     global.MBMS_RECORDS.fillWorkLocation(document.getElementById('pay-location'));
   }
 
@@ -152,32 +296,46 @@
     return [];
   }
 
-  /**
-   * Payments are loaded separately from the workers list request.
-   * Used for monthly summary and worker detail history.
-   */
   function loadWorkerPayments(force) {
     if (
       !force &&
       global.MBMS_MOCK &&
       Object.prototype.hasOwnProperty.call(global.MBMS_MOCK, 'workerPayments') &&
       Array.isArray(global.MBMS_MOCK.workerPayments) &&
-      Array.isArray(global.MBMS_MOCK.workerMonthlyReports)
+      Array.isArray(global.MBMS_MOCK.workerMonthlyReports) &&
+      global.MBMS_MOCK.workerMonthlyReports.length
     ) {
       return Promise.resolve(global.MBMS_MOCK.workerPayments);
     }
+    if (
+      !force &&
+      global.MBMS_MOCK &&
+      Array.isArray(global.MBMS_MOCK.workerPayments) &&
+      global.MBMS_MOCK.workerPayments.length
+    ) {
+      global.MBMS_MOCK.workerMonthlyReports = buildMonthly(global.MBMS_MOCK.workerPayments);
+      return Promise.resolve(global.MBMS_MOCK.workerPayments);
+    }
+
     return global.MBMS_API.get('worker-payments', { params: { per_page: 200 } })
       .then(function (response) {
         var rows = paymentRowsFrom(response.data);
         if (global.MBMS_API.rememberWorkerPayments) {
           global.MBMS_API.rememberWorkerPayments(rows);
+        } else {
+          global.MBMS_MOCK = global.MBMS_MOCK || {};
+          global.MBMS_MOCK.workerPayments = rows;
+          global.MBMS_MOCK.workerMonthlyReports = buildMonthly(rows);
+        }
+        if (!global.MBMS_MOCK.workerMonthlyReports || !global.MBMS_MOCK.workerMonthlyReports.length) {
+          global.MBMS_MOCK.workerMonthlyReports = buildMonthly(global.MBMS_MOCK.workerPayments || rows);
         }
         return (global.MBMS_MOCK && global.MBMS_MOCK.workerPayments) || rows;
       })
       .catch(function () {
         global.MBMS_MOCK = global.MBMS_MOCK || {};
         global.MBMS_MOCK.workerPayments = global.MBMS_MOCK.workerPayments || [];
-        global.MBMS_MOCK.workerMonthlyReports = global.MBMS_MOCK.workerMonthlyReports || [];
+        global.MBMS_MOCK.workerMonthlyReports = buildMonthly(global.MBMS_MOCK.workerPayments);
         return global.MBMS_MOCK.workerPayments;
       });
   }
@@ -210,7 +368,7 @@
         }
         renderList(result.source);
         return loadWorkerPayments(false).then(function () {
-          renderMonthly();
+          renderList(result.source);
           if (global.MBMS_API && typeof global.MBMS_API.ensureLocations === 'function') {
             return global.MBMS_API.ensureLocations().then(fillLocationSelects).catch(function () {});
           }
@@ -226,36 +384,75 @@
   global.MBMS_PAGE = {
     active: 'workers',
     title: 'Workers',
-    // Locations fill after workers + payments (see load()) — do not race the list API.
     prefetchLocations: false,
     onReady: function () {
       fillLocationSelects();
 
-      ['module-search', 'list-location', 'report-month'].forEach(function (id) {
-        var el = document.getElementById(id);
-        if (el) {
-          el.addEventListener('input', load);
-          el.addEventListener('change', load);
+      var monthEl = document.getElementById('report-month');
+      if (monthEl && !monthEl.value) {
+        monthEl.value = currentMonth();
+      }
+
+      var search = document.getElementById('module-search');
+      if (search) {
+        search.addEventListener('input', global.MBMS_UTILS.debounce(function () {
+          if (!global.MBMS_RECORDS.queryParam('id')) {
+            renderList();
+          }
+        }, 250));
+      }
+
+      if (monthEl) {
+        monthEl.addEventListener('change', renderMonthly);
+        monthEl.addEventListener('input', renderMonthly);
+      }
+      var clearMonth = document.getElementById('report-month-clear');
+      if (clearMonth) {
+        clearMonth.addEventListener('click', function () {
+          if (monthEl) {
+            monthEl.value = '';
+          }
+          renderMonthly();
+        });
+      }
+
+      document.getElementById('workerModal').addEventListener('show.bs.modal', function () {
+        document.getElementById('worker-form').classList.remove('was-validated');
+      });
+
+      document.getElementById('payModal').addEventListener('show.bs.modal', function () {
+        var date = document.getElementById('pay-date');
+        if (date && !date.value) {
+          date.value = todayIso();
         }
+        fillLocationSelects();
       });
 
       global.MBMS_UI.bindReset(document.getElementById('worker-form'), document.getElementById('worker-reset'));
-      global.MBMS_UI.bindReset(document.getElementById('pay-form'), document.getElementById('pay-reset'));
+      global.MBMS_UI.bindReset(document.getElementById('pay-form'), document.getElementById('pay-reset'), function () {
+        var date = document.getElementById('pay-date');
+        if (date) {
+          date.value = todayIso();
+        }
+        fillLocationSelects();
+      });
 
       global.MBMS_UI.bindForm(document.getElementById('worker-form'), {
         onSubmit: function (values) {
-          values.id = 'local-' + Date.now();
-          values.notes = values.notes || 'Tracks money received. Not a payroll record.';
-          return global.MBMS_RECORDS.submitOrMock('post', 'workers', values, function (body) {
-            return global.MBMS_RECORDS.storeSave('workers', body);
-          }).then(function (result) {
+          var payload = {
+            name: values.name,
+            phone: values.phone || null,
+            notes: values.notes || null
+          };
+          return global.MBMS_RECORDS.submitOrMock('post', 'workers', payload).then(function (result) {
             global.MBMS_UI.notify({
               type: result.source === 'api' ? 'success' : 'warning',
               message: result.source === 'api' ? 'Worker saved.' : 'API not connected. Sample worker only.'
             });
             document.getElementById('worker-form').reset();
             bootstrap.Modal.getOrCreateInstance(document.getElementById('workerModal')).hide();
-            global.location.search = '?id=' + encodeURIComponent((result.data && result.data.id) || values.id);
+            var savedId = (result.data && result.data.id) || payload.id;
+            global.location.search = '?id=' + encodeURIComponent(savedId);
           });
         }
       });
@@ -263,25 +460,31 @@
       global.MBMS_UI.bindForm(document.getElementById('pay-form'), {
         onSubmit: function (values) {
           var worker = findWorker(global.MBMS_RECORDS.queryParam('id')) || {};
+          if (!worker.id) {
+            throw { message: 'Open a worker profile before recording a payment.' };
+          }
+          var amount = num(values.amount);
+          if (!(amount > 0)) {
+            throw {
+              message: 'Enter an amount greater than zero.',
+              errors: { amount: ['Amount must be greater than zero'] }
+            };
+          }
           var record = {
-            id: 'local-' + Date.now(),
             worker_id: worker.id,
             worker: worker.name,
-            amount: values.amount,
-            date: values.date,
-            description: values.description,
-            user: values.user || 'Signed-in user',
+            amount: amount,
+            date: values.date || todayIso(),
+            description: values.description || null,
             location: values.location,
             location_id: values.location
           };
-          return global.MBMS_RECORDS.submitOrMock('post', 'workers/' + worker.id + '/payments', record, function (body) {
-            return global.MBMS_RECORDS.storeSave('workerPayments', body);
-          }).then(function (result) {
+          return global.MBMS_RECORDS.submitOrMock('post', 'workers/' + worker.id + '/payments', record).then(function (result) {
             global.MBMS_UI.notify({
               type: result.source === 'api' ? 'success' : 'warning',
               message: result.source === 'api'
-                ? 'Payment sent. Official monthly totals stay on Laravel.'
-                : 'API not connected. Sample payment only. No payroll total was calculated.'
+                ? 'Payment saved. Monthly report updated.'
+                : 'API not connected. Sample payment only.'
             });
             document.getElementById('pay-form').reset();
             bootstrap.Modal.getOrCreateInstance(document.getElementById('payModal')).hide();

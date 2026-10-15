@@ -1,5 +1,5 @@
 /**
- * Reports UI. Displays backend/mock report rows. Does not calculate official totals.
+ * Reports UI. Displays Laravel report rows and summaries.
  */
 (function (global) {
   'use strict';
@@ -97,6 +97,35 @@
     location: ['search', 'date_from', 'date_to', 'category', 'product']
   };
 
+  var LABELS = {
+    date: 'Date',
+    period: 'Period',
+    product: 'Product',
+    customer: 'Customer',
+    supplier: 'Supplier',
+    amount: 'Amount',
+    location: 'Location',
+    category: 'Category',
+    variant: 'Variant',
+    type: 'Type',
+    quantity: 'Quantity',
+    stock_display: 'Value / Stock',
+    person: 'Person',
+    direction: 'Direction',
+    remaining_display: 'Remaining / Result',
+    worker: 'Worker',
+    month: 'Month',
+    monthly_total_display: 'Monthly total',
+    note: 'Note',
+    module: 'Module',
+    revenue: 'Net revenue',
+    returns: 'Returns',
+    cost: 'COGS',
+    result: 'Profit / Loss',
+    sold_qty: 'Sold',
+    returned_qty: 'Returned'
+  };
+
   function groupId() {
     return global.MBMS_RECORDS.queryParam('group') || 'sales';
   }
@@ -110,6 +139,10 @@
     return parseInt(global.MBMS_RECORDS.queryParam('page') || '1', 10) || 1;
   }
 
+  function isProfitLoss() {
+    return groupId() === 'financial' && kindId() === 'profit-loss';
+  }
+
   function mockRows() {
     var all = (global.MBMS_MOCK && global.MBMS_MOCK.reports) || {};
     var group = all[groupId()] || {};
@@ -120,6 +153,35 @@
     return 'reports/' + groupId() + '/' + kindId();
   }
 
+  function columnsFor() {
+    if (isProfitLoss()) {
+      return [
+        { key: 'module' },
+        { key: 'product' },
+        { key: 'location' },
+        { key: 'sold_qty' },
+        { key: 'returned_qty' },
+        { key: 'revenue' },
+        { key: 'cost' },
+        {
+          key: 'result',
+          render: function (row) {
+            var raw = row.result_raw != null ? Number(row.result_raw) : Number(String(row.result || '').replace(/,/g, ''));
+            var tone = raw < 0 ? 'text-danger' : (raw > 0 ? 'text-success' : 'text-secondary');
+            return '<span class="fw-semibold ' + tone + '">' + global.MBMS_UTILS.escapeHtml(row.result || '0.00') + '</span>';
+          }
+        }
+      ];
+    }
+    if (groupId() === 'stock' && kindId() === 'returned') {
+      return [
+        { key: 'date' }, { key: 'product' }, { key: 'variant' }, { key: 'type' },
+        { key: 'quantity' }, { key: 'stock_display' }, { key: 'customer' }, { key: 'location' }
+      ];
+    }
+    return (GROUPS[groupId()] || GROUPS.sales).columns;
+  }
+
   function applyClientFilters(rows, params) {
     var filters = global.MBMS_FILTERS;
     var locationName = filters && params.location_id ? filters.locationLabel(params.location_id) : '';
@@ -127,7 +189,7 @@
     var supplierName = filters && params.supplier_id ? filters.personLabel('supplier', params.supplier_id) : '';
     return (rows || []).filter(function (row) {
       var search = String(params.search || '').toLowerCase();
-      var text = [row.product, row.person, row.customer, row.supplier, row.worker, row.detail].join(' ').toLowerCase();
+      var text = [row.product, row.person, row.customer, row.supplier, row.worker, row.detail, row.module].join(' ').toLowerCase();
       return (!search || text.indexOf(search) !== -1)
         && (!locationName || row.location === locationName || row.location === 'All')
         && (!params.category || row.category === params.category)
@@ -148,12 +210,17 @@
     document.getElementById('report-kinds').innerHTML = kinds.map(function (item) {
       var href = 'reports.html?group=' + encodeURIComponent(group) + '&kind=' + encodeURIComponent(item.id);
       var active = item.id === kind ? ' is-active' : '';
-      return '<a class="btn btn-outline-primary btn-sm' + active + '" href="' + href + '">' + global.MBMS_UTILS.escapeHtml(item.label) + '</a>';
+      return '<a class="btn btn-outline-primary btn-sm' + active + '" href="' + href + '">' +
+        global.MBMS_UTILS.escapeHtml(item.label) + '</a>';
     }).join('');
-    document.getElementById('report-title').textContent = (GROUPS[group] || GROUPS.sales).label + ' reports';
+    global.MBMS_UTILS.setIconHeading(
+      document.getElementById('report-title'),
+      'bi-bar-chart-line',
+      (GROUPS[group] || GROUPS.sales).label + ' reports'
+    );
     var plLink = document.getElementById('pl-link');
     if (plLink) {
-      plLink.hidden = !(group === 'financial' && kind === 'profit-loss');
+      plLink.hidden = !isProfitLoss();
     }
     if (global.MBMS_FILTERS) {
       global.MBMS_FILTERS.show(document.getElementById('report-filters'), FILTERS_BY_GROUP[group] || FILTERS_BY_GROUP.sales);
@@ -177,6 +244,45 @@
     global.location.search = url.search;
   }
 
+  function renderSummaryChips(summary, rows) {
+    var chips = [];
+    if (isProfitLoss()) {
+      var netRaw = summary.net_profit_raw != null
+        ? Number(summary.net_profit_raw)
+        : Number(String(summary.net_profit || summary.remaining || '').replace(/,/g, ''));
+      var netTone = netRaw < 0 ? 'danger' : (netRaw > 0 ? 'success' : 'muted');
+      chips = [
+        { icon: 'bi-cash-stack', label: 'Gross sales', value: summary.gross_sales || '—', tone: 'primary' },
+        { icon: 'bi-arrow-return-left', label: 'Returns', value: summary.returns_amount || '—', tone: 'warning' },
+        { icon: 'bi-receipt', label: 'Net revenue', value: summary.revenue || summary.total || '—', tone: 'info' },
+        { icon: 'bi-box-seam', label: 'COGS', value: summary.cost || summary.paid || '—', tone: 'muted' },
+        { icon: 'bi-graph-up-arrow', label: 'Net profit / loss', value: summary.net_profit || summary.remaining || '—', tone: netTone }
+      ];
+    } else {
+      chips.push({ icon: 'bi-list-ul', label: 'Rows shown', value: rows.length, tone: 'primary' });
+      if (summary.count != null && summary.count !== '') {
+        chips.push({ icon: 'bi-hash', label: 'Records', value: summary.count, tone: 'info' });
+      }
+      if (summary.total != null && summary.total !== '') {
+        chips.push({ icon: 'bi-cash-stack', label: 'Total', value: summary.total, tone: 'success' });
+      }
+      if (summary.paid != null && summary.paid !== '') {
+        chips.push({ icon: 'bi-wallet2', label: 'Paid', value: summary.paid, tone: 'accent' });
+      }
+      if (summary.remaining != null && summary.remaining !== '') {
+        chips.push({ icon: 'bi-hourglass-split', label: 'Remaining', value: summary.remaining, tone: 'warning' });
+      }
+    }
+    global.MBMS_RECORDS.renderSummary(document.getElementById('report-summary'), chips);
+
+    var note = document.getElementById('report-note');
+    if (note) {
+      var text = summary.note || (isProfitLoss() && summary.method_label ? ('Costing: ' + summary.method_label) : '');
+      note.hidden = !text;
+      note.textContent = text;
+    }
+  }
+
   function render(result) {
     var params = global.MBMS_FILTERS ? global.MBMS_FILTERS.params(document.getElementById('report-filters')) : {};
     var payload = result.data && !Array.isArray(result.data) ? result.data : { rows: result.data };
@@ -184,59 +290,35 @@
       ? (payload.rows || payload.data || [])
       : applyClientFilters(mockRows(), params);
     var summary = payload.summary || {};
+
+    if (params.search && result.source === 'api') {
+      rows = applyClientFilters(rows, { search: params.search });
+    }
+
     global.MBMS_RECORDS.showBanner(
       document.getElementById('source-banner'),
       result.source,
       'Showing sample report rows. Official report totals come from Laravel.'
     );
-    document.getElementById('report-summary').innerHTML = [
-      ['rows', rows.length, 'Rows shown']
-    ].map(function (item) {
-      return (
-        '<div class="col-6 col-lg-3"><article class="mbms-card card mbms-stat-card"><div class="card-body">' +
-        '<div class="mbms-stat-label">' + item[2] + '</div>' +
-        '<div class="mbms-stat-value">' + global.MBMS_UTILS.escapeHtml(summary[item[0]] != null ? summary[item[0]] : item[1]) + '</div>' +
-        '</div></article></div>'
-      );
-    }).join('');
-
-    if (groupId() === 'financial' && kindId() === 'profit-loss') {
-      document.getElementById('report-table-wrap').hidden = true;
-      document.getElementById('report-empty').hidden = false;
-      global.MBMS_UI.renderEmpty(document.getElementById('report-empty'), {
-        title: 'Open the Profit & Loss screen',
-        message: 'The official P&L layout lives on its own page so costing is not invented in reports.',
-        actionLabel: 'Open Profit & Loss',
-        onAction: function () {
-          global.location.href = 'profit-loss.html';
-        }
-      });
-      renderPager(payload.meta || { current_page: 1, last_page: 1 });
-      return;
-    }
+    renderSummaryChips(summary, rows);
 
     if (!rows.length) {
       document.getElementById('report-table-wrap').hidden = true;
       document.getElementById('report-empty').hidden = false;
       global.MBMS_UI.renderEmpty(document.getElementById('report-empty'), {
-        title: 'No report rows',
-        message: 'No rows match these filters yet.'
+        title: isProfitLoss() ? 'No profit/loss rows' : 'No report rows',
+        message: isProfitLoss()
+          ? 'No net sales in this period. Try another date range or open the full P&L page.'
+          : 'No rows match these filters yet.'
       });
     } else {
       document.getElementById('report-empty').hidden = true;
       document.getElementById('report-table-wrap').hidden = false;
-      var group = GROUPS[groupId()] || GROUPS.sales;
-      var labels = {
-        date: 'Date', period: 'Period', product: 'Product', customer: 'Customer',
-        supplier: 'Supplier', amount: 'Amount', location: 'Location', category: 'Category',
-        variant: 'Variant', type: 'Type', quantity: 'Quantity', stock_display: 'Stock display',
-        person: 'Person', direction: 'Direction', remaining_display: 'Remaining',
-        worker: 'Worker', month: 'Month', monthly_total_display: 'Monthly total', note: 'Note'
-      };
-      document.getElementById('report-head').innerHTML = '<tr>' + group.columns.map(function (col) {
-        return '<th>' + (labels[col.key] || col.key) + '</th>';
+      var cols = columnsFor();
+      document.getElementById('report-head').innerHTML = '<tr>' + cols.map(function (col) {
+        return '<th>' + (LABELS[col.key] || col.key) + '</th>';
       }).join('') + '</tr>';
-      global.MBMS_RECORDS.renderTable(document.getElementById('report-body'), rows, group.columns);
+      global.MBMS_RECORDS.renderTable(document.getElementById('report-body'), rows, cols);
     }
     renderPager(payload.meta || { current_page: pageNumber(), last_page: 1 });
   }
@@ -261,7 +343,7 @@
     var blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
     var link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = (groupId() || 'report') + '.csv';
+    link.download = (groupId() || 'report') + '-' + (kindId() || 'data') + '.csv';
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -274,7 +356,6 @@
     if (groupId() === 'location' && !params.location_id) {
       params.location_id = kindId();
     }
-    render({ source: 'empty', data: { rows: [], summary: {} } });
     return global.MBMS_RECORDS.fetchOrMock(endpoint(), mockRows, params)
       .then(render)
       .catch(function (error) {

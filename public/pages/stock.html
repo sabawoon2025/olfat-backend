@@ -13,7 +13,7 @@
         document.documentElement.dir = 'rtl';
         var sheet = document.querySelector('link[href*="bootstrap.min.css"]');
         if (sheet) sheet.href = sheet.href.replace('bootstrap.min.css', 'bootstrap.rtl.min.css');
-}
+      }
     } catch (err) {}
   </script>
   <link rel="stylesheet" href="../assets/css/tokens.css">
@@ -26,30 +26,51 @@
       <div class="alert alert-warning mbms-source-banner" id="source-banner" hidden></div>
       <div class="mbms-page-header">
         <div>
-          <h1>Stock</h1>
+          <h1><i class="bi bi-boxes" aria-hidden="true"></i> Stock</h1>
+          <p class="mbms-help mb-0">Balances and movements from Laravel — quantities are not recalculated in the browser.</p>
+        </div>
+        <div class="mbms-page-actions">
+          <a class="btn btn-outline-primary" href="purchases.html">
+            <i class="bi bi-bag-plus" aria-hidden="true"></i> Purchases
+          </a>
+          <a class="btn btn-outline-secondary" href="returns.html">
+            <i class="bi bi-arrow-return-left" aria-hidden="true"></i> Returns
+          </a>
         </div>
       </div>
       <div class="mbms-toolbar">
-        <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search stock">
+        <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search product, variant, reference…" autocomplete="off">
         <select class="form-select mbms-filter" id="list-category" aria-label="Category"></select>
         <select class="form-select mbms-filter" id="list-location" aria-label="Location"></select>
         <select class="form-select mbms-filter" id="movement-type" aria-label="Movement type">
           <option value="">All movements</option>
-          <option value="Purchase">Purchase</option>
-          <option value="Sale">Sale</option>
-          <option value="Return">Return</option>
-          <option value="Damage">Damage</option>
+          <option value="purchase">Purchase</option>
+          <option value="sale">Sale</option>
+          <option value="sale_return">Sale return</option>
+          <option value="purchase_return">Purchase return</option>
+          <option value="damage">Damage</option>
+          <option value="adjustment">Adjustment</option>
+          <option value="transfer_in">Transfer in</option>
+          <option value="transfer_out">Transfer out</option>
         </select>
         <input class="form-control mbms-date" id="date-from" type="date" aria-label="From date">
         <input class="form-control mbms-date" id="date-to" type="date" aria-label="To date">
       </div>
-
+      <div class="mbms-summary-row" id="list-summary" hidden></div>
       <ul class="nav nav-tabs mbms-nav-tabs" role="tablist">
-        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-stock" type="button">Current stock</button></li>
-        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-moves" type="button">Stock movements</button></li>
+        <li class="nav-item">
+          <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-stock" type="button" role="tab">
+            Current stock
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-moves" type="button" role="tab">
+            Stock movements
+          </button>
+        </li>
       </ul>
       <div class="tab-content">
-        <div class="tab-pane fade show active" id="tab-stock">
+        <div class="tab-pane fade show active" id="tab-stock" role="tabpanel">
           <div id="stock-empty" hidden></div>
           <div class="table-responsive" id="stock-table-wrap">
             <table class="table mbms-table">
@@ -58,15 +79,16 @@
                   <th>Category</th>
                   <th>Product</th>
                   <th>Variant</th>
-                  <th>Stock display</th>
+                  <th>Qty here</th>
                   <th>Location</th>
+                  <th>All locations</th>
                 </tr>
               </thead>
               <tbody id="stock-body"></tbody>
             </table>
           </div>
         </div>
-        <div class="tab-pane fade" id="tab-moves">
+        <div class="tab-pane fade" id="tab-moves" role="tabpanel">
           <div id="move-empty" hidden></div>
           <div class="table-responsive" id="move-table-wrap">
             <table class="table mbms-table">
@@ -76,7 +98,7 @@
                   <th>Type</th>
                   <th>Product</th>
                   <th>Variant</th>
-                  <th>Quantity</th>
+                  <th>Change</th>
                   <th>Location</th>
                   <th>Reference</th>
                 </tr>
@@ -100,6 +122,7 @@
   <script defer src="../assets/js/nav.js"></script>
   <script defer src="../assets/js/auth.js"></script>
   <script defer src="../assets/js/layout.js"></script>
+  <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/catalog-lookups.js"></script>
   <script defer src="../assets/js/pages/stock-page.js"></script>

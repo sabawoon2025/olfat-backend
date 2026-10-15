@@ -15,9 +15,7 @@ use Throwable;
 
 class PurchaseController extends Controller
 {
-    public function __construct(private readonly PurchaseService $purchaseService)
-    {
-    }
+    public function __construct(private readonly PurchaseService $purchaseService) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -32,6 +30,16 @@ class PurchaseController extends Controller
 
         if ($request->filled('location_id')) {
             $query->where('location_id', $request->integer('location_id'));
+        }
+
+        if ($request->filled('product_id')) {
+            $productId = $request->integer('product_id');
+            $query->whereHas('items.variant', fn ($q) => $q->where('product_id', $productId));
+        }
+
+        if ($request->filled('product_variant_id')) {
+            $variantId = $request->integer('product_variant_id');
+            $query->whereHas('items', fn ($q) => $q->where('product_variant_id', $variantId));
         }
 
         if ($request->filled('from')) {

@@ -13,7 +13,7 @@
         document.documentElement.dir = 'rtl';
         var sheet = document.querySelector('link[href*="bootstrap.min.css"]');
         if (sheet) sheet.href = sheet.href.replace('bootstrap.min.css', 'bootstrap.rtl.min.css');
-}
+      }
     } catch (err) {}
   </script>
   <link rel="stylesheet" href="../assets/css/tokens.css">
@@ -23,25 +23,28 @@
 <body data-page="home-expenses">
   <div id="page-content">
     <div id="home-root">
-      <div class="alert mbms-home-banner" role="status">
-        Home expenses are personal/household spending. They are not business costs and do not affect Profit &amp; Loss on this frontend.
-      </div>
       <div class="alert alert-warning mbms-source-banner" id="source-banner" hidden></div>
 
       <div class="mbms-page-header">
         <div>
-          <h1>Home Expenses</h1>
+          <h1><i class="bi bi-house-heart" aria-hidden="true"></i> Home Expenses</h1>
         </div>
         <div class="mbms-page-actions">
-          <button type="button" class="btn btn-primary" id="add-expense" data-bs-toggle="modal" data-bs-target="#expModal">Add expense</button>
+          <button type="button" class="btn btn-primary" id="add-expense" data-bs-toggle="modal" data-bs-target="#expModal">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i> Add expense
+          </button>
         </div>
       </div>
+
       <div class="mbms-toolbar">
-        <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search home expenses">
+        <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search category or description…" autocomplete="off">
         <select class="form-select mbms-filter" id="list-category" aria-label="Category"></select>
+        <input class="form-control mbms-date" id="date-from" type="date" aria-label="From date">
+        <input class="form-control mbms-date" id="date-to" type="date" aria-label="To date">
       </div>
+      <div class="mbms-summary-row" id="list-summary" hidden></div>
       <div id="exp-empty" hidden></div>
-      <div class="table-responsive" id="exp-table-wrap">
+      <div class="table-responsive mbms-scroll-panel" id="exp-table-wrap">
         <table class="table mbms-table">
           <thead>
             <tr>
@@ -49,7 +52,7 @@
               <th>Category</th>
               <th>Description</th>
               <th>Amount</th>
-              <th>User</th>
+              <th>By</th>
               <th></th>
             </tr>
           </thead>
@@ -61,33 +64,42 @@
 
   <div class="modal fade" id="expModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-      <div class="modal-content">
+      <div class="modal-content mbms-expense-modal">
         <form id="exp-form" novalidate>
           <div class="modal-header">
-            <h2 class="modal-title h5" id="exp-form-title">Add home expense</h2>
+            <h2 class="modal-title h5" id="exp-form-title"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add expense</h2>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
             <input type="hidden" name="id" id="exp-id">
-            <div class="mbms-field">
-              <label class="form-label" for="exp-category">Category</label>
-              <select class="form-select" id="exp-category" name="category" required></select>
+            <div class="mbms-form-section is-expense">
+              <div class="mbms-form-section-title"><i class="bi bi-tag" aria-hidden="true"></i> Expense</div>
+              <div class="mbms-field">
+                <label class="form-label" for="exp-category">Category</label>
+                <select class="form-select" id="exp-category" name="category" required></select>
+              </div>
+              <div class="mbms-field mb-0">
+                <label class="form-label" for="exp-description">Description <span class="text-secondary fw-normal">(optional)</span></label>
+                <input class="form-control" id="exp-description" name="description" placeholder="What was this for?">
+              </div>
             </div>
-            <div class="mbms-field">
-              <label class="form-label" for="exp-description">Description</label>
-              <textarea class="form-control" id="exp-description" name="description" rows="2"></textarea>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="exp-amount">Amount</label>
-              <input class="form-control" id="exp-amount" name="amount" required>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="exp-date">Date</label>
-              <input class="form-control" id="exp-date" name="date" type="date" required>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="exp-user">User</label>
-              <input class="form-control" id="exp-user" name="user" value="Signed-in user" readonly>
+
+            <div class="mbms-form-section is-expense">
+              <div class="mbms-form-section-title"><i class="bi bi-cash-coin" aria-hidden="true"></i> Amount &amp; date</div>
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="exp-amount">Amount</label>
+                    <input class="form-control" id="exp-amount" name="amount" required inputmode="decimal" min="0.01" step="0.01" placeholder="0.00">
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="exp-date">Date</label>
+                    <input class="form-control" id="exp-date" name="date" type="date" required>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <div class="modal-footer">
@@ -111,6 +123,7 @@
   <script defer src="../assets/js/nav.js"></script>
   <script defer src="../assets/js/auth.js"></script>
   <script defer src="../assets/js/layout.js"></script>
+  <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/pages/home-expenses-page.js"></script>
   <script defer src="../assets/js/app.js"></script>

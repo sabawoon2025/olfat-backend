@@ -101,6 +101,9 @@
     }
 
     ensureScrollableModals();
+    if (global.MBMS_AUTOCOMPLETE && typeof global.MBMS_AUTOCOMPLETE.enhanceAll === 'function') {
+      global.MBMS_AUTOCOMPLETE.enhanceAll(document);
+    }
     document.body.classList.add('mbms-ready');
     document.documentElement.dataset.bootstrap = bootstrapReady() ? 'ready' : 'missing';
     document.documentElement.dataset.apiBase = (global.MBMS_CONFIG && global.MBMS_CONFIG.apiBaseUrl) || '';

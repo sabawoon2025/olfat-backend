@@ -153,7 +153,7 @@ class PurchaseReturnService
             $supplier->balance = round((float) $supplier->balance - $fromRemaining, 2);
             $supplier->save();
 
-            return $purchaseReturn->load(['items.variant', 'purchase', 'supplier', 'location', 'user']);
+            return $purchaseReturn->load(['items.variant.product', 'purchase', 'supplier', 'location', 'user']);
         }, attempts: self::DEADLOCK_RETRIES);
     }
 }

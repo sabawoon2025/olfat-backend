@@ -13,7 +13,7 @@
         document.documentElement.dir = 'rtl';
         var sheet = document.querySelector('link[href*="bootstrap.min.css"]');
         if (sheet) sheet.href = sheet.href.replace('bootstrap.min.css', 'bootstrap.rtl.min.css');
-}
+      }
     } catch (err) {}
   </script>
   <link rel="stylesheet" href="../assets/css/tokens.css">
@@ -24,33 +24,48 @@
   <div id="page-content">
     <div id="pl-root">
       <div class="alert alert-warning mbms-source-banner" id="source-banner" hidden></div>
+
       <div class="mbms-page-header">
         <div>
-          <h1>Profit &amp; Loss</h1>
+          <h1><i class="bi bi-graph-up-arrow" aria-hidden="true"></i> Profit &amp; Loss</h1>
         </div>
         <div class="mbms-page-actions">
-          <a class="btn btn-outline-secondary" href="reports.html?group=financial">Reports</a>
+          <a class="btn btn-outline-secondary" href="reports.html?group=financial&amp;kind=profit-loss">
+            <i class="bi bi-bar-chart-line" aria-hidden="true"></i> Reports
+          </a>
         </div>
       </div>
+
       <div class="mbms-toolbar" id="pl-filters">
         <input class="form-control mbms-date" name="date_from" type="date" aria-label="From date">
         <input class="form-control mbms-date" name="date_to" type="date" aria-label="To date">
-        <select class="form-select mbms-filter" name="product" aria-label="Product"></select>
         <select class="form-select mbms-filter" name="module" aria-label="Module"></select>
+        <select class="form-select mbms-filter" name="product" aria-label="Product"></select>
         <select class="form-select mbms-filter" name="location" aria-label="Location"></select>
       </div>
-      <div class="row g-3 mb-3" id="pl-summary"></div>
+
+      <div class="d-flex flex-wrap gap-2 mb-3" id="pl-presets" aria-label="Date presets">
+        <button type="button" class="btn btn-outline-secondary btn-sm mbms-preset-chip" data-pl-range="month">This month</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm mbms-preset-chip" data-pl-range="90">Last 90 days</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm mbms-preset-chip" data-pl-range="year">This year</button>
+      </div>
+
+      <div class="mbms-summary-row" id="pl-summary" hidden></div>
+      <p class="text-secondary small mb-3" id="pl-note" hidden></p>
+
       <div id="pl-empty" hidden></div>
-      <div class="table-responsive" id="pl-table-wrap">
+      <div class="table-responsive mbms-scroll-panel" id="pl-table-wrap">
         <table class="table mbms-table">
           <thead>
             <tr>
               <th>Module</th>
               <th>Product</th>
               <th>Location</th>
-              <th>Revenue</th>
-              <th>Cost</th>
-              <th>Result</th>
+              <th>Sold</th>
+              <th>Returned</th>
+              <th>Net revenue</th>
+              <th>COGS</th>
+              <th>Profit / Loss</th>
             </tr>
           </thead>
           <tbody id="pl-body"></tbody>
@@ -70,6 +85,7 @@
   <script defer src="../assets/js/nav.js"></script>
   <script defer src="../assets/js/auth.js"></script>
   <script defer src="../assets/js/layout.js"></script>
+  <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/catalog-lookups.js"></script>
   <script defer src="../assets/js/report-filters.js"></script>

@@ -13,7 +13,7 @@
         document.documentElement.dir = 'rtl';
         var sheet = document.querySelector('link[href*="bootstrap.min.css"]');
         if (sheet) sheet.href = sheet.href.replace('bootstrap.min.css', 'bootstrap.rtl.min.css');
-}
+      }
     } catch (err) {}
   </script>
   <link rel="stylesheet" href="../assets/css/tokens.css">
@@ -28,30 +28,38 @@
       <div id="list-view">
         <div class="mbms-page-header">
           <div>
-            <h1>Workers</h1>
+            <h1><i class="bi bi-person-badge" aria-hidden="true"></i> Workers</h1>
+            <p class="mbms-help mb-0">Track money paid to workers. This is not a full payroll system.</p>
           </div>
           <div class="mbms-page-actions">
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#workerModal">Add worker</button>
+            <button type="button" class="btn btn-primary" id="open-worker-modal" data-bs-toggle="modal" data-bs-target="#workerModal">
+              <i class="bi bi-person-plus" aria-hidden="true"></i> Add worker
+            </button>
           </div>
         </div>
         <div class="mbms-toolbar">
-          <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search workers">
-          <select class="form-select mbms-filter" id="list-location" aria-label="Location"></select>
+          <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search worker name or phone…" autocomplete="off">
         </div>
+        <div class="mbms-summary-row" id="list-summary" hidden></div>
         <ul class="nav nav-tabs mbms-nav-tabs" role="tablist">
-          <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-workers" type="button">Workers</button></li>
-          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-monthly" type="button">Monthly payment report</button></li>
+          <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-workers" type="button">Workers</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-monthly" type="button">Monthly payment report</button>
+          </li>
         </ul>
         <div class="tab-content">
           <div class="tab-pane fade show active" id="tab-workers">
             <div id="worker-empty" hidden></div>
-            <div class="table-responsive" id="worker-table-wrap">
+            <div class="table-responsive mbms-scroll-panel" id="worker-table-wrap">
               <table class="table mbms-table">
                 <thead>
                   <tr>
-                    <th>Worker name</th>
-                    <th>Location</th>
+                    <th>Worker</th>
+                    <th>Phone</th>
                     <th>Notes</th>
+                    <th>Paid (all time)</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -60,19 +68,20 @@
             </div>
           </div>
           <div class="tab-pane fade" id="tab-monthly">
-            <p class="mbms-help">Official monthly totals come from Laravel. This screen only displays backend results.</p>
             <div class="mbms-toolbar">
               <input class="form-control mbms-date" id="report-month" type="month" aria-label="Report month">
+              <button type="button" class="btn btn-outline-secondary" id="report-month-clear">All months</button>
             </div>
+            <div class="mbms-summary-row" id="monthly-summary" hidden></div>
             <div id="monthly-empty" hidden></div>
-            <div class="table-responsive" id="monthly-table-wrap">
+            <div class="table-responsive mbms-scroll-panel" id="monthly-table-wrap">
               <table class="table mbms-table">
                 <thead>
                   <tr>
-                    <th>Worker name</th>
+                    <th>Worker</th>
                     <th>Month</th>
                     <th>Payment dates</th>
-                    <th>Amounts received</th>
+                    <th>Amounts</th>
                     <th>Monthly total</th>
                   </tr>
                 </thead>
@@ -87,16 +96,19 @@
         <div class="mbms-page-header">
           <div>
             <a class="btn btn-outline-secondary btn-sm mb-2" href="workers.html"><i class="bi bi-arrow-left"></i> Back to workers</a>
-            <h1 id="detail-title">Worker</h1>
+            <h1 id="detail-title"><i class="bi bi-person-badge" aria-hidden="true"></i> Worker</h1>
             <p class="mbms-detail-meta">
-              <span id="detail-location"></span>
+              <span id="detail-phone"></span>
             </p>
-            <p id="detail-notes"></p>
+            <p class="mbms-help" id="detail-notes"></p>
           </div>
           <div class="mbms-page-actions">
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#payModal">Record payment</button>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#payModal">
+              <i class="bi bi-cash-coin" aria-hidden="true"></i> Record payment
+            </button>
           </div>
         </div>
+        <div class="mbms-summary-row" id="detail-summary" hidden></div>
         <ul class="nav nav-tabs mbms-nav-tabs" role="tablist">
           <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-history" type="button">Payment history</button></li>
           <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-worker-month" type="button">Monthly report</button></li>
@@ -126,7 +138,7 @@
                   <tr>
                     <th>Month</th>
                     <th>Payment dates</th>
-                    <th>Amounts received</th>
+                    <th>Amounts</th>
                     <th>Monthly total</th>
                   </tr>
                 </thead>
@@ -141,25 +153,27 @@
 
   <div class="modal fade" id="workerModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-      <div class="modal-content">
+      <div class="modal-content mbms-worker-modal">
         <form id="worker-form" novalidate>
           <div class="modal-header">
-            <h2 class="modal-title h5">Add worker</h2>
+            <h2 class="modal-title h5"><i class="bi bi-person-plus" aria-hidden="true"></i> Add worker</h2>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <p class="mbms-help">Only the worker record is stored here. Salary, hours, and payroll rules are not part of this module.</p>
-            <div class="mbms-field">
-              <label class="form-label" for="worker-name">Worker name</label>
-              <input class="form-control" id="worker-name" name="name" required>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="worker-location">Location</label>
-              <select class="form-select" id="worker-location" name="location"></select>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="worker-notes">Notes</label>
-              <textarea class="form-control" id="worker-notes" name="notes" rows="2"></textarea>
+            <div class="mbms-form-section is-worker">
+              <div class="mbms-form-section-title"><i class="bi bi-person-badge" aria-hidden="true"></i> Worker details</div>
+              <div class="mbms-field">
+                <label class="form-label" for="worker-name">Worker name</label>
+                <input class="form-control" id="worker-name" name="name" required autocomplete="name" placeholder="Full name">
+              </div>
+              <div class="mbms-field">
+                <label class="form-label" for="worker-phone">Phone <span class="text-secondary fw-normal">(optional)</span></label>
+                <input class="form-control" id="worker-phone" name="phone" inputmode="tel" autocomplete="tel" placeholder="Contact number">
+              </div>
+              <div class="mbms-field mb-0">
+                <label class="form-label" for="worker-notes">Notes <span class="text-secondary fw-normal">(optional)</span></label>
+                <textarea class="form-control" id="worker-notes" name="notes" rows="2" placeholder="Role, shift, or other notes"></textarea>
+              </div>
             </div>
           </div>
           <div class="modal-footer">
@@ -174,32 +188,32 @@
 
   <div class="modal fade" id="payModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-      <div class="modal-content">
+      <div class="modal-content mbms-worker-modal">
         <form id="pay-form" novalidate>
           <div class="modal-header">
-            <h2 class="modal-title h5">Record payment received</h2>
+            <h2 class="modal-title h5"><i class="bi bi-cash-coin" aria-hidden="true"></i> Record worker payment</h2>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <div class="mbms-field">
-              <label class="form-label" for="pay-amount">Amount</label>
-              <input class="form-control" id="pay-amount" name="amount" required>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="pay-date">Date</label>
-              <input class="form-control" id="pay-date" name="date" type="date" required>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="pay-description">Description</label>
-              <textarea class="form-control" id="pay-description" name="description" rows="2"></textarea>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="pay-user">User</label>
-              <input class="form-control" id="pay-user" name="user" value="Signed-in user" readonly>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="pay-location">Location</label>
-              <select class="form-select" id="pay-location" name="location" required></select>
+            <div class="mbms-form-section is-worker">
+              <div class="mbms-form-section-title"><i class="bi bi-wallet2" aria-hidden="true"></i> Payment</div>
+              <div class="mbms-field">
+                <label class="form-label" for="pay-amount">Amount</label>
+                <input class="form-control" id="pay-amount" name="amount" required inputmode="decimal" min="0.01" step="0.01" placeholder="0.00">
+              </div>
+              <div class="mbms-field">
+                <label class="form-label" for="pay-date">Date</label>
+                <input class="form-control" id="pay-date" name="date" type="date" required>
+              </div>
+              <div class="mbms-field">
+                <label class="form-label" for="pay-location">Location</label>
+                <select class="form-select" id="pay-location" name="location" required></select>
+                <p class="mbms-help is-compact mb-0">Payment is recorded against your province.</p>
+              </div>
+              <div class="mbms-field mb-0">
+                <label class="form-label" for="pay-description">Description <span class="text-secondary fw-normal">(optional)</span></label>
+                <textarea class="form-control" id="pay-description" name="description" rows="2" placeholder="e.g. Weekly wage, advance…"></textarea>
+              </div>
             </div>
           </div>
           <div class="modal-footer">
@@ -223,6 +237,7 @@
   <script defer src="../assets/js/nav.js"></script>
   <script defer src="../assets/js/auth.js"></script>
   <script defer src="../assets/js/layout.js"></script>
+  <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/pages/workers-page.js"></script>
   <script defer src="../assets/js/app.js"></script>

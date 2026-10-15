@@ -13,7 +13,7 @@
         document.documentElement.dir = 'rtl';
         var sheet = document.querySelector('link[href*="bootstrap.min.css"]');
         if (sheet) sheet.href = sheet.href.replace('bootstrap.min.css', 'bootstrap.rtl.min.css');
-}
+      }
     } catch (err) {}
   </script>
   <link rel="stylesheet" href="../assets/css/tokens.css">
@@ -24,16 +24,22 @@
   <div id="page-content">
     <div id="reports-root">
       <div class="alert alert-warning mbms-source-banner" id="source-banner" hidden></div>
+
       <div class="mbms-page-header">
         <div>
-          <h1 id="report-title">Reports</h1>
-          <p>Totals for sales, stock, and money across all provinces. Use Export to download the rows on screen.</p>
+          <h1 id="report-title"><i class="bi bi-bar-chart-line" aria-hidden="true"></i> Reports</h1>
         </div>
         <div class="mbms-page-actions">
-          <button type="button" class="btn btn-outline-secondary" id="report-export" title="Download this report as a spreadsheet">Export</button>
+          <a class="btn btn-outline-secondary" id="pl-link" href="profit-loss.html" hidden>
+            <i class="bi bi-graph-up-arrow" aria-hidden="true"></i> Full P&amp;L
+          </a>
+          <button type="button" class="btn btn-outline-secondary" id="report-export" title="Download this report as a spreadsheet">
+            <i class="bi bi-download" aria-hidden="true"></i> Export
+          </button>
         </div>
       </div>
-      <div class="d-flex flex-wrap gap-2 mb-3">
+
+      <div class="d-flex flex-wrap gap-2 mb-3" id="report-groups">
         <a class="btn btn-outline-primary" data-report-group="sales" href="reports.html?group=sales">Sales</a>
         <a class="btn btn-outline-primary" data-report-group="purchases" href="reports.html?group=purchases">Purchases</a>
         <a class="btn btn-outline-primary" data-report-group="stock" href="reports.html?group=stock">Stock</a>
@@ -42,10 +48,11 @@
         <a class="btn btn-outline-primary" data-report-group="factory" href="reports.html?group=factory">Factory</a>
         <a class="btn btn-outline-primary" data-report-group="location" href="reports.html?group=location">Location</a>
       </div>
+
       <div class="d-flex flex-wrap gap-2 mb-3" id="report-kinds"></div>
-      <a class="btn btn-primary mb-3" id="pl-link" href="profit-loss.html" hidden>Open Profit &amp; Loss</a>
+
       <div class="mbms-toolbar" id="report-filters">
-        <input class="form-control mbms-search" name="search" type="search" placeholder="Search report">
+        <input class="form-control mbms-search" name="search" type="search" placeholder="Search report" autocomplete="off">
         <input class="form-control mbms-date" name="date_from" type="date" aria-label="From date">
         <input class="form-control mbms-date" name="date_to" type="date" aria-label="To date">
         <select class="form-select mbms-filter" name="category" aria-label="Category"></select>
@@ -62,9 +69,11 @@
           <option value="Payment">Payment</option>
         </select>
       </div>
-      <div class="row g-3 mb-3" id="report-summary"></div>
+
+      <div class="mbms-summary-row" id="report-summary" hidden></div>
+      <p class="text-secondary small mb-3" id="report-note" hidden></p>
       <div id="report-empty" hidden></div>
-      <div class="table-responsive" id="report-table-wrap">
+      <div class="table-responsive mbms-scroll-panel" id="report-table-wrap">
         <table class="table mbms-table">
           <thead id="report-head"></thead>
           <tbody id="report-body"></tbody>
@@ -89,6 +98,7 @@
   <script defer src="../assets/js/nav.js"></script>
   <script defer src="../assets/js/auth.js"></script>
   <script defer src="../assets/js/layout.js"></script>
+  <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/catalog-lookups.js"></script>
   <script defer src="../assets/js/report-filters.js"></script>

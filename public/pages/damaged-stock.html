@@ -13,7 +13,7 @@
         document.documentElement.dir = 'rtl';
         var sheet = document.querySelector('link[href*="bootstrap.min.css"]');
         if (sheet) sheet.href = sheet.href.replace('bootstrap.min.css', 'bootstrap.rtl.min.css');
-}
+      }
     } catch (err) {}
   </script>
   <link rel="stylesheet" href="../assets/css/tokens.css">
@@ -26,23 +26,42 @@
       <div class="alert alert-warning mbms-source-banner" id="source-banner" hidden></div>
       <div class="mbms-page-header">
         <div>
-          <h1>Damaged Stock</h1>
+          <h1><i class="bi bi-exclamation-octagon" aria-hidden="true"></i> Damaged Stock</h1>
+          <p class="mbms-help mb-0">Recording damage removes stock at the chosen location. Quantities are enforced by Laravel.</p>
         </div>
         <div class="mbms-page-actions">
-          <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#dmgModal">Record damage</button>
+          <a class="btn btn-outline-secondary" href="stock.html">
+            <i class="bi bi-boxes" aria-hidden="true"></i> Stock
+          </a>
+          <button type="button" class="btn btn-danger" id="open-damage-modal" data-bs-toggle="modal" data-bs-target="#dmgModal">
+            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Record damage
+          </button>
         </div>
       </div>
+
+      <div class="mbms-toolbar">
+        <input class="form-control mbms-search" id="module-search" type="search" placeholder="Search product, reason, reference…" autocomplete="off">
+        <select class="form-select mbms-filter" id="list-category" aria-label="Category"></select>
+        <select class="form-select mbms-filter" id="list-location" aria-label="Location"></select>
+        <input class="form-control mbms-date" id="date-from" type="date" aria-label="From date">
+        <input class="form-control mbms-date" id="date-to" type="date" aria-label="To date">
+      </div>
+      <div class="mbms-summary-row" id="list-summary" hidden></div>
+
       <div id="dmg-empty" hidden></div>
-      <div class="table-responsive" id="dmg-table-wrap">
+      <div class="table-responsive mbms-scroll-panel" id="dmg-table-wrap">
         <table class="table mbms-table">
           <thead>
             <tr>
               <th>Date</th>
+              <th>Ref</th>
+              <th>Category</th>
               <th>Product</th>
               <th>Variant</th>
               <th>Quantity</th>
               <th>Reason</th>
               <th>Location</th>
+              <th>By</th>
             </tr>
           </thead>
           <tbody id="dmg-body"></tbody>
@@ -52,45 +71,106 @@
   </div>
 
   <div class="modal fade" id="dmgModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-      <div class="modal-content">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content mbms-damage-modal">
         <form id="dmg-form" novalidate>
           <div class="modal-header">
-            <h2 class="modal-title h5">Record damage</h2>
+            <h2 class="modal-title h5"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Record damage</h2>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <div class="mbms-field">
-              <label class="form-label" for="dmg-category">Category</label>
-              <select class="form-select" id="dmg-category" name="category" required></select>
+            <div class="mbms-form-section is-damage">
+              <div class="mbms-form-section-title"><i class="bi bi-box-seam" aria-hidden="true"></i> Product</div>
+              <div class="row g-2">
+                <div class="col-md-4">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="dmg-category">Category</label>
+                    <select class="form-select" id="dmg-category" name="category" required></select>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="dmg-product">Product</label>
+                    <select class="form-select" id="dmg-product" name="product" required data-ac="1" data-ac-placeholder="Search product…"></select>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="dmg-variant">Variant / unit</label>
+                    <select class="form-select" id="dmg-variant" name="variant" required></select>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="mbms-field">
-              <label class="form-label" for="dmg-product">Product</label>
-              <select class="form-select" id="dmg-product" name="product" required></select>
+
+            <div class="mbms-form-section is-damage">
+              <div class="mbms-form-section-title"><i class="bi bi-dash-circle" aria-hidden="true"></i> Quantity to write off</div>
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="dmg-quantity">Quantity</label>
+                    <input class="form-control" id="dmg-quantity" name="quantity" required inputmode="decimal" min="0.01" step="0.01" placeholder="0">
+                    <p class="mbms-help is-compact mb-0" id="dmg-stock-hint">Choose product, variant, and location to see available stock.</p>
+                    <p class="text-danger small mb-0 mt-1" id="dmg-stock-error" hidden></p>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="dmg-unit">Unit</label>
+                    <input class="form-control" id="dmg-unit" name="unit" readonly>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="dmg-location">Location</label>
+                    <select class="form-select" id="dmg-location" name="location" required></select>
+                    <p class="mbms-help is-compact mb-0">Stock is removed from this location only.</p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="mbms-field">
-              <label class="form-label" for="dmg-variant">Variant</label>
-              <select class="form-select" id="dmg-variant" name="variant" required></select>
+
+            <div class="mbms-form-section is-damage">
+              <div class="mbms-form-section-title"><i class="bi bi-journal-text" aria-hidden="true"></i> Details</div>
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="dmg-date">Date</label>
+                    <input class="form-control" id="dmg-date" name="date" type="date" required>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="dmg-reason">Reason</label>
+                    <textarea class="form-control" id="dmg-reason" name="reason" rows="2" required maxlength="255" placeholder="e.g. Broken packaging, water damage, expired…"></textarea>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="dmg-notes">Notes <span class="text-secondary fw-normal">(optional)</span></label>
+                    <textarea class="form-control" id="dmg-notes" name="notes" rows="2" placeholder="Extra detail for your records"></textarea>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="mbms-field">
-              <label class="form-label" for="dmg-quantity">Quantity</label>
-              <input class="form-control" id="dmg-quantity" name="quantity" required>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="dmg-unit">Unit</label>
-              <input class="form-control" id="dmg-unit" name="unit">
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="dmg-reason">Reason</label>
-              <textarea class="form-control" id="dmg-reason" name="reason" rows="2" required></textarea>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="dmg-date">Date</label>
-              <input class="form-control" id="dmg-date" name="date" type="date" required>
-            </div>
-            <div class="mbms-field">
-              <label class="form-label" for="dmg-location">Location</label>
-              <select class="form-select" id="dmg-location" name="location" required></select>
+
+            <div class="mbms-profit-panel mbms-damage-preview" id="dmg-preview" hidden>
+              <div class="mbms-profit-row">
+                <span>Available</span>
+                <strong id="dmg-preview-available">—</strong>
+              </div>
+              <div class="mbms-profit-row">
+                <span>Writing off</span>
+                <strong id="dmg-preview-qty">—</strong>
+              </div>
+              <div class="mbms-profit-row">
+                <span>Remaining after</span>
+                <strong id="dmg-preview-remaining">—</strong>
+              </div>
+              <div class="mbms-profit-row">
+                <span>Location</span>
+                <strong id="dmg-preview-location">—</strong>
+              </div>
             </div>
           </div>
           <div class="modal-footer">
@@ -114,6 +194,7 @@
   <script defer src="../assets/js/nav.js"></script>
   <script defer src="../assets/js/auth.js"></script>
   <script defer src="../assets/js/layout.js"></script>
+  <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/catalog-lookups.js"></script>
   <script defer src="../assets/js/pages/damage-page.js"></script>
