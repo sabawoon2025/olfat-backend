@@ -412,7 +412,7 @@
             global.MBMS_UI.notify({
               type: result.source === 'api' ? 'success' : 'warning',
               message: result.source === 'api'
-                ? ('Expense saved' + (wasNew ? ' and category “‘ + category + '” added.' : '.'))
+                ? ('Expense saved' + (wasNew ? ' and category "' + category + '" added.' : '.'))
                 : 'API not connected. Sample expense only.'
             });
             document.getElementById('exp-form').reset();
