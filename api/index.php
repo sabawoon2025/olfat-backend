@@ -90,6 +90,15 @@ if (getenv('VERCEL') !== false || getenv('VERCEL_ENV') !== false) {
         $_ENV['MAIL_LOG_CHANNEL'] = 'stderr';
         $_SERVER['MAIL_LOG_CHANNEL'] = 'stderr';
     }
+
+    // Gmail app passwords are often pasted with spaces; SMTP auth then fails.
+    $mailPassword = getenv('MAIL_PASSWORD');
+    if (is_string($mailPassword) && $mailPassword !== '' && str_contains($mailPassword, ' ')) {
+        $mailPassword = str_replace(' ', '', $mailPassword);
+        putenv('MAIL_PASSWORD='.$mailPassword);
+        $_ENV['MAIL_PASSWORD'] = $mailPassword;
+        $_SERVER['MAIL_PASSWORD'] = $mailPassword;
+    }
 }
 
 // Laravel only treats cache paths starting with "/" as absolute, so this block is

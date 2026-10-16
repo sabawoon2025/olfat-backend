@@ -62,9 +62,16 @@
               var message = (response.data && response.data.message)
                 || payload.message
                 || 'If that email is registered, a confirmation code has been sent.';
+              var code = payload.code || (response.data && response.data.data && response.data.data.code) || '';
               showBox('reset-success', 'reset-success-text', message);
               document.getElementById('reset-email').value = values.email;
               showStep('reset');
+              if (code) {
+                var codeInput = document.getElementById('reset-code');
+                if (codeInput) {
+                  codeInput.value = String(code);
+                }
+              }
             });
           },
           onError: function (error) {
