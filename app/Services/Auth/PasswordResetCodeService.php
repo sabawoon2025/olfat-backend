@@ -97,6 +97,14 @@ class PasswordResetCodeService
 
         $lower = strtolower($message);
 
+        if (str_contains($lower, 'only send testing emails to your own') || str_contains($lower, 'verify a domain')) {
+            return 'Resend test mode can only send to the email used for your Resend account. Either use that same email on the MBMS user, or verify a domain at resend.com/domains and set MAIL_FROM_ADDRESS to an address on that domain.';
+        }
+
+        if (str_contains($lower, 'api key') || str_contains($lower, 'unauthorized') || str_contains($lower, 'invalid_api_key') || str_contains($lower, '401')) {
+            return 'Resend rejected the API key. Check RESEND_API_KEY in Vercel (starts with re_), and that MAIL_MAILER=resend, then redeploy.';
+        }
+
         if (str_contains($lower, 'authenticate') || str_contains($lower, 'username and password') || str_contains($lower, '535')) {
             return 'Gmail rejected the login. Check MAIL_USERNAME and the 16-character app password (no spaces) in Vercel, then redeploy.';
         }
@@ -109,7 +117,14 @@ class PasswordResetCodeService
             return 'Invalid MAIL_SCHEME. Use MAIL_SCHEME=smtps and MAIL_PORT=465 for Gmail.';
         }
 
-        return 'Check MAIL_* environment variables on the host, then redeploy.';
+        $short = trim(preg_replace('/\s+/', ' ', $message) ?? '');
+        if (strlen($short) > 180) {
+            $short = substr($short, 0, 177).'...';
+        }
+
+        return $short !== ''
+            ? 'Mail error: '.$short
+            : 'Check MAIL_* / RESEND_API_KEY environment variables on the host, then redeploy.';
     }
 
     /**
