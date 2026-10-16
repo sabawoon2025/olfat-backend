@@ -18,7 +18,7 @@
   </script>
   <link rel="stylesheet" href="../assets/css/tokens.css">
   <link rel="stylesheet" href="../assets/css/layout.css">
-  <link rel="stylesheet" href="../assets/css/components.css?v=20261015m">
+  <link rel="stylesheet" href="../assets/css/components.css?v=20261016c">
 </head>
 <body data-layout="auth" data-page="login">
   <main class="auth-screen">
@@ -30,87 +30,70 @@
       <div class="auth-screen-veil"></div>
       <div class="auth-screen-orb auth-screen-orb-a"></div>
       <div class="auth-screen-orb auth-screen-orb-b"></div>
+      <div class="auth-screen-grid"></div>
     </div>
 
     <div class="auth-shell">
       <aside class="auth-brand-panel">
         <p class="auth-brand-mark">MBMS</p>
-        <h1 class="auth-brand-headline">One business. Three provinces.</h1>
-        <p class="auth-brand-copy">All brothers see the same shared ledger. Sign in with your province and password to continue.</p>
-        <ul class="auth-brand-points">
-          <li><i class="bi bi-people-fill" aria-hidden="true"></i> Equal admin access for every brother</li>
-          <li><i class="bi bi-phone" aria-hidden="true"></i> Safe to use on more than one device at once</li>
-          <li><i class="bi bi-shield-check" aria-hidden="true"></i> Each action is saved under your name</li>
-        </ul>
+        <h1 class="auth-brand-headline">Shared ledger for three provinces</h1>
+        <p class="auth-brand-copy">Sign in to continue.</p>
       </aside>
 
       <section class="auth-card" aria-labelledby="login-heading">
         <div class="auth-card-body">
           <div id="login-view">
-          <header class="auth-card-head">
-            <span class="auth-card-badge" aria-hidden="true"><i class="bi bi-shield-lock-fill"></i></span>
-            <h2 class="auth-card-title" id="login-heading">Sign in</h2>
-            <p class="auth-card-sub">Choose your province and account, then enter your password</p>
-          </header>
+            <header class="auth-card-head">
+              <h2 class="auth-card-title" id="login-heading">Sign in</h2>
+              <p class="auth-card-sub">Province, account, and password</p>
+            </header>
 
-          <div class="alert alert-danger d-flex align-items-start gap-2 auth-alert" id="login-server-error" hidden>
-            <i class="bi bi-exclamation-circle-fill flex-shrink-0 mt-1" aria-hidden="true"></i>
-            <span id="login-server-error-text"></span>
-          </div>
-
-          <form id="login-form" novalidate>
-            <div class="mbms-field auth-field">
-              <label class="form-label" for="location_id">
-                <i class="bi bi-geo-alt-fill form-label-icon" aria-hidden="true"></i> Province
-              </label>
-              <select class="form-select auth-input" id="location_id" name="location_id" required data-ac="0">
-                <option value="">Select province</option>
-              </select>
-              <div class="invalid-feedback" data-error-for="location_id">Choose a province.</div>
+            <div class="alert alert-danger d-flex align-items-start gap-2 auth-alert" id="login-server-error" hidden>
+              <i class="bi bi-exclamation-circle-fill flex-shrink-0 mt-1" aria-hidden="true"></i>
+              <span id="login-server-error-text"></span>
             </div>
 
-            <div class="mbms-field auth-field">
-              <label class="form-label" for="email">
-                <i class="bi bi-person-fill form-label-icon" aria-hidden="true"></i> Account
-              </label>
-              <select class="form-select auth-input" id="email" name="email" required data-ac="0">
-                <option value="">Select email</option>
-              </select>
-              <div class="invalid-feedback" data-error-for="email">Choose your email.</div>
-            </div>
-
-            <div class="mbms-field auth-field">
-              <div class="d-flex justify-content-between align-items-center gap-2">
-                <label class="form-label mb-0" for="password">
-                  <i class="bi bi-key-fill form-label-icon" aria-hidden="true"></i> Password
-                </label>
-                <a class="auth-link" id="show-forgot-password" href="#reset">Forgot password?</a>
+            <form id="login-form" novalidate>
+              <div class="mbms-field auth-field">
+                <label class="form-label" for="location_id">Province</label>
+                <select class="form-select auth-input" id="location_id" name="location_id" required data-ac="0">
+                  <option value="">Select province</option>
+                </select>
+                <div class="invalid-feedback" data-error-for="location_id">Choose a province.</div>
               </div>
-              <div class="mbms-password-wrap mt-2">
-                <input class="form-control auth-input" id="password" name="password" type="password" autocomplete="current-password" required placeholder="Enter your password">
-                <button type="button" class="btn btn-outline-secondary mbms-password-toggle" id="toggle-password" aria-label="Show password">
-                  <i class="bi bi-eye" id="toggle-password-icon" aria-hidden="true"></i>
-                </button>
+
+              <div class="mbms-field auth-field">
+                <label class="form-label" for="email">Account</label>
+                <select class="form-select auth-input" id="email" name="email" required data-ac="0">
+                  <option value="">Select email</option>
+                </select>
+                <div class="invalid-feedback" data-error-for="email">Choose your email.</div>
               </div>
-              <div class="invalid-feedback" data-error-for="password">Password is required.</div>
-            </div>
 
-            <button type="submit" class="btn btn-primary mbms-btn-block auth-submit">
-              <span class="auth-submit-label">
-                <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>
-                Continue to MBMS
-              </span>
-            </button>
-          </form>
+              <div class="mbms-field auth-field">
+                <div class="auth-label-row">
+                  <label class="form-label mb-0" for="password">Password</label>
+                  <a class="auth-link" id="show-forgot-password" href="#reset">Forgot password?</a>
+                </div>
+                <div class="mbms-password-wrap mt-2">
+                  <input class="form-control auth-input" id="password" name="password" type="password" autocomplete="current-password" required placeholder="Password">
+                  <button type="button" class="btn btn-outline-secondary mbms-password-toggle" id="toggle-password" aria-label="Show password">
+                    <i class="bi bi-eye" id="toggle-password-icon" aria-hidden="true"></i>
+                  </button>
+                </div>
+                <div class="invalid-feedback" data-error-for="password">Password is required.</div>
+              </div>
 
-          <p class="auth-card-foot">Kabul · Maidan/Wardak · Ghazni — closed accounts for the three brothers</p>
+              <button type="submit" class="btn btn-primary mbms-btn-block auth-submit">
+                <span class="auth-submit-label">Sign in</span>
+              </button>
+            </form>
           </div>
 
           <div id="forgot-view" hidden>
             <header class="auth-card-head">
-              <span class="auth-card-badge" aria-hidden="true"><i class="bi bi-envelope-lock-fill"></i></span>
               <h2 class="auth-card-title" id="reset-heading">Reset password</h2>
-              <p class="auth-card-sub" id="reset-sub">Enter your account email. We will send a 6-digit confirmation code.</p>
+              <p class="auth-card-sub" id="reset-sub">We will email a 6-digit confirmation code.</p>
             </header>
             <div class="alert alert-danger d-flex align-items-start gap-2 auth-alert" id="reset-error" hidden>
               <i class="bi bi-exclamation-circle-fill flex-shrink-0 mt-1" aria-hidden="true"></i>
@@ -127,7 +110,7 @@
                 <div class="invalid-feedback" data-error-for="email">Enter your email.</div>
               </div>
               <button type="submit" class="btn btn-primary mbms-btn-block auth-submit">
-                <span class="auth-submit-label"><i class="bi bi-send" aria-hidden="true"></i> Send code</span>
+                <span class="auth-submit-label">Send code</span>
               </button>
             </form>
             <form id="reset-form" novalidate hidden>
@@ -145,11 +128,11 @@
                 <input class="form-control auth-input" id="reset-password" name="password" type="password" required autocomplete="new-password" placeholder="New password">
               </div>
               <div class="mbms-field auth-field">
-                <label class="form-label" for="reset-password-confirmation">Confirm new password</label>
+                <label class="form-label" for="reset-password-confirmation">Confirm password</label>
                 <input class="form-control auth-input" id="reset-password-confirmation" name="password_confirmation" type="password" required autocomplete="new-password" placeholder="Confirm password">
               </div>
               <button type="submit" class="btn btn-primary mbms-btn-block auth-submit">
-                <span class="auth-submit-label"><i class="bi bi-shield-check" aria-hidden="true"></i> Set new password</span>
+                <span class="auth-submit-label">Set new password</span>
               </button>
             </form>
             <p class="auth-card-foot">
