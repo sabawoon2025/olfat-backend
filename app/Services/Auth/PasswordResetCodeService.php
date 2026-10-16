@@ -22,10 +22,9 @@ class PasswordResetCodeService
 
     /**
      * Issue a 6-digit code when the email belongs to an active user.
-     *
-     * @return array{code:?string,mailed:bool}|null Null when the email is unknown (no enumeration).
+     * The code is emailed only — it is never returned to the client.
      */
-    public function sendCode(string $email): ?array
+    public function sendCode(string $email): void
     {
         $email = strtolower(trim($email));
         $user = User::query()
@@ -34,7 +33,7 @@ class PasswordResetCodeService
             ->first();
 
         if (! $user) {
-            return null;
+            return;
         }
 
         $code = (string) random_int(100000, 999999);
@@ -52,32 +51,20 @@ class PasswordResetCodeService
             'updated_at' => now(),
         ]);
 
-        $mailed = false;
-
         try {
             Mail::to($user->email)->send(new PasswordResetCodeMail($user->name, $code));
-            $mailed = true;
         } catch (Throwable $exception) {
             Log::warning('Password reset email failed', [
                 'email' => $email,
                 'error' => $exception->getMessage(),
             ]);
 
-            if (! (bool) config('mbms.password_reset_show_code')) {
-                throw new HttpException(
-                    503,
-                    'The confirmation email could not be sent. '.$this->mailFailureHint($exception),
-                    $exception
-                );
-            }
+            throw new HttpException(
+                503,
+                'The confirmation email could not be sent. '.$this->mailFailureHint($exception),
+                $exception
+            );
         }
-
-        $showCode = (bool) config('mbms.password_reset_show_code');
-
-        return [
-            'code' => $showCode ? $code : null,
-            'mailed' => $mailed,
-        ];
     }
 
     /**
@@ -115,7 +102,7 @@ class PasswordResetCodeService
         }
 
         if (str_contains($lower, 'unreachable') || str_contains($lower, 'timed out') || str_contains($lower, 'connection could not be established')) {
-            return 'The server could not reach Gmail SMTP. On Vercel, set PASSWORD_RESET_SHOW_CODE=true to show the code on screen, or use a web mail API such as Resend.';
+            return 'The server could not reach the mail host. On Vercel, Gmail SMTP is often blocked — use Resend (MAIL_MAILER=resend + RESEND_API_KEY) instead.';
         }
 
         if (str_contains($lower, 'scheme is not supported')) {

@@ -55,34 +55,6 @@ class PasswordResetTest extends TestCase
         );
     }
 
-    public function test_forgot_password_can_return_code_when_show_code_is_enabled(): void
-    {
-        config(['mbms.password_reset_show_code' => true]);
-
-        User::factory()->create([
-            'email' => 'brother@example.com',
-            'is_active' => true,
-        ]);
-
-        Mail::shouldReceive('to')->once()->andReturnUsing(function () {
-            return new class
-            {
-                public function send(mixed $mailable): void
-                {
-                    throw new \RuntimeException('SMTP blocked');
-                }
-            };
-        });
-
-        $response = $this->postJson('/api/v1/auth/forgot-password', [
-            'email' => 'brother@example.com',
-        ])->assertOk();
-
-        $code = $response->json('data.code');
-        $this->assertIsString($code);
-        $this->assertMatchesRegularExpression('/^\d{6}$/', $code);
-    }
-
     public function test_forgot_password_sends_code_for_active_user(): void
     {
         Mail::fake();

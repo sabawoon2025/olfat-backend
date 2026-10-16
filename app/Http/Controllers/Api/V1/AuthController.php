@@ -166,20 +166,7 @@ class AuthController extends Controller
 
     public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
     {
-        $result = $this->passwordResetCodeService->sendCode($request->validated('email'));
-
-        if ($result === null) {
-            return ApiResponse::success(null, PasswordResetCodeService::GENERIC_MESSAGE);
-        }
-
-        $code = $result['code'] ?? null;
-        if (is_string($code) && $code !== '') {
-            $message = ($result['mailed'] ?? false)
-                ? 'A confirmation code was emailed. It is also shown here so you can continue: '.$code
-                : 'Email delivery failed, so use this confirmation code: '.$code;
-
-            return ApiResponse::success(['code' => $code], $message);
-        }
+        $this->passwordResetCodeService->sendCode($request->validated('email'));
 
         return ApiResponse::success(null, PasswordResetCodeService::GENERIC_MESSAGE);
     }
