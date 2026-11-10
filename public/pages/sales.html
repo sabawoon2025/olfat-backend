@@ -18,7 +18,7 @@
   </script>
   <link rel="stylesheet" href="../assets/css/tokens.css">
   <link rel="stylesheet" href="../assets/css/layout.css">
-  <link rel="stylesheet" href="../assets/css/components.css?v=20261015j">
+  <link rel="stylesheet" href="../assets/css/components.css?v=20261104e">
 </head>
 <body data-page="sales" data-transaction="sales">
   <div id="page-content">
@@ -53,6 +53,7 @@
               <th>Variant</th>
               <th>Customer</th>
               <th>Qty</th>
+              <th>Currency</th>
               <th>Total</th>
               <th>Paid</th>
               <th>Type</th>
@@ -67,7 +68,7 @@
   </div>
 
   <div class="modal fade" id="txModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable mbms-sale-dialog">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable mbms-sale-dialog">
       <div class="modal-content mbms-sale-modal">
         <form id="tx-form" novalidate>
           <div class="modal-header">
@@ -115,6 +116,20 @@
             </div>
 
             <div class="mbms-sale-pay">
+              <div class="mbms-field mb-0" id="tx-currency-wrap" hidden>
+                <span class="form-label d-block">Currency</span>
+                <div class="btn-group w-100" role="group" aria-label="Currency">
+                  <input type="radio" class="btn-check" name="currency" id="tx-currency-afn" value="AFN" autocomplete="off" checked>
+                  <label class="btn btn-outline-primary" for="tx-currency-afn">Afghani</label>
+                  <input type="radio" class="btn-check" name="currency" id="tx-currency-usd" value="USD" autocomplete="off">
+                  <label class="btn btn-outline-primary" for="tx-currency-usd">Dollar</label>
+                </div>
+                <select class="visually-hidden" id="tx-currency" tabindex="-1" aria-hidden="true">
+                  <option value="AFN" selected>Afghani</option>
+                  <option value="USD">Dollar</option>
+                </select>
+                <p class="mbms-help is-compact mb-0">Tea only — total, paid, and remaining use this currency.</p>
+              </div>
               <div class="mbms-field mb-0">
                 <label class="form-label" for="tx-payment-type">Payment</label>
                 <select class="form-select" id="tx-payment-type" name="payment_type">
@@ -123,11 +138,11 @@
                 </select>
               </div>
               <div class="mbms-field mb-0">
-                <label class="form-label" for="tx-paid">Paid</label>
+                <label class="form-label" for="tx-paid">Paid <span class="text-secondary fw-normal" data-currency-label>(AFN)</span></label>
                 <input class="form-control" id="tx-paid" name="paid" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
               </div>
               <div class="mbms-field mb-0">
-                <label class="form-label" for="tx-remaining">Remaining</label>
+                <label class="form-label" for="tx-remaining">Remaining <span class="text-secondary fw-normal" data-currency-label>(AFN)</span></label>
                 <input class="form-control" id="tx-remaining" name="remaining" inputmode="decimal" min="0" step="0.01" readonly>
               </div>
               <div class="mbms-field mb-0 mbms-sale-notes">
@@ -144,7 +159,7 @@
           </div>
           <div class="modal-footer mbms-sale-footer">
             <div class="mbms-sale-footer-total">
-              <span>Grand total</span>
+              <span>Grand total <span data-currency-label>(AFN)</span></span>
               <strong id="tx-total-display">0.00</strong>
             </div>
             <div class="mbms-sale-footer-actions">
@@ -165,7 +180,7 @@
   <script defer src="../assets/js/config.js"></script>
   <script defer src="../assets/js/i18n.js"></script>
   <script defer src="../assets/js/api.js"></script>
-  <script defer src="../assets/js/bridge.js?v=20261015j"></script>
+  <script defer src="../assets/js/bridge.js?v=20261107c"></script>
   <script defer src="../assets/js/utils.js"></script>
   <script defer src="../assets/js/ui.js"></script>
   <script defer src="../assets/js/nav.js"></script>
@@ -174,7 +189,7 @@
   <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/catalog-lookups.js"></script>
-  <script defer src="../assets/js/pages/transaction-page.js?v=20261015j"></script>
+  <script defer src="../assets/js/pages/transaction-page.js?v=20261107b"></script>
   <script defer src="../assets/js/app.js"></script>
 </body>
 </html>

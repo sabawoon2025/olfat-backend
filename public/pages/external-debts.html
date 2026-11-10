@@ -60,6 +60,7 @@
               <tr>
                 <th>Person</th>
                 <th>Direction</th>
+                <th>Currency</th>
                 <th>Reason</th>
                 <th>Original</th>
                 <th>Paid / received</th>
@@ -140,6 +141,13 @@
 
             <div class="mbms-form-section is-debt">
               <div class="mbms-form-section-title"><i class="bi bi-cash-stack" aria-hidden="true"></i> Amount</div>
+              <div class="mbms-field">
+                <label class="form-label" for="debt-currency">Currency</label>
+                <select class="form-select" id="debt-currency" name="currency" required>
+                  <option value="AFN">AFN (Afghani)</option>
+                  <option value="USD">USD (Dollar)</option>
+                </select>
+              </div>
               <div class="row g-2">
                 <div class="col-md-6">
                   <div class="mbms-field mb-0">

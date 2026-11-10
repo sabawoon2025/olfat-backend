@@ -112,13 +112,13 @@ class CriticalLedgerFlowTest extends TestCase
 
         $this->assertSame(13.0, (float) StockBalance::query()->first()->quantity);
 
-        // P&L: gross 8@25=200, returns 2@25=50, net 6@25=150; WA cost=10; COGS=60; gross profit=90
+        // P&L: sales 8@25=200, returns 2@25=50, net 6@25=150 (gross sales = net revenue); WA cost=10; COGS=60; gross profit=90
         $pl = $this->getJson('/api/v1/reports/profit-loss?location_id='.$location->id)
             ->assertOk()
             ->json('data');
 
         $this->assertTrue($pl['available']);
-        $this->assertSame(200.0, (float) $pl['summary']['gross_sales']);
+        $this->assertSame(150.0, (float) $pl['summary']['gross_sales']);
         $this->assertSame(50.0, (float) $pl['summary']['returns_amount']);
         $this->assertSame(150.0, (float) $pl['summary']['revenue']);
         $this->assertSame(60.0, (float) $pl['summary']['cost']);

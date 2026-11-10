@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\SaleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -20,10 +21,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'payment_type',
     'status',
     'notes',
+    'currency',
 ])]
 class Sale extends Model
 {
-    /** @use HasFactory<\Database\Factories\SaleFactory> */
+    /** @use HasFactory<SaleFactory> */
     use HasFactory;
 
     protected function casts(): array

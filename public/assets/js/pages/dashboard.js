@@ -56,10 +56,24 @@
     }
     el.hidden = false;
     el.innerHTML = rows.map(function (row) {
+      var name = global.MBMS_UTILS.escapeHtml(row.name || '');
+      var valueHtml;
+      if (row.afn != null || row.usd != null) {
+        valueHtml =
+          '<span class="mbms-stat-province-amounts">' +
+          '<span>' + global.MBMS_UTILS.escapeHtml(row.afn || '0.00 AFN') + '</span>' +
+          '<span>' + global.MBMS_UTILS.escapeHtml(row.usd || '0.00 USD') + '</span>' +
+          '</span>';
+      } else {
+        valueHtml =
+          '<span class="mbms-stat-province-value">' +
+          global.MBMS_UTILS.escapeHtml(row.value == null ? '' : String(row.value)) +
+          '</span>';
+      }
       return (
         '<span class="mbms-stat-province">' +
-        '<span class="mbms-stat-province-name">' + global.MBMS_UTILS.escapeHtml(row.name || '') + '</span>' +
-        '<span class="mbms-stat-province-value">' + global.MBMS_UTILS.escapeHtml(row.value == null ? '' : String(row.value)) + '</span>' +
+        '<span class="mbms-stat-province-name">' + name + '</span>' +
+        valueHtml +
         '</span>'
       );
     }).join('');

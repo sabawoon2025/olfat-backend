@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Payment;
 
+use App\Enums\Currency;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreSupplierPaymentRequest extends FormRequest
 {
@@ -17,7 +19,8 @@ class StoreSupplierPaymentRequest extends FormRequest
             'supplier_id' => ['required', 'exists:suppliers,id'],
             'location_id' => ['required', 'exists:locations,id'],
             'amount' => ['required', 'numeric', 'gt:0'],
-            'purchase_id' => ['nullable', 'exists:purchases,id'],
+            'purchase_id' => ['required', 'exists:purchases,id'],
+            'currency' => ['nullable', 'string', Rule::in(Currency::values())],
             'paid_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
         ];

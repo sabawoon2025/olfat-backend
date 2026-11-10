@@ -74,10 +74,16 @@
   }
 
   function summarize(stock, moves) {
-    var withStock = stock.filter(function (row) {
-      return (row.quantity_raw != null ? num(row.quantity_raw) : num(row.quantity)) > 0;
-    }).length;
-    var empty = stock.length - withStock;
+    var totalQty = 0;
+    var withStockRows = 0;
+    stock.forEach(function (row) {
+      var qty = row.quantity_raw != null ? num(row.quantity_raw) : num(row.quantity);
+      totalQty += qty;
+      if (qty > 0) {
+        withStockRows += 1;
+      }
+    });
+    var empty = stock.length - withStockRows;
     var inbound = 0;
     var outbound = 0;
     moves.forEach(function (row) {
@@ -90,7 +96,7 @@
     });
     return [
       { icon: 'bi-boxes', label: 'Stock rows', value: stock.length, tone: 'primary' },
-      { icon: 'bi-check-circle', label: 'In stock', value: withStock, tone: 'success' },
+      { icon: 'bi-check-circle', label: 'In stock', value: formatQty(totalQty), tone: 'success' },
       { icon: 'bi-exclamation-circle', label: 'Empty', value: empty, tone: empty ? 'warning' : '' },
       { icon: 'bi-arrow-down-circle', label: 'Moved in', value: formatQty(inbound), tone: 'success' },
       { icon: 'bi-arrow-up-circle', label: 'Moved out', value: formatQty(outbound), tone: 'danger' },

@@ -76,6 +76,106 @@ class SaleBillResourceTest extends TestCase
             ->assertJsonPath('data.items.0.line_total_raw', 200);
     }
 
+    public function test_show_includes_previous_unpaid_from_earlier_credit_sales(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $customer = Customer::factory()->create(['name' => 'Repeat Buyer']);
+        $location = Location::factory()->create(['name' => 'Kabul']);
+        $variant = ProductVariant::factory()->create(['name' => '20kg']);
+        $this->seedStock($variant->id, $location->id, $user, 50);
+
+        $first = $this->postJson('/api/v1/sales', [
+            'customer_id' => $customer->id,
+            'location_id' => $location->id,
+            'paid_amount' => 0,
+            'items' => [
+                ['product_variant_id' => $variant->id, 'quantity' => 2, 'unit_price' => 50],
+            ],
+        ])->assertCreated()->json('data');
+
+        $second = $this->postJson('/api/v1/sales', [
+            'customer_id' => $customer->id,
+            'location_id' => $location->id,
+            'paid_amount' => 10,
+            'items' => [
+                ['product_variant_id' => $variant->id, 'quantity' => 1, 'unit_price' => 40],
+            ],
+        ])->assertCreated()->json('data');
+
+        $this->getJson('/api/v1/sales/'.$second['id'])
+            ->assertOk()
+            ->assertJsonPath('data.kind', 'sale')
+            ->assertJsonPath('data.total_raw', 40)
+            ->assertJsonPath('data.paid_raw', 10)
+            ->assertJsonPath('data.remaining_raw', 30)
+            ->assertJsonPath('data.previous_unpaid_raw', 100)
+            ->assertJsonPath('data.previous_unpaid_afn_raw', 100)
+            ->assertJsonPath('data.previous_unpaid_usd_raw', 0)
+            ->assertJsonPath('data.total_outstanding_raw', 130)
+            ->assertJsonPath('data.total_outstanding_afn_raw', 130)
+            ->assertJsonPath('data.total_outstanding_usd_raw', 0);
+
+        $this->getJson('/api/v1/sales/'.$first['id'])
+            ->assertOk()
+            ->assertJsonPath('data.previous_unpaid_raw', 30)
+            ->assertJsonPath('data.previous_unpaid_afn_raw', 30)
+            ->assertJsonPath('data.previous_unpaid_usd_raw', 0);
+    }
+
+    public function test_show_keeps_afn_and_usd_previous_unpaid_separate(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $customer = Customer::factory()->create();
+        $location = Location::factory()->create();
+        $variant = ProductVariant::factory()->create();
+        $this->seedStock($variant->id, $location->id, $user, 100);
+
+        $this->postJson('/api/v1/sales', [
+            'customer_id' => $customer->id,
+            'location_id' => $location->id,
+            'currency' => 'AFN',
+            'paid_amount' => 0,
+            'items' => [
+                ['product_variant_id' => $variant->id, 'quantity' => 2, 'unit_price' => 50],
+            ],
+        ])->assertCreated();
+
+        $this->postJson('/api/v1/sales', [
+            'customer_id' => $customer->id,
+            'location_id' => $location->id,
+            'currency' => 'USD',
+            'paid_amount' => 0,
+            'items' => [
+                ['product_variant_id' => $variant->id, 'quantity' => 1, 'unit_price' => 20],
+            ],
+        ])->assertCreated();
+
+        $usdBill = $this->postJson('/api/v1/sales', [
+            'customer_id' => $customer->id,
+            'location_id' => $location->id,
+            'currency' => 'USD',
+            'paid_amount' => 5,
+            'items' => [
+                ['product_variant_id' => $variant->id, 'quantity' => 1, 'unit_price' => 15],
+            ],
+        ])->assertCreated()->json('data');
+
+        $this->getJson('/api/v1/sales/'.$usdBill['id'])
+            ->assertOk()
+            ->assertJsonPath('data.currency', 'USD')
+            ->assertJsonPath('data.remaining_raw', 10)
+            ->assertJsonPath('data.previous_unpaid_afn_raw', 100)
+            ->assertJsonPath('data.previous_unpaid_usd_raw', 20)
+            ->assertJsonPath('data.previous_unpaid_raw', 20)
+            ->assertJsonPath('data.total_outstanding_afn_raw', 100)
+            ->assertJsonPath('data.total_outstanding_usd_raw', 30)
+            ->assertJsonPath('data.total_outstanding_raw', 30);
+    }
+
     public function test_show_returns_404_for_missing_sale(): void
     {
         Sanctum::actingAs(User::factory()->create());

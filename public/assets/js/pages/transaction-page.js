@@ -403,11 +403,6 @@
       }
     }
 
-    var totalDisplay = document.getElementById('tx-total-display');
-    if (totalDisplay) {
-      totalDisplay.textContent = moneyText(total);
-    }
-
     if (paymentType && paidEl && !paidManual && !options.keepPaid) {
       if (paymentType.value === 'cash') {
         paidEl.value = totalEl && totalEl.value ? totalEl.value : '';
@@ -424,6 +419,11 @@
     }
     updateStockHint();
     updateProfitPanel();
+    var currency = syncCurrencyField();
+    var totalDisplay = document.getElementById('tx-total-display');
+    if (totalDisplay) {
+      totalDisplay.textContent = moneyText(total) + ' ' + currency;
+    }
   }
 
   function applySuggestedPriceForLine(lineEl) {
@@ -578,6 +578,8 @@
     priceManual = false;
     applySuggestedPrice();
     updateStockHint();
+    // Category may clear the variant before applySuggestedPrice runs; always refresh tea currency.
+    syncCurrencyField();
   }
 
   function renumberLines() {
@@ -794,18 +796,19 @@
     });
   }
 
-  function billUrl(saleId) {
+  function billUrl(docId, kind) {
     var base = (global.MBMS_NAV && global.MBMS_NAV.asset)
       ? global.MBMS_NAV.asset('pages/bill.html')
       : 'bill.html';
-    return base + '?id=' + encodeURIComponent(saleId);
+    var type = kind === 'purchase' ? 'purchase' : 'sale';
+    return base + '?type=' + encodeURIComponent(type) + '&id=' + encodeURIComponent(docId);
   }
 
-  function openBill(saleId) {
-    if (!saleId) {
+  function openBill(docId, kind) {
+    if (!docId) {
       return;
     }
-    global.open(billUrl(saleId), '_blank', 'noopener');
+    global.open(billUrl(docId, kind || (isSales() ? 'sale' : 'purchase')), '_blank', 'noopener');
   }
 
   function renderList(source) {
@@ -813,29 +816,39 @@
     var partyKey = isSales() ? 'customer' : 'supplier';
     var rows = filterRows();
     var body = document.getElementById('tx-list-body');
-    var totalAmount = rows.reduce(function (sum, row) {
-      return sum + (row.total_raw != null ? num(row.total_raw) : num(row.total));
-    }, 0);
-    var remainingAmount = rows.reduce(function (sum, row) {
-      return sum + (row.remaining_raw != null ? num(row.remaining_raw) : num(row.remaining));
-    }, 0);
-    var paidAmount = rows.reduce(function (sum, row) {
-      return sum + (row.paid_raw != null ? num(row.paid_raw) : num(row.paid));
-    }, 0);
+    function sumByCurrency(field) {
+      var afn = 0;
+      var usd = 0;
+      rows.forEach(function (row) {
+        var amount = row[field + '_raw'] != null ? num(row[field + '_raw']) : num(row[field]);
+        if (String(row.currency || 'AFN').toUpperCase() === 'USD') {
+          usd += amount;
+        } else {
+          afn += amount;
+        }
+      });
+      return { afn: afn, usd: usd };
+    }
+    var totals = sumByCurrency('total');
+    var paid = sumByCurrency('paid');
+    var remaining = sumByCurrency('remaining');
+    var dual = function (parts) {
+      return moneyText(parts.afn) + ' AFN · ' + moneyText(parts.usd) + ' USD';
+    };
 
     if (isSales()) {
       global.MBMS_RECORDS.renderSummary(document.getElementById('list-summary'), [
         { icon: 'bi-cart-check', label: 'Sales', value: rows.length, tone: 'primary' },
-        { icon: 'bi-cash-stack', label: 'Total', value: moneyText(totalAmount), tone: 'success' },
-        { icon: 'bi-wallet2', label: 'Collected', value: moneyText(paidAmount), tone: 'accent' },
-        { icon: 'bi-exclamation-circle', label: 'Receivable', value: moneyText(remainingAmount), tone: remainingAmount > 0 ? 'warning' : 'muted' }
+        { icon: 'bi-cash-stack', label: 'Total', value: dual(totals), tone: 'success' },
+        { icon: 'bi-wallet2', label: 'Collected', value: dual(paid), tone: 'accent' },
+        { icon: 'bi-exclamation-circle', label: 'Receivable', value: dual(remaining), tone: (remaining.afn + remaining.usd) > 0 ? 'warning' : 'muted' }
       ]);
     } else {
       global.MBMS_RECORDS.renderSummary(document.getElementById('list-summary'), [
         { icon: 'bi-bag-check', label: 'Purchases', value: rows.length, tone: 'primary' },
-        { icon: 'bi-cash-stack', label: 'Total', value: moneyText(totalAmount), tone: 'info' },
-        { icon: 'bi-wallet2', label: 'Paid', value: moneyText(paidAmount), tone: 'accent' },
-        { icon: 'bi-exclamation-circle', label: 'Payable', value: moneyText(remainingAmount), tone: remainingAmount > 0 ? 'warning' : 'muted' }
+        { icon: 'bi-cash-stack', label: 'Total', value: dual(totals), tone: 'info' },
+        { icon: 'bi-wallet2', label: 'Paid', value: dual(paid), tone: 'accent' },
+        { icon: 'bi-exclamation-circle', label: 'Payable', value: dual(remaining), tone: (remaining.afn + remaining.usd) > 0 ? 'warning' : 'muted' }
       ]);
     }
 
@@ -860,6 +873,11 @@
       { key: 'variant' },
       { key: partyKey },
       { key: 'quantity' },
+      {
+        render: function (row) {
+          return global.MBMS_UTILS.escapeHtml(String(row.currency || 'AFN').toUpperCase());
+        }
+      },
       { key: 'total' }
     ];
     if (isSales()) {
@@ -924,6 +942,77 @@
     if (dateEl && !dateEl.value) {
       dateEl.value = todayIso();
     }
+  }
+
+  function isTeaOnlyTrade() {
+    if (usesMultiLines()) {
+      var cats = [];
+      global.MBMS_UTILS.qsa('#tx-lines [data-line="category"]').forEach(function (el) {
+        if (el.value) {
+          cats.push(el.value);
+        }
+      });
+      return cats.length > 0 && cats.every(function (cat) { return cat === 'tea'; });
+    }
+    var category = lockedCategory() || ((document.getElementById('tx-category') || {}).value || '');
+    return category === 'tea';
+  }
+
+  function updateCurrencyLabels(currency) {
+    var code = currency === 'USD' ? 'USD' : 'AFN';
+    global.MBMS_UTILS.qsa('[data-currency-label]').forEach(function (el) {
+      el.textContent = '(' + code + ')';
+    });
+  }
+
+  function setCurrencyControls(currency, teaOnly) {
+    var code = currency === 'USD' && teaOnly ? 'USD' : 'AFN';
+    var select = document.getElementById('tx-currency');
+    var afnRadio = document.getElementById('tx-currency-afn');
+    var usdRadio = document.getElementById('tx-currency-usd');
+    if (select) {
+      select.value = code;
+      Array.prototype.forEach.call(select.options, function (opt) {
+        if (String(opt.value).toUpperCase() === 'USD') {
+          opt.disabled = !teaOnly;
+        }
+      });
+    }
+    if (afnRadio) {
+      afnRadio.checked = code === 'AFN';
+      afnRadio.disabled = false;
+    }
+    if (usdRadio) {
+      usdRadio.checked = code === 'USD';
+      usdRadio.disabled = !teaOnly;
+    }
+    return code;
+  }
+
+  function readCurrencyChoice() {
+    var usdRadio = document.getElementById('tx-currency-usd');
+    if (usdRadio && usdRadio.checked) {
+      return 'USD';
+    }
+    var select = document.getElementById('tx-currency');
+    if (select && select.value === 'USD') {
+      return 'USD';
+    }
+    return 'AFN';
+  }
+
+  function syncCurrencyField() {
+    var wrap = document.getElementById('tx-currency-wrap');
+    if (!wrap) {
+      updateCurrencyLabels('AFN');
+      return 'AFN';
+    }
+    var teaOnly = isTeaOnlyTrade();
+    wrap.hidden = !teaOnly;
+    var chosen = teaOnly ? readCurrencyChoice() : 'AFN';
+    var currency = setCurrencyControls(chosen, teaOnly);
+    updateCurrencyLabels(currency);
+    return currency;
   }
 
   function setupFormLookups(preferredPartyId) {
@@ -1172,7 +1261,7 @@
         });
       }
 
-      ['tx-quantity', 'tx-price', 'tx-paid', 'tx-payment-type'].forEach(function (id) {
+      ['tx-quantity', 'tx-price', 'tx-paid', 'tx-payment-type', 'tx-currency'].forEach(function (id) {
         var el = document.getElementById(id);
         if (!el) {
           return;
@@ -1190,7 +1279,21 @@
           if (id === 'tx-payment-type') {
             paidManual = false;
           }
-          syncTotals();
+          syncTotals({ keepPaid: id === 'tx-currency' });
+        });
+      });
+
+      ['tx-currency-afn', 'tx-currency-usd'].forEach(function (id) {
+        var radio = document.getElementById(id);
+        if (!radio) {
+          return;
+        }
+        radio.addEventListener('change', function () {
+          var select = document.getElementById('tx-currency');
+          if (select && radio.checked) {
+            select.value = radio.value;
+          }
+          syncTotals({ keepPaid: true });
         });
       });
 
@@ -1278,6 +1381,7 @@
               location_id: values.location,
               notes: values.notes,
               customer: values.party,
+              currency: syncCurrencyField(),
               items: collected.lines.map(function (line) {
                 return {
                   product_variant_id: line.product_variant_id,
@@ -1373,7 +1477,8 @@
             date: values.date || todayIso(),
             location: values.location,
             location_id: values.location,
-            notes: values.notes
+            notes: values.notes,
+            currency: syncCurrencyField()
           };
           if (isSales()) {
             record.customer = values.party;
@@ -1406,8 +1511,8 @@
             ]).then(function () {
               return load();
             }).then(function () {
-              if (isSales() && result.source === 'api' && saved.id) {
-                openBill(saved.id);
+              if (result.source === 'api' && saved.id) {
+                openBill(saved.id, isSales() ? 'sale' : 'purchase');
               }
             });
           });

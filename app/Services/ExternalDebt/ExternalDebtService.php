@@ -6,6 +6,7 @@ use App\Enums\ExternalDebtDirection;
 use App\Models\ExternalDebt;
 use App\Models\ExternalDebtPayment;
 use App\Models\User;
+use App\Support\CurrencyGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -22,13 +23,15 @@ class ExternalDebtService
      *     location_id:int,
      *     user:User,
      *     opened_at?:\DateTimeInterface|string|null,
-     *     notes?:string|null
+     *     notes?:string|null,
+     *     currency?:string|null
      * }  $data
      */
     public function create(array $data): ExternalDebt
     {
         $original = round((float) $data['original_amount'], 2);
         $paid = round((float) ($data['paid_amount'] ?? 0), 2);
+        $currency = CurrencyGuard::normalize($data['currency'] ?? null);
 
         if ($original <= 0) {
             throw new InvalidArgumentException('original_amount must be greater than zero.');
@@ -56,6 +59,7 @@ class ExternalDebtService
             'opened_at' => $data['opened_at'] ?? now(),
             'notes' => $data['notes'] ?? null,
             'status' => $remaining <= 0 ? 'closed' : 'open',
+            'currency' => $currency,
         ])->load(['party', 'location', 'user']);
     }
 

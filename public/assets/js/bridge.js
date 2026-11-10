@@ -169,6 +169,8 @@
     var balances = getSessionEntry('stockBalances');
     if (Array.isArray(balances)) {
       indexStock(balances);
+    } else {
+      refreshCatalogStockDisplays();
     }
     var workers = getSessionEntry('workers');
     if (Array.isArray(workers)) {
@@ -393,6 +395,21 @@
     return num(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  function normalizeCurrency(value) {
+    var code = String(value || 'AFN').trim().toUpperCase();
+    return code === 'USD' ? 'USD' : 'AFN';
+  }
+
+  function moneyWithCurrency(value, currency) {
+    var code = normalizeCurrency(currency);
+    var label = code === 'USD' ? 'USD' : 'AFN';
+    return money(value) + ' ' + label;
+  }
+
+  function dualMoney(afnValue, usdValue) {
+    return moneyWithCurrency(afnValue, 'AFN') + ' · ' + moneyWithCurrency(usdValue, 'USD');
+  }
+
   function day(value) {
     if (!value) {
       return '';
@@ -518,6 +535,33 @@
         }
       }
     });
+    refreshCatalogStockDisplays();
+  }
+
+  function refreshCatalogStockDisplays() {
+    var mock = global.MBMS_MOCK;
+    if (!mock) {
+      return;
+    }
+    ['tea', 'rice', 'detergents'].forEach(function (key) {
+      var catalog = mock[key];
+      if (!catalog) {
+        return;
+      }
+      (catalog.variants || []).forEach(function (variant) {
+        variant.stock_display = stockText(variant.id, variant.base_unit);
+      });
+      var products = catalog.types || catalog.products || [];
+      products.forEach(function (product) {
+        (product.variants || []).forEach(function (variant) {
+          variant.stock_display = stockText(variant.id, variant.base_unit);
+        });
+        product.stock_display = (product.variants || []).map(function (variant) {
+          return variant.label + ': ' + variant.stock_display;
+        }).join(', ');
+      });
+      setSessionEntry(key, catalog);
+    });
   }
 
   function formatQty(value) {
@@ -528,13 +572,13 @@
     return String(n);
   }
 
-  function stockText(variantId, unit) {
+  function stockText(variantId) {
+    // Quantity counts only — bag size labels (e.g. 20kg) are separate.
     var entry = stockByVariant[sid(variantId)];
     if (!entry) {
-      return '0' + (unit ? ' ' + unit : '');
+      return '0';
     }
-    var displayUnit = entry.unit || unit || '';
-    var total = formatQty(entry.qty) + (displayUnit ? ' ' + displayUnit : '');
+    var total = formatQty(entry.qty);
     var parts = (entry.byLocation || [])
       .filter(function (item) { return num(item.qty) !== 0; })
       .map(function (item) {
@@ -544,7 +588,7 @@
       return total + ' (' + parts.join(', ') + ')';
     }
     if (parts.length === 1) {
-      return parts[0] + (displayUnit ? ' ' + displayUnit : '') + ' · total ' + total;
+      return parts[0] + ' · total ' + total;
     }
     return total;
   }
@@ -598,6 +642,7 @@
 
   function mapParty(row) {
     var balance = num(row.balance);
+    var balanceUsd = num(row.balance_usd);
     return {
       id: sid(row.id),
       name: row.name || '',
@@ -606,7 +651,9 @@
       notes: row.notes || '',
       location: '',
       balance_raw: balance,
-      balance_display: money(balance),
+      balance_display: moneyWithCurrency(balance, 'AFN'),
+      balance_usd_raw: balanceUsd,
+      balance_usd_display: moneyWithCurrency(balanceUsd, 'USD'),
       is_active: row.is_active !== false && row.is_active !== 0 && row.is_active !== '0'
     };
   }
@@ -729,6 +776,28 @@
     var totalRaw = row.total_raw != null ? row.total_raw : row.total_amount;
     var paidRaw = row.paid_raw != null ? row.paid_raw : row.paid_amount;
     var remainingRaw = row.remaining_raw != null ? row.remaining_raw : row.remaining_amount;
+    var previousRaw = row.previous_unpaid_raw != null
+      ? row.previous_unpaid_raw
+      : (row.previous_unpaid != null ? row.previous_unpaid : 0);
+    var previousAfnRaw = row.previous_unpaid_afn_raw != null
+      ? row.previous_unpaid_afn_raw
+      : (row.previous_unpaid_afn != null ? row.previous_unpaid_afn : (
+        normalizeCurrency(row.currency) === 'USD' ? 0 : previousRaw
+      ));
+    var previousUsdRaw = row.previous_unpaid_usd_raw != null
+      ? row.previous_unpaid_usd_raw
+      : (row.previous_unpaid_usd != null ? row.previous_unpaid_usd : (
+        normalizeCurrency(row.currency) === 'USD' ? previousRaw : 0
+      ));
+    var outstandingAfnRaw = row.total_outstanding_afn_raw != null
+      ? row.total_outstanding_afn_raw
+      : roundMoneySafe(num(previousAfnRaw) + (normalizeCurrency(row.currency) === 'USD' ? 0 : num(remainingRaw)));
+    var outstandingUsdRaw = row.total_outstanding_usd_raw != null
+      ? row.total_outstanding_usd_raw
+      : roundMoneySafe(num(previousUsdRaw) + (normalizeCurrency(row.currency) === 'USD' ? num(remainingRaw) : 0));
+    var outstandingRaw = row.total_outstanding_raw != null
+      ? row.total_outstanding_raw
+      : (normalizeCurrency(row.currency) === 'USD' ? outstandingUsdRaw : outstandingAfnRaw);
     var dateValue = row.date || row.sold_at || '';
 
     var multi = items.length > 1;
@@ -748,6 +817,7 @@
 
     return {
       id: sid(row.id),
+      kind: row.kind || 'sale',
       reference_no: row.reference_no || '',
       category: categoryOf(nestedProduct.module || row.category),
       product: productLabel,
@@ -763,73 +833,134 @@
       quantity: quantityLabel,
       price: item.unit_price != null ? item.unit_price : (item.unit_price_raw != null ? money(item.unit_price_raw) : ''),
       price_raw: item.unit_price_raw != null ? num(item.unit_price_raw) : null,
-      total: row.total != null && row.total_raw == null ? String(row.total) : money(totalRaw),
+      currency: normalizeCurrency(row.currency),
+      total: row.total != null && row.total_raw == null ? String(row.total) : moneyWithCurrency(totalRaw, row.currency),
       total_raw: num(totalRaw),
-      paid: row.paid != null && row.paid_raw == null ? String(row.paid) : money(paidRaw),
+      paid: row.paid != null && row.paid_raw == null ? String(row.paid) : moneyWithCurrency(paidRaw, row.currency),
       paid_raw: num(paidRaw),
-      remaining: row.remaining != null && row.remaining_raw == null ? String(row.remaining) : money(remainingRaw),
+      remaining: row.remaining != null && row.remaining_raw == null ? String(row.remaining) : moneyWithCurrency(remainingRaw, row.currency),
       remaining_raw: num(remainingRaw),
+      previous_unpaid: row.previous_unpaid != null && row.previous_unpaid_raw == null
+        ? String(row.previous_unpaid)
+        : moneyWithCurrency(previousRaw, row.currency),
+      previous_unpaid_raw: num(previousRaw),
+      previous_unpaid_afn: moneyWithCurrency(previousAfnRaw, 'AFN'),
+      previous_unpaid_afn_raw: num(previousAfnRaw),
+      previous_unpaid_usd: moneyWithCurrency(previousUsdRaw, 'USD'),
+      previous_unpaid_usd_raw: num(previousUsdRaw),
+      total_outstanding: row.total_outstanding != null && row.total_outstanding_raw == null
+        ? String(row.total_outstanding)
+        : moneyWithCurrency(outstandingRaw, row.currency),
+      total_outstanding_raw: num(outstandingRaw),
+      total_outstanding_afn: moneyWithCurrency(outstandingAfnRaw, 'AFN'),
+      total_outstanding_afn_raw: num(outstandingAfnRaw),
+      total_outstanding_usd: moneyWithCurrency(outstandingUsdRaw, 'USD'),
+      total_outstanding_usd_raw: num(outstandingUsdRaw),
       payment_type: row.payment_type || '',
       date: day(dateValue),
       sold_at: row.sold_at || '',
       location: relName(row.location),
       location_id: sid(row.location_id),
       location_code: row.location_code || '',
+      invoice_profile: row.invoice_profile || {},
       notes: row.notes || '',
       items: items
     };
   }
 
+  function roundMoneySafe(value) {
+    return Math.round((num(value) + Number.EPSILON) * 100) / 100;
+  }
+
   function mapPurchase(row) {
-    var item = firstItem(row);
-    var variant = item.variant || {};
-    var product = variant.product || {};
+    row = row || {};
+    var items = (row.items || []).map(mapSaleItem);
+    var item = items[0] || firstItem(row) || {};
+    var nestedVariant = (item && item.variant && typeof item.variant === 'object') ? item.variant : {};
+    var nestedProduct = (nestedVariant.product && typeof nestedVariant.product === 'object')
+      ? nestedVariant.product
+      : {};
+    var supplierObj = (row.supplier && typeof row.supplier === 'object') ? row.supplier : {};
+    var purchaseCurrency = normalizeCurrency(row.currency);
+    var totalRaw = row.total_raw != null ? row.total_raw : row.total_amount;
+    var paidRaw = row.paid_raw != null ? row.paid_raw : row.paid_amount;
+    var remainingRaw = row.remaining_raw != null ? row.remaining_raw : row.remaining_amount;
+    var previousRaw = row.previous_unpaid_raw != null
+      ? row.previous_unpaid_raw
+      : (row.previous_unpaid != null ? row.previous_unpaid : 0);
+    var previousAfnRaw = row.previous_unpaid_afn_raw != null
+      ? row.previous_unpaid_afn_raw
+      : (row.previous_unpaid_afn != null ? row.previous_unpaid_afn : (
+        purchaseCurrency === 'USD' ? 0 : previousRaw
+      ));
+    var previousUsdRaw = row.previous_unpaid_usd_raw != null
+      ? row.previous_unpaid_usd_raw
+      : (row.previous_unpaid_usd != null ? row.previous_unpaid_usd : (
+        purchaseCurrency === 'USD' ? previousRaw : 0
+      ));
+    var outstandingAfnRaw = row.total_outstanding_afn_raw != null
+      ? row.total_outstanding_afn_raw
+      : roundMoneySafe(num(previousAfnRaw) + (purchaseCurrency === 'USD' ? 0 : num(remainingRaw)));
+    var outstandingUsdRaw = row.total_outstanding_usd_raw != null
+      ? row.total_outstanding_usd_raw
+      : roundMoneySafe(num(previousUsdRaw) + (purchaseCurrency === 'USD' ? num(remainingRaw) : 0));
+    var outstandingRaw = row.total_outstanding_raw != null
+      ? row.total_outstanding_raw
+      : (purchaseCurrency === 'USD' ? outstandingUsdRaw : outstandingAfnRaw);
     return {
       id: sid(row.id),
+      kind: row.kind || 'purchase',
       reference_no: row.reference_no || '',
-      category: categoryOf(product.module),
-      product: product.name || lineLabel(row.items) || 'Purchase',
-      product_id: sid(product.id),
-      variant: variant.name || '',
-      variant_id: sid(item.product_variant_id || variant.id),
-      customer: '',
-      supplier: relName(row.supplier),
-      supplier_id: sid(row.supplier_id || (row.supplier && row.supplier.id)),
-      material_id: sid(product.id),
+      category: categoryOf(nestedProduct.module || row.category),
+      product: item.product || nestedProduct.name || lineLabel(items) || lineLabel(row.items) || 'Purchase',
+      product_id: sid(item.product_id || nestedProduct.id || row.product_id),
+      variant: item.variant || nestedVariant.name || '',
+      variant_id: sid(item.product_variant_id || nestedVariant.id || row.variant_id),
+      customer: row.customer || '',
+      customer_id: sid(row.customer_id || row.supplier_id || supplierObj.id),
+      customer_phone: row.customer_phone || row.supplier_phone || supplierObj.phone || '',
+      customer_address: row.customer_address || row.supplier_address || supplierObj.address || '',
+      supplier: relName(row.supplier) || row.supplier || '',
+      supplier_id: sid(row.supplier_id || supplierObj.id),
+      supplier_phone: row.supplier_phone || supplierObj.phone || '',
+      supplier_address: row.supplier_address || supplierObj.address || '',
+      seller: row.seller || row.user || '',
+      material_id: sid(item.product_id || nestedProduct.id),
       quantity: item.quantity != null ? String(item.quantity) : '',
-      price: item.unit_price != null ? money(item.unit_price) : '',
-      price_raw: item.unit_price != null ? num(item.unit_price) : null,
-      total: money(row.total_amount),
-      total_raw: num(row.total_amount),
-      paid: money(row.paid_amount),
-      paid_raw: num(row.paid_amount),
-      remaining: money(row.remaining_amount),
-      remaining_raw: num(row.remaining_amount),
-      date: day(row.purchased_at),
+      price: item.unit_price != null ? item.unit_price : '',
+      price_raw: item.unit_price_raw != null ? num(item.unit_price_raw) : null,
+      currency: purchaseCurrency,
+      total: row.total != null && row.total_raw == null ? String(row.total) : moneyWithCurrency(totalRaw, purchaseCurrency),
+      total_raw: num(totalRaw),
+      paid: row.paid != null && row.paid_raw == null ? String(row.paid) : moneyWithCurrency(paidRaw, purchaseCurrency),
+      paid_raw: num(paidRaw),
+      remaining: row.remaining != null && row.remaining_raw == null ? String(row.remaining) : moneyWithCurrency(remainingRaw, purchaseCurrency),
+      remaining_raw: num(remainingRaw),
+      previous_unpaid: row.previous_unpaid != null && row.previous_unpaid_raw == null
+        ? String(row.previous_unpaid)
+        : moneyWithCurrency(previousRaw, purchaseCurrency),
+      previous_unpaid_raw: num(previousRaw),
+      previous_unpaid_afn: moneyWithCurrency(previousAfnRaw, 'AFN'),
+      previous_unpaid_afn_raw: num(previousAfnRaw),
+      previous_unpaid_usd: moneyWithCurrency(previousUsdRaw, 'USD'),
+      previous_unpaid_usd_raw: num(previousUsdRaw),
+      total_outstanding: row.total_outstanding != null && row.total_outstanding_raw == null
+        ? String(row.total_outstanding)
+        : moneyWithCurrency(outstandingRaw, purchaseCurrency),
+      total_outstanding_raw: num(outstandingRaw),
+      total_outstanding_afn: moneyWithCurrency(outstandingAfnRaw, 'AFN'),
+      total_outstanding_afn_raw: num(outstandingAfnRaw),
+      total_outstanding_usd: moneyWithCurrency(outstandingUsdRaw, 'USD'),
+      total_outstanding_usd_raw: num(outstandingUsdRaw),
+      payment_type: row.payment_type || '',
+      date: day(row.date || row.purchased_at),
+      purchased_at: row.purchased_at || '',
       location: relName(row.location),
       location_id: sid(row.location_id),
+      location_code: row.location_code || '',
+      invoice_profile: row.invoice_profile || {},
       notes: row.notes || '',
-      items: (row.items || []).map(function (line) {
-        var lineVariant = line.variant || {};
-        var lineProduct = lineVariant.product || {};
-        return {
-          id: sid(line.id),
-          product_variant_id: sid(line.product_variant_id || lineVariant.id),
-          product_id: sid(lineProduct.id),
-          product: lineProduct.name || '',
-          variant: lineVariant.name || '',
-          unit: line.unit || lineVariant.base_unit || '',
-          quantity: line.quantity != null ? String(line.quantity) : '',
-          quantity_raw: num(line.quantity),
-          returned_quantity: line.returned_quantity != null ? String(line.returned_quantity) : '0',
-          returned_quantity_raw: num(line.returned_quantity),
-          returnable_raw: Math.max(0, num(line.quantity) - num(line.returned_quantity)),
-          unit_price: money(line.unit_price),
-          unit_price_raw: num(line.unit_price),
-          line_total: money(line.line_total != null ? line.line_total : (num(line.quantity) * num(line.unit_price))),
-          line_total_raw: num(line.line_total != null ? line.line_total : (num(line.quantity) * num(line.unit_price)))
-        };
-      })
+      items: items
     };
   }
 
@@ -897,6 +1028,15 @@
     var person = row[personKey] || {};
     var personIdKey = personKey === 'customer' ? 'customer_id' : 'supplier_id';
     var amountValue = row.amount_raw != null ? row.amount_raw : row.amount;
+    var payCurrency = normalizeCurrency(row.currency);
+    var sale = row.sale || {};
+    var purchase = row.purchase || {};
+    var billRef = personKey === 'customer'
+      ? (sale.reference_no || row.sale_reference || '')
+      : (purchase.reference_no || row.purchase_reference || '');
+    var billId = personKey === 'customer'
+      ? sid(row.sale_id || sale.id)
+      : sid(row.purchase_id || purchase.id);
     return {
       id: sid(row.id),
       reference_no: row.reference_no || '',
@@ -904,11 +1044,16 @@
       person_id: sid(row[personIdKey] || person.id || row.person_id),
       customer_id: personKey === 'customer' ? sid(row.customer_id || person.id) : '',
       supplier_id: personKey === 'supplier' ? sid(row.supplier_id || person.id) : '',
-      amount: money(amountValue),
+      sale_id: personKey === 'customer' ? billId : '',
+      purchase_id: personKey === 'supplier' ? billId : '',
+      bill_id: billId,
+      bill_ref: billRef || (billId ? ('#' + billId) : ''),
+      currency: payCurrency,
+      amount: moneyWithCurrency(amountValue, payCurrency),
       amount_raw: num(amountValue),
-      balance_before: row.balance_before != null ? money(row.balance_before) : '',
+      balance_before: row.balance_before != null ? moneyWithCurrency(row.balance_before, payCurrency) : '',
       balance_before_raw: row.balance_before != null ? num(row.balance_before) : null,
-      balance_after: row.balance_after != null ? money(row.balance_after) : '',
+      balance_after: row.balance_after != null ? moneyWithCurrency(row.balance_after, payCurrency) : '',
       balance_after_raw: row.balance_after != null ? num(row.balance_after) : null,
       date: day(row.paid_at || row.date),
       description: row.notes || row.description || '',
@@ -1044,11 +1189,12 @@
       reason: row.reason || '',
       notes: row.notes || '',
       status: row.status || (num(remaining) <= 0 ? 'closed' : 'open'),
-      original_amount: money(original),
+      currency: normalizeCurrency(row.currency),
+      original_amount: moneyWithCurrency(original, row.currency),
       original_amount_raw: num(original),
-      paid_received: money(paid),
+      paid_received: moneyWithCurrency(paid, row.currency),
       paid_received_raw: num(paid),
-      remaining_display: money(remaining),
+      remaining_display: moneyWithCurrency(remaining, row.currency),
       remaining_raw: num(remaining),
       date: day(row.opened_at || row.date),
       user: relName(row.user),
@@ -1187,6 +1333,7 @@
       location_id: idOnly(body.location_id || body.location),
       paid_amount: num(paid),
       notes: body.notes || null,
+      currency: normalizeCurrency(body.currency),
       items: items
     };
     payload[partyKey] = idOnly(body[partyKey] || body.party_id || body.party || body.customer || body.supplier || body.person);
@@ -1355,8 +1502,9 @@
       body = tradeBody(body || {}, 'customer_id', 'sold_at');
     } else if (nextPath === 'purchases' && verb === 'POST') {
       body = tradeBody(body || {}, 'supplier_id', 'purchased_at');
-    } else if (nextPath === 'sales' || nextPath === 'purchases' || nextPath === 'customers' || nextPath === 'suppliers' || nextPath === 'workers' || nextPath === 'external-debts') {
+    } else if (nextPath === 'sales' || nextPath === 'purchases' || nextPath === 'customers' || nextPath === 'suppliers' || nextPath === 'workers' || (nextPath === 'external-debts' && verb === 'GET')) {
       // home-expenses handled below so POST/PUT can map date → expense_date
+      // external-debts POST is handled later so person → external_party_id can run
       if (verb === 'GET') {
         params.per_page = params.per_page || 100;
       }
@@ -1367,8 +1515,10 @@
           customer_id: idOnly(body.person_id || body.person),
           location_id: idOnly(body.location_id || body.location),
           amount: num(body.amount),
+          sale_id: idOnly(body.sale_id || body.bill_id || body.bill),
           paid_at: body.date,
-          notes: body.description || null
+          notes: body.description || null,
+          currency: normalizeCurrency(body.currency)
         };
       } else {
         params.per_page = 100;
@@ -1380,8 +1530,10 @@
           supplier_id: idOnly(body.person_id || body.person),
           location_id: idOnly(body.location_id || body.location),
           amount: num(body.amount),
+          purchase_id: idOnly(body.purchase_id || body.bill_id || body.bill),
           paid_at: body.date,
-          notes: body.description || null
+          notes: body.description || null,
+          currency: normalizeCurrency(body.currency)
         };
       } else {
         params.per_page = 100;
@@ -1389,7 +1541,12 @@
     } else if (nextPath === 'stock') {
       nextPath = 'stock/balances';
       params.per_page = 200;
-    } else if (nextPath === 'stock/movements' || nextPath === 'sales-returns' || nextPath === 'purchase-returns' || nextPath === 'damaged-stocks') {
+    } else if (
+      nextPath === 'stock/movements'
+      || nextPath === 'damaged-stocks'
+      || ((nextPath === 'sales-returns' || nextPath === 'purchase-returns') && verb === 'GET')
+    ) {
+      // sales-returns / purchase-returns POST are handled below so items[] is mapped
       params.per_page = params.per_page || 100;
     } else if (nextPath === 'damaged-stock') {
       nextPath = 'damaged-stocks';
@@ -1408,7 +1565,7 @@
       }
     } else if (nextPath === 'sales-returns' && verb === 'POST') {
       var sale = findNamed(global.MBMS_MOCK && global.MBMS_MOCK.sales, body.sale_id);
-      var saleItemId = idOnly(body.sale_item_id);
+      var saleItemId = idOnly(body.sale_item_id || body.item_id);
       var saleItem = sale && (sale.items || []).filter(function (line) {
         return sid(line.id) === sid(saleItemId);
       })[0];
@@ -1422,13 +1579,13 @@
         returned_at: body.date || null,
         notes: body.reason || null,
         items: [{
-          sale_item_id: saleItemId ? Number(saleItemId) : '',
+          sale_item_id: saleItemId ? Number(saleItemId) : null,
           quantity: num(body.quantity)
         }]
       };
     } else if (nextPath === 'purchase-returns' && verb === 'POST') {
       var purchase = findNamed(global.MBMS_MOCK && global.MBMS_MOCK.purchases, body.purchase_id);
-      var purchaseItemId = idOnly(body.purchase_item_id);
+      var purchaseItemId = idOnly(body.purchase_item_id || body.item_id);
       var purchaseItem = purchase && (purchase.items || []).filter(function (line) {
         return sid(line.id) === sid(purchaseItemId);
       })[0];
@@ -1442,7 +1599,7 @@
         returned_at: body.date || null,
         notes: body.reason || null,
         items: [{
-          purchase_item_id: purchaseItemId ? Number(purchaseItemId) : '',
+          purchase_item_id: purchaseItemId ? Number(purchaseItemId) : null,
           quantity: num(body.quantity)
         }]
       };
@@ -1465,7 +1622,8 @@
         paid_amount: num(body.paid_received != null ? body.paid_received : body.paid_amount),
         location_id: idOnly(body.location_id || body.location),
         opened_at: body.date || null,
-        notes: body.notes || null
+        notes: body.notes || null,
+        currency: normalizeCurrency(body.currency)
       };
     } else if (/^external-debts\/\d+\/payments$/.test(nextPath) && verb === 'POST') {
       body = {
@@ -1547,9 +1705,13 @@
         summary = {
           rows: rows.length,
           count: data.summary.count,
-          total: money(data.summary.total_amount),
-          paid: money(data.summary.paid_amount),
-          remaining: money(data.summary.remaining_amount)
+          total: moneyWithCurrency(data.summary.total_amount, 'AFN'),
+          paid: moneyWithCurrency(data.summary.paid_amount, 'AFN'),
+          remaining: moneyWithCurrency(data.summary.remaining_amount, 'AFN'),
+          count_usd: data.summary.count_usd,
+          total_usd: moneyWithCurrency(data.summary.total_amount_usd, 'USD'),
+          paid_usd: moneyWithCurrency(data.summary.paid_amount_usd, 'USD'),
+          remaining_usd: moneyWithCurrency(data.summary.remaining_amount_usd, 'USD')
         };
       }
     } else if (kind.indexOf('reports/purchases') === 0) {
@@ -1575,9 +1737,13 @@
         summary = {
           rows: rows.length,
           count: data.summary.count,
-          total: money(data.summary.total_amount),
-          paid: money(data.summary.paid_amount),
-          remaining: money(data.summary.remaining_amount)
+          total: moneyWithCurrency(data.summary.total_amount, 'AFN'),
+          paid: moneyWithCurrency(data.summary.paid_amount, 'AFN'),
+          remaining: moneyWithCurrency(data.summary.remaining_amount, 'AFN'),
+          count_usd: data.summary.count_usd,
+          total_usd: moneyWithCurrency(data.summary.total_amount_usd, 'USD'),
+          paid_usd: moneyWithCurrency(data.summary.paid_amount_usd, 'USD'),
+          remaining_usd: moneyWithCurrency(data.summary.remaining_amount_usd, 'USD')
         };
       }
     } else if (kind === 'reports/stock/movements' || kind.indexOf('reports/location/') === 0) {
@@ -1637,19 +1803,22 @@
       var plSummary = (data && data.summary) || {};
       var plRows = Array.isArray(data.rows) ? data.rows : [];
       rows = plRows.map(function (row) {
+        var rowCurrency = normalizeCurrency(row.currency);
         return {
           date: '',
           person: row.product || '',
           direction: row.module || '',
-          amount: money(row.revenue),
-          remaining_display: money(row.result),
+          amount: moneyWithCurrency(row.revenue, rowCurrency),
+          remaining_display: moneyWithCurrency(row.result, rowCurrency),
           location: row.location || '',
           module: row.module || '',
+          currency: rowCurrency,
+          product_id: row.product_id != null ? String(row.product_id) : '',
           product: row.product || '',
-          revenue: money(row.revenue),
-          returns: money(row.returns),
-          cost: money(row.cost),
-          result: money(row.result),
+          revenue: moneyWithCurrency(row.revenue, rowCurrency),
+          returns: moneyWithCurrency(row.returns, rowCurrency),
+          cost: moneyWithCurrency(row.cost, rowCurrency),
+          result: moneyWithCurrency(row.result, rowCurrency),
           result_raw: num(row.result),
           sold_qty: row.sold_qty != null ? String(row.sold_qty) : '',
           returned_qty: row.returned_qty != null ? String(row.returned_qty) : ''
@@ -1658,18 +1827,24 @@
       summary = {
         rows: rows.length,
         count: rows.length,
-        total: money(plSummary.revenue),
-        paid: money(plSummary.cost != null ? plSummary.cost : plSummary.cogs),
-        remaining: money(plSummary.net_profit),
-        gross_sales: money(plSummary.gross_sales),
-        returns_amount: money(plSummary.returns_amount),
+        total: moneyWithCurrency(plSummary.revenue, 'AFN'),
+        paid: moneyWithCurrency(plSummary.cost != null ? plSummary.cost : plSummary.cogs, 'AFN'),
+        remaining: moneyWithCurrency(plSummary.net_profit, 'AFN'),
+        gross_sales: moneyWithCurrency(plSummary.gross_sales, 'AFN'),
+        returns_amount: moneyWithCurrency(plSummary.returns_amount, 'AFN'),
         returns_count: plSummary.returns_count != null ? plSummary.returns_count : 0,
-        revenue: money(plSummary.revenue),
-        cost: money(plSummary.cost != null ? plSummary.cost : plSummary.cogs),
-        gross_profit: money(plSummary.gross_profit),
-        operating_expenses: money(plSummary.operating_expenses),
-        net_profit: money(plSummary.net_profit),
+        revenue: moneyWithCurrency(plSummary.revenue, 'AFN'),
+        cost: moneyWithCurrency(plSummary.cost != null ? plSummary.cost : plSummary.cogs, 'AFN'),
+        gross_profit: moneyWithCurrency(plSummary.gross_profit, 'AFN'),
+        operating_expenses: moneyWithCurrency(plSummary.operating_expenses, 'AFN'),
+        net_profit: moneyWithCurrency(plSummary.net_profit, 'AFN'),
         net_profit_raw: num(plSummary.net_profit),
+        gross_sales_usd: moneyWithCurrency(plSummary.gross_sales_usd, 'USD'),
+        returns_amount_usd: moneyWithCurrency(plSummary.returns_amount_usd, 'USD'),
+        revenue_usd: moneyWithCurrency(plSummary.revenue_usd, 'USD'),
+        cost_usd: moneyWithCurrency(plSummary.cost_usd != null ? plSummary.cost_usd : plSummary.cogs_usd, 'USD'),
+        net_profit_usd: moneyWithCurrency(plSummary.net_profit_usd, 'USD'),
+        net_profit_usd_raw: num(plSummary.net_profit_usd),
         method_label: data.method_label || 'Weighted Average',
         note: plSummary.note || ''
       };
@@ -1681,22 +1856,42 @@
       };
     } else if (kind === 'reports/financial/supplier-debts') {
       rows = rowsOf({ data: (data.suppliers && data.suppliers.with_balance) || rows })
-        .filter(function (row) { return num(row.balance) > 0; })
+        .filter(function (row) { return num(row.balance) > 0 || num(row.balance_usd) > 0; })
         .map(function (row) {
-          return { date: '', person: row.name, direction: 'Supplier payable', amount: money(row.balance), remaining_display: money(row.balance), location: '' };
+          return {
+            date: '',
+            person: row.name,
+            direction: 'Supplier payable',
+            amount: dualMoney(row.balance, row.balance_usd),
+            remaining_display: dualMoney(row.balance, row.balance_usd),
+            location: ''
+          };
         });
       summary = {
         rows: rows.length,
-        total: money(data.suppliers && data.suppliers.total_payable)
+        total: dualMoney(
+          data.suppliers && data.suppliers.total_payable,
+          data.suppliers && data.suppliers.total_payable_usd
+        )
       };
     } else if (kind === 'reports/financial/external-debts') {
       rows = rowsOf({ data: (data.external && data.external.open_debts) || rows }).map(function (row) {
         var mapped = mapDebt(row);
-        return { date: mapped.date, person: mapped.person, direction: mapped.direction, amount: mapped.original_amount, remaining_display: mapped.remaining_display, location: mapped.location };
+        return {
+          date: mapped.date,
+          person: mapped.person,
+          direction: mapped.direction,
+          amount: mapped.original_amount,
+          remaining_display: mapped.remaining_display,
+          location: mapped.location
+        };
       });
       summary = {
         rows: rows.length,
-        total: money(((data.external && data.external.person_owes_total) || 0) + ((data.external && data.external.business_owes_total) || 0))
+        total: dualMoney(
+          ((data.external && data.external.person_owes_total) || 0) + ((data.external && data.external.business_owes_total) || 0),
+          ((data.external && data.external.person_owes_total_usd) || 0) + ((data.external && data.external.business_owes_total_usd) || 0)
+        )
       };
     } else if (kind === 'reports/financial/payments') {
       var incoming = rows.map(function (row) {
@@ -1724,13 +1919,23 @@
       rows = incoming.concat(outgoing);
     } else if (kind === 'reports/financial/customer-debts' || kind.indexOf('reports/financial') === 0) {
       rows = rowsOf({ data: (data.customers && data.customers.with_balance) || rows })
-        .filter(function (row) { return num(row.balance) > 0; })
+        .filter(function (row) { return num(row.balance) > 0 || num(row.balance_usd) > 0; })
         .map(function (row) {
-          return { date: '', person: row.name, direction: 'Customer owes', amount: money(row.balance), remaining_display: money(row.balance), location: '' };
+          return {
+            date: '',
+            person: row.name,
+            direction: 'Customer owes',
+            amount: dualMoney(row.balance, row.balance_usd),
+            remaining_display: dualMoney(row.balance, row.balance_usd),
+            location: ''
+          };
         });
       summary = {
         rows: rows.length,
-        total: money(data.customers && data.customers.total_receivable)
+        total: dualMoney(
+          data.customers && data.customers.total_receivable,
+          data.customers && data.customers.total_receivable_usd
+        )
       };
     } else if (kind === 'reports/workers/monthly') {
       var paymentRows = rowsOf({ data: data.payments || rows }).map(mapWorkerPayment);
@@ -1810,7 +2015,7 @@
             when: day(row.sold_at),
             type: 'Sale',
             detail: [relName(row.customer) || row.reference_no || '', relName(row.location)].filter(Boolean).join(' · '),
-            amount: money(row.total_amount)
+            amount: moneyWithCurrency(row.total_amount, row.currency)
           };
         }))
         .concat(recentPurchases.map(function (row) {
@@ -1818,7 +2023,7 @@
             when: day(row.purchased_at),
             type: 'Purchase',
             detail: [relName(row.supplier) || row.reference_no || '', relName(row.location)].filter(Boolean).join(' · '),
-            amount: money(row.total_amount)
+            amount: moneyWithCurrency(row.total_amount, row.currency)
           };
         }));
       function provinceLines(metricKey, formatFn) {
@@ -1829,25 +2034,47 @@
           };
         }).filter(function (row) { return row.name; });
       }
+      function provinceDualMoney(afnKey, usdKey) {
+        return byLocation.map(function (row) {
+          return {
+            name: row.name || '',
+            value: dualMoney(row[afnKey], row[usdKey]),
+            afn: moneyWithCurrency(row[afnKey], 'AFN'),
+            usd: moneyWithCurrency(row[usdKey], 'USD')
+          };
+        }).filter(function (row) { return row.name; });
+      }
       return {
-        today_sales: money(data.today && data.today.sales_total),
-        today_sales_by_location: provinceLines('sales_total', money),
-        today_purchases: money(data.today && data.today.purchases_total),
-        today_purchases_by_location: provinceLines('purchases_total', money),
+        today_sales: dualMoney(
+          data.today && data.today.sales_total,
+          data.today && data.today.sales_total_usd
+        ),
+        today_sales_by_location: provinceDualMoney('sales_total', 'sales_total_usd'),
+        today_purchases: dualMoney(
+          data.today && data.today.purchases_total,
+          data.today && data.today.purchases_total_usd
+        ),
+        today_purchases_by_location: provinceDualMoney('purchases_total', 'purchases_total_usd'),
         current_stock: data.stock_quantity != null ? String(data.stock_quantity) : '—',
         current_stock_by_location: provinceLines('stock_quantity', function (v) { return formatQty(v); }),
-        customer_receivables: money(data.receivables && data.receivables.customers_total),
-        supplier_payables: money(data.payables && data.payables.suppliers_total),
+        customer_receivables: dualMoney(
+          data.receivables && data.receivables.customers_total,
+          data.receivables && data.receivables.customers_total_usd
+        ),
+        supplier_payables: dualMoney(
+          data.payables && data.payables.suppliers_total,
+          data.payables && data.payables.suppliers_total_usd
+        ),
         profit_loss: (function () {
           if (!data.profit_loss) {
             return '—';
           }
           if (data.profit_loss.available && data.profit_loss.net_profit != null) {
-            return money(data.profit_loss.net_profit);
+            return dualMoney(data.profit_loss.net_profit, data.profit_loss.net_profit_usd);
           }
           return data.profit_loss.available ? 'Available' : 'Not available yet';
         })(),
-        worker_payments: data.worker_payments_today != null ? money(data.worker_payments_today) : '—',
+        worker_payments: data.worker_payments_today != null ? moneyWithCurrency(data.worker_payments_today, 'AFN') : '—',
         worker_payments_by_location: provinceLines('worker_payments_today', money),
         recent_transactions: recent,
         stock_warnings: stockWarnings.map(function (row) {
@@ -1873,30 +2100,38 @@
         method_label: (data && data.method_label) || 'Weighted Average',
         filters: (data && data.filters) || {},
         summary: {
-          gross_sales: { label: 'Gross sales', display: money(summary.gross_sales), raw: num(summary.gross_sales) },
-          returns_amount: { label: 'Sales returns', display: money(summary.returns_amount), raw: num(summary.returns_amount) },
+          gross_sales: { label: 'Gross sales (AFN)', display: moneyWithCurrency(summary.gross_sales, 'AFN'), raw: num(summary.gross_sales) },
+          returns_amount: { label: 'Sales returns (AFN)', display: moneyWithCurrency(summary.returns_amount, 'AFN'), raw: num(summary.returns_amount) },
           returns_count: { label: 'Return records', display: String(summary.returns_count != null ? summary.returns_count : 0), raw: num(summary.returns_count) },
-          revenue: { label: 'Net revenue', display: money(summary.revenue), raw: num(summary.revenue) },
-          cost: { label: 'Cost of goods', display: money(summary.cost != null ? summary.cost : summary.cogs), raw: num(summary.cost != null ? summary.cost : summary.cogs) },
-          gross_profit: { label: 'Gross profit', display: money(summary.gross_profit), raw: num(summary.gross_profit) },
-          operating_expenses: { label: 'Operating expenses', display: money(summary.operating_expenses), raw: num(summary.operating_expenses) },
-          net_profit: { label: 'Net profit / loss', display: money(summary.net_profit), raw: num(summary.net_profit) },
+          revenue: { label: 'Net revenue (AFN)', display: moneyWithCurrency(summary.revenue, 'AFN'), raw: num(summary.revenue) },
+          cost: { label: 'Cost of goods (AFN)', display: moneyWithCurrency(summary.cost != null ? summary.cost : summary.cogs, 'AFN'), raw: num(summary.cost != null ? summary.cost : summary.cogs) },
+          gross_profit: { label: 'Gross profit (AFN)', display: moneyWithCurrency(summary.gross_profit, 'AFN'), raw: num(summary.gross_profit) },
+          operating_expenses: { label: 'Operating expenses', display: moneyWithCurrency(summary.operating_expenses, 'AFN'), raw: num(summary.operating_expenses) },
+          net_profit: { label: 'Net profit / loss (AFN)', display: moneyWithCurrency(summary.net_profit, 'AFN'), raw: num(summary.net_profit) },
+          gross_sales_usd: { label: 'Gross sales (USD)', display: moneyWithCurrency(summary.gross_sales_usd, 'USD'), raw: num(summary.gross_sales_usd) },
+          returns_amount_usd: { label: 'Sales returns (USD)', display: moneyWithCurrency(summary.returns_amount_usd, 'USD'), raw: num(summary.returns_amount_usd) },
+          revenue_usd: { label: 'Net revenue (USD)', display: moneyWithCurrency(summary.revenue_usd, 'USD'), raw: num(summary.revenue_usd) },
+          cost_usd: { label: 'Cost of goods (USD)', display: moneyWithCurrency(summary.cost_usd != null ? summary.cost_usd : summary.cogs_usd, 'USD'), raw: num(summary.cost_usd != null ? summary.cost_usd : summary.cogs_usd) },
+          net_profit_usd: { label: 'Net profit / loss (USD)', display: moneyWithCurrency(summary.net_profit_usd, 'USD'), raw: num(summary.net_profit_usd) },
           note: summary.note || note
         },
         rows: (Array.isArray(data.rows) ? data.rows : []).map(function (row) {
+          var rowCurrency = normalizeCurrency(row.currency);
           return {
             module: row.module || '',
+            currency: rowCurrency,
+            product_id: row.product_id != null ? String(row.product_id) : '',
             product: row.product || '',
             location: row.location || '',
             sold_qty: row.sold_qty != null ? String(row.sold_qty) : '',
             returned_qty: row.returned_qty != null ? String(row.returned_qty) : '',
-            revenue: money(row.revenue),
+            revenue: moneyWithCurrency(row.revenue, rowCurrency),
             revenue_raw: num(row.revenue),
-            returns: money(row.returns),
+            returns: moneyWithCurrency(row.returns, rowCurrency),
             returns_raw: num(row.returns),
-            cost: money(row.cost),
+            cost: moneyWithCurrency(row.cost, rowCurrency),
             cost_raw: num(row.cost),
-            result: money(row.result),
+            result: moneyWithCurrency(row.result, rowCurrency),
             result_raw: num(row.result)
           };
         }),
@@ -1927,8 +2162,11 @@
       }
       return mapSale(data || {});
     }
-    if (original === 'purchases' || /\/purchases$/.test(original)) {
-      return method === 'GET' ? rowsOf(payload).map(mapPurchase) : mapPurchase(data || {});
+    if (original === 'purchases' || /^purchases\/\d+$/.test(original) || /\/purchases$/.test(original)) {
+      if (method === 'GET' && original === 'purchases') {
+        return rowsOf(payload).map(mapPurchase);
+      }
+      return mapPurchase(data || {});
     }
     if (/\/sales$/.test(original) && method === 'POST') {
       return mapSale(data || {});
@@ -1941,6 +2179,7 @@
     }
     if (original === 'stock') {
       var balances = rowsOf(payload);
+      setSessionEntry('stockBalances', balances);
       indexStock(balances);
       return balances.map(mapBalance);
     }

@@ -35,12 +35,27 @@
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
 
+  function workLocationId() {
+    if (global.MBMS_CONFIG && typeof global.MBMS_CONFIG.getLocationId === 'function') {
+      return String(global.MBMS_CONFIG.getLocationId() || '');
+    }
+    return '';
+  }
+
+  function inOwnProvince(doc) {
+    var loc = workLocationId();
+    if (!loc) {
+      return true;
+    }
+    return String((doc && doc.location_id) || '') === loc;
+  }
+
   function salesOptions() {
-    return (global.MBMS_MOCK && global.MBMS_MOCK.sales) || [];
+    return ((global.MBMS_MOCK && global.MBMS_MOCK.sales) || []).filter(inOwnProvince);
   }
 
   function purchaseOptions() {
-    return (global.MBMS_MOCK && global.MBMS_MOCK.purchases) || [];
+    return ((global.MBMS_MOCK && global.MBMS_MOCK.purchases) || []).filter(inOwnProvince);
   }
 
   function returnRows() {
@@ -176,6 +191,12 @@
   function fillLookups() {
     var returnableSales = salesOptions().filter(docHasReturnable);
     var returnablePurchases = purchaseOptions().filter(docHasReturnable);
+    var emptySaleLabel = workLocationId()
+      ? 'No returnable sales in your province'
+      : 'No returnable sales';
+    var emptyPurchaseLabel = workLocationId()
+      ? 'No returnable purchases in your province'
+      : 'No returnable purchases';
 
     global.MBMS_RECORDS.fillSelect(
       document.getElementById('ret-sale'),
@@ -188,7 +209,7 @@
           ' · ' + (row.date || '');
       },
       '',
-      returnableSales.length ? 'Select sale' : 'No returnable sales'
+      returnableSales.length ? 'Select sale' : emptySaleLabel
     );
     global.MBMS_RECORDS.fillSelect(
       document.getElementById('ret-purchase'),
@@ -201,7 +222,7 @@
           ' · ' + (row.date || '');
       },
       '',
-      returnablePurchases.length ? 'Select purchase' : 'No returnable purchases'
+      returnablePurchases.length ? 'Select purchase' : emptyPurchaseLabel
     );
     global.MBMS_RECORDS.fillWorkLocation(document.getElementById('ret-location'));
     global.MBMS_RECORDS.fillSelect(
@@ -270,10 +291,8 @@
     }
     if (preview) {
       preview.hidden = !item;
-      document.getElementById('ret-preview-returnable').textContent =
-        formatQty(returnable) + (unit ? ' ' + unit : '');
-      document.getElementById('ret-preview-qty').textContent =
-        formatQty(qty) + (unit ? ' ' + unit : '');
+      document.getElementById('ret-preview-returnable').textContent = formatQty(returnable);
+      document.getElementById('ret-preview-qty').textContent = formatQty(qty);
       document.getElementById('ret-preview-price').textContent = moneyText(unitPrice);
       document.getElementById('ret-preview-amount').textContent = moneyText(amount);
     }
@@ -563,57 +582,59 @@
           return;
         }
 
-        global.MBMS_UI.confirm({
-          title: kind === 'purchase' ? 'Record purchase return' : 'Record sales return',
-          message: kind === 'purchase'
-            ? 'This removes stock and adjusts supplier balance if Laravel accepts the request.'
-            : 'This restocks and adjusts customer balance if Laravel accepts the request.',
-          confirmLabel: 'Submit return'
-        }).then(function (ok) {
-          if (!ok) {
-            return;
-          }
-          form.dataset.submitting = '1';
-          var submitter = form.querySelector('[type="submit"]');
-          global.MBMS_UI.setButtonLoading(submitter, true);
-          var path = kind === 'purchase' ? 'purchase-returns' : 'sales-returns';
-          var record = {
-            id: 'local-' + Date.now(),
-            sale_id: values.sale_id,
-            purchase_id: values.purchase_id,
-            sale_item_id: values.sale_item_id || (item && kind === 'sale' ? item.id : ''),
-            purchase_item_id: values.purchase_item_id || (item && kind === 'purchase' ? item.id : ''),
-            product: values.product,
-            variant: values.variant,
-            quantity: values.quantity,
-            unit: values.unit,
-            reason: values.reason,
-            date: values.date,
-            location: values.location,
-            location_id: values.location
-          };
-          global.MBMS_RECORDS.submitOrMock('post', path, record).then(function (result) {
-            global.MBMS_UI.notify({
-              type: result.source === 'api' ? 'success' : 'warning',
-              message: result.source === 'api'
-                ? 'Return saved. Stock and balances updated by Laravel.'
-                : 'API not connected. Sample return only.'
-            });
-            form.reset();
-            form.classList.remove('was-validated');
-            bootstrap.Modal.getOrCreateInstance(document.getElementById('retModal')).hide();
-            setKind(kind);
-            return warmDocs().then(load);
-          }).catch(function (error) {
-            global.MBMS_UI.notify({
-              type: 'danger',
-              title: 'Return not saved',
-              message: global.MBMS_UTILS.getErrorMessage(error)
-            });
-          }).finally(function () {
-            form.dataset.submitting = '';
-            global.MBMS_UI.setButtonLoading(submitter, false);
+        fillItemFields();
+        item = selectedItem();
+        values = global.MBMS_UTILS.formToObject(form);
+        var itemId = values.sale_item_id || values.purchase_item_id || values.item_id || (item && item.id) || '';
+        if (!itemId) {
+          global.MBMS_UI.notify({
+            type: 'danger',
+            message: 'Select the line item to return before submitting.'
           });
+          return;
+        }
+
+        form.dataset.submitting = '1';
+        var submitter = form.querySelector('[type="submit"]');
+        global.MBMS_UI.setButtonLoading(submitter, true);
+        var path = kind === 'purchase' ? 'purchase-returns' : 'sales-returns';
+        var record = {
+          id: 'local-' + Date.now(),
+          sale_id: values.sale_id,
+          purchase_id: values.purchase_id,
+          sale_item_id: kind === 'sale' ? itemId : '',
+          purchase_item_id: kind === 'purchase' ? itemId : '',
+          item_id: itemId,
+          product: values.product,
+          variant: values.variant,
+          quantity: values.quantity,
+          unit: values.unit,
+          reason: values.reason,
+          date: values.date,
+          location: values.location,
+          location_id: values.location
+        };
+        global.MBMS_RECORDS.submitOrMock('post', path, record).then(function (result) {
+          global.MBMS_UI.notify({
+            type: result.source === 'api' ? 'success' : 'warning',
+            message: result.source === 'api'
+              ? 'Return saved. Stock and balances updated by Laravel.'
+              : 'API not connected. Sample return only.'
+          });
+          form.reset();
+          form.classList.remove('was-validated');
+          bootstrap.Modal.getOrCreateInstance(document.getElementById('retModal')).hide();
+          setKind(kind);
+          return warmDocs().then(load);
+        }).catch(function (error) {
+          global.MBMS_UI.notify({
+            type: 'danger',
+            title: 'Return not saved',
+            message: global.MBMS_UTILS.getErrorMessage(error)
+          });
+        }).finally(function () {
+          form.dataset.submitting = '';
+          global.MBMS_UI.setButtonLoading(submitter, false);
         });
       });
 

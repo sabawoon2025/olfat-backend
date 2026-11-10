@@ -1038,17 +1038,40 @@ body[data-page="home-expenses"] #expModal .modal-title .bi {
 }
 
 .mbms-sale-dialog {
-  --bs-modal-width: min(1100px, 96vw);
+  --bs-modal-width: min(960px, calc(100vw - 1.5rem));
+  width: var(--bs-modal-width);
+  max-width: calc(100vw - 1rem);
+  margin: 0.75rem auto;
+}
+
+.mbms-sale-modal {
+  container-type: inline-size;
+  container-name: sale-modal;
+  overflow-x: clip;
 }
 
 .mbms-sale-modal .modal-body {
   padding: 1rem 1.1rem 0.85rem;
   background: linear-gradient(180deg, #f8fafc 0%, #fff 40%);
+  overflow-x: clip;
+}
+
+.mbms-sale-modal .form-control,
+.mbms-sale-modal .form-select,
+.mbms-sale-modal .mbms-ac-wrap,
+.mbms-sale-modal .btn-group {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.mbms-sale-modal input[type="date"] {
+  width: 100%;
+  min-width: 0;
 }
 
 .mbms-sale-top {
   display: grid;
-  grid-template-columns: minmax(12rem, 1.6fr) minmax(8rem, 0.7fr) minmax(8rem, 0.8fr);
+  grid-template-columns: 1fr;
   gap: 0.65rem 0.75rem;
   margin-bottom: 0.9rem;
   padding: 0.85rem;
@@ -1059,14 +1082,20 @@ body[data-page="home-expenses"] #expModal .modal-title .bi {
 
 .mbms-sale-customer-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.45rem;
   align-items: stretch;
 }
 
 .mbms-sale-customer-row .form-select,
 .mbms-sale-customer-row .mbms-ac-wrap {
-  flex: 1 1 auto;
+  flex: 1 1 12rem;
   min-width: 0;
+}
+
+.mbms-sale-customer-row .btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .mbms-sale-customer-row .btn span {
@@ -1079,12 +1108,14 @@ body[data-page="home-expenses"] #expModal .modal-title .bi {
   border: 1px solid #bbf7d0;
   border-radius: var(--mbms-radius-sm);
   background: #fff;
+  overflow-x: clip;
 }
 
 .mbms-sale-products-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 0.75rem;
   margin-bottom: 0.65rem;
 }
@@ -1127,12 +1158,13 @@ body[data-page="home-expenses"] #expModal .modal-title .bi {
 
 .mbms-sale-line-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.45rem 0.55rem;
+  grid-template-columns: 1fr;
+  gap: 0.55rem;
   align-items: end;
 }
 
 .mbms-sale-line .form-label {
+  display: block;
   margin-bottom: 0.2rem;
   font-size: 0.72rem;
   font-weight: 700;
@@ -1143,6 +1175,7 @@ body[data-page="home-expenses"] #expModal .modal-title .bi {
 
 .mbms-sale-line .mbms-field {
   margin-bottom: 0;
+  min-width: 0;
 }
 
 .mbms-sale-line-total {
@@ -1197,12 +1230,21 @@ body[data-page="home-expenses"] #expModal .modal-title .bi {
 
 .mbms-sale-pay {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 0.65rem 0.75rem;
   padding: 0.85rem;
   border: 1px solid #e2e8f0;
   border-radius: var(--mbms-radius-sm);
   background: #fff;
+}
+
+.mbms-sale-pay #tx-currency-wrap .btn-group {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.mbms-sale-pay #tx-currency-wrap .btn-group > .btn {
+  flex: 1 1 6rem;
 }
 
 .mbms-sale-footer {
@@ -1242,7 +1284,49 @@ body[data-page="home-expenses"] #expModal .modal-title .bi {
   justify-content: flex-end;
 }
 
-@media (min-width: 768px) {
+/* Stack like New purchase once the modal itself is wide enough */
+@container sale-modal (min-width: 36rem) {
+  .mbms-sale-top {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mbms-sale-customer {
+    grid-column: 1 / -1;
+  }
+
+  .mbms-sale-line-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mbms-sale-pay {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mbms-sale-pay #tx-currency-wrap,
+  .mbms-sale-pay .mbms-sale-notes {
+    grid-column: 1 / -1;
+  }
+}
+
+@container sale-modal (min-width: 48rem) {
+  .mbms-sale-top {
+    grid-template-columns: minmax(12rem, 1.5fr) minmax(8rem, 0.8fr) minmax(8rem, 0.9fr);
+  }
+
+  .mbms-sale-customer {
+    grid-column: auto;
+  }
+
+  .mbms-sale-line-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .mbms-sale-pay {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+@container sale-modal (min-width: 58rem) {
   .mbms-sale-line-labels {
     display: grid;
   }
@@ -1258,20 +1342,49 @@ body[data-page="home-expenses"] #expModal .modal-title .bi {
   .mbms-sale-pay {
     grid-template-columns: 0.9fr 0.9fr 0.9fr 1.4fr;
   }
+
+  .mbms-sale-pay .mbms-sale-notes {
+    grid-column: auto;
+  }
 }
 
-@media (max-width: 767.98px) {
-  .mbms-sale-top {
-    grid-template-columns: 1fr;
+@media (max-width: 575.98px) {
+  .mbms-sale-dialog {
+    --bs-modal-width: calc(100vw - 0.75rem);
+    width: var(--bs-modal-width);
+    max-width: calc(100vw - 0.75rem);
+    margin: 0.35rem auto;
   }
 
-  .mbms-sale-customer-row .btn span {
-    display: none;
+  .mbms-sale-modal .modal-body {
+    padding: 0.75rem 0.7rem 0.65rem;
+  }
+
+  .mbms-sale-top,
+  .mbms-sale-products,
+  .mbms-sale-pay {
+    padding: 0.7rem;
+  }
+
+  .mbms-sale-customer-row .btn {
+    flex: 1 1 100%;
+  }
+
+  .mbms-sale-line-actions {
+    justify-content: stretch;
+  }
+
+  .mbms-sale-line-actions .btn {
+    width: 100%;
   }
 
   .mbms-sale-footer {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .mbms-sale-footer-actions {
+    width: 100%;
   }
 
   .mbms-sale-footer-actions .btn {
@@ -1707,7 +1820,8 @@ body[data-page="home-expenses"] #expModal .modal-title .bi {
 .mbms-stat-province {
   display: flex;
   justify-content: space-between;
-  gap: 0.5rem;
+  align-items: flex-start;
+  gap: 0.65rem;
   font-size: var(--mbms-text-sm);
   color: var(--mbms-muted);
   line-height: 1.35;
@@ -1715,11 +1829,26 @@ body[data-page="home-expenses"] #expModal .modal-title .bi {
 
 .mbms-stat-province-name {
   font-weight: 600;
+  flex: 0 1 auto;
+  min-width: 4.5rem;
 }
 
 .mbms-stat-province-value {
   font-variant-numeric: tabular-nums;
   color: var(--mbms-ink, inherit);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.mbms-stat-province-amounts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.08rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--mbms-ink, inherit);
+  text-align: right;
+  white-space: nowrap;
 }
 
 .mbms-quick-actions {
@@ -1829,6 +1958,7 @@ body[data-page="home-expenses"] #expModal .modal-title .bi {
   inset: 0;
   z-index: -2;
   overflow: hidden;
+  pointer-events: none;
 }
 
 .auth-screen-media picture,
@@ -1981,14 +2111,19 @@ body[data-page="home-expenses"] #expModal .modal-title .bi {
   justify-self: end;
   border: 1px solid rgba(255, 255, 255, 0.65);
   background: var(--auth-panel);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  /* No backdrop-filter / transform here: both break native <select> dropdowns
+     intermittently on Chromium/Windows when they remain on an ancestor. */
   box-shadow:
     0 24px 60px rgba(2, 6, 23, 0.38),
     0 1px 0 rgba(255, 255, 255, 0.8) inset;
   border-radius: 1.25rem;
   overflow: hidden;
-  animation: auth-rise 0.7s ease-out 0.06s both;
+  animation: auth-card-in 0.45s ease-out both;
+}
+
+@keyframes auth-card-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .auth-card::before {

@@ -97,12 +97,23 @@
     });
   }
 
+  function setSelectsReady(ready) {
+    ['location_id', 'email'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.disabled = !ready;
+      }
+    });
+  }
+
   function loadOptions() {
     var locationSelect = document.getElementById('location_id');
     var emailSelect = document.getElementById('email');
     if (!locationSelect || !emailSelect || !global.MBMS_AUTH || !global.MBMS_AUTH.loginOptions) {
       return Promise.resolve();
     }
+
+    setSelectsReady(false);
 
     return global.MBMS_AUTH.loginOptions().then(function (data) {
       loginOptionsData = {
@@ -111,10 +122,12 @@
       };
       fillEmails(loginOptionsData.users);
       fillLocations();
+      setSelectsReady(true);
     }).catch(function (error) {
       loginOptionsData = { locations: [], users: [] };
       fillEmails([]);
       fillLocations();
+      setSelectsReady(true);
       showServerError(
         global.MBMS_UTILS.getErrorMessage(error, 'Unable to load login options from the server.')
       );

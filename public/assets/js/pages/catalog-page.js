@@ -15,8 +15,9 @@
       variantLabel: 'Bag size',
       showBags: true,
       showRemaining: true,
+      allowCurrency: true,
       addLabel: 'Add tea type',
-      creditNote: 'Tea can be sold for cash or on credit. Official remaining debt comes from Laravel.',
+      creditNote: 'Tea can be sold for cash or on credit in AFN or USD. Official remaining debt comes from Laravel.',
       defaultVariants: [
         { label: '20kg', package_qty: 20, base_unit: 'kg' },
         { label: '30kg', package_qty: 30, base_unit: 'kg' },
@@ -34,6 +35,7 @@
       variantLabel: 'Bag size',
       showBags: true,
       showRemaining: true,
+      allowCurrency: false,
       addLabel: 'Add rice type',
       creditNote: 'Rice may be sold for cash or credit. Official balances stay on Laravel.',
       defaultVariants: [
@@ -53,6 +55,7 @@
       variantLabel: 'Unit',
       showBags: false,
       showRemaining: true,
+      allowCurrency: false,
       addLabel: 'Add detergent',
       creditNote: 'Optional customer credit is supported. Official balances stay on Laravel.',
       defaultVariants: [
@@ -224,7 +227,7 @@
             var label = variantName(row, data);
             return '<span class="d-inline-flex align-items-center gap-1 me-2 mb-1">' +
               '<span class="text-secondary small">' + global.MBMS_UTILS.escapeHtml(label) + '</span>' +
-              stockPill(row.stock_display) +
+              stockPill(liveStockDisplay(row)) +
               '</span>';
           }).join('');
         }
@@ -254,11 +257,16 @@
   }
 
   function renderHistoryTables(item, purchases, sales) {
+    var currencyCol = {
+      render: function (row) {
+        return global.MBMS_UTILS.escapeHtml(String(row.currency || 'AFN').toUpperCase());
+      }
+    };
     global.MBMS_RECORDS.renderTable(document.getElementById('purchase-history-body'), purchases, [
-      { key: 'date' }, { key: 'supplier' }, { key: 'variant' }, { key: 'quantity' }, { key: 'total' }, { key: 'location' }
+      { key: 'date' }, { key: 'supplier' }, { key: 'variant' }, { key: 'quantity' }, currencyCol, { key: 'total' }, { key: 'location' }
     ], 'No purchases yet for this product.');
     global.MBMS_RECORDS.renderTable(document.getElementById('sales-history-body'), sales, [
-      { key: 'date' }, { key: 'customer' }, { key: 'variant' }, { key: 'quantity' }, { key: 'total' }, { key: 'payment_type' }
+      { key: 'date' }, { key: 'customer' }, { key: 'variant' }, { key: 'quantity' }, currencyCol, { key: 'total' }, { key: 'payment_type' }
     ], 'No sales yet for this product.');
 
     var history = purchases.map(function (row) {
@@ -267,7 +275,7 @@
       return Object.assign({ history_type: 'Sale', party: row.customer }, row);
     }));
     global.MBMS_RECORDS.renderTable(document.getElementById('all-history-body'), history, [
-      { key: 'date' }, { key: 'history_type' }, { key: 'party' }, { key: 'quantity' }, { key: 'total' }
+      { key: 'date' }, { key: 'history_type' }, { key: 'party' }, { key: 'quantity' }, currencyCol, { key: 'total' }
     ], 'No history yet.');
   }
 
@@ -308,8 +316,24 @@
     return match ? Number(match[0]) : 0;
   }
 
+  function liveStockDisplay(row) {
+    if (row && global.MBMS_API && typeof global.MBMS_API.stockText === 'function') {
+      return global.MBMS_API.stockText(row.id, row.base_unit || '');
+    }
+    return (row && row.stock_display) || '0';
+  }
+
   function variantHasStock(row) {
-    return parseStockQty(row && row.stock_display) > 0;
+    return parseStockQty(liveStockDisplay(row)) > 0;
+  }
+
+  function ensureStockIndex() {
+    if (!global.MBMS_API || typeof global.MBMS_API.get !== 'function') {
+      return Promise.resolve();
+    }
+    return global.MBMS_API.get('stock', { params: { per_page: 500 } }).catch(function () {
+      return null;
+    });
   }
 
   function formatVariantLabel(qty, unit) {
@@ -490,7 +514,7 @@
             '<div class="col-6 col-lg-3">' +
             '<article class="mbms-card card mbms-stat-card ' + tone + '"><div class="card-body">' +
             '<div class="mbms-stat-label">' + global.MBMS_UTILS.escapeHtml(variantName(row, data)) + '</div>' +
-            '<div class="mbms-stat-value">' + global.MBMS_UTILS.escapeHtml(row.stock_display || '—') + '</div>' +
+            '<div class="mbms-stat-value">' + global.MBMS_UTILS.escapeHtml(liveStockDisplay(row) || '—') + '</div>' +
             '</div></article></div>'
           );
         }).join('')
@@ -500,7 +524,7 @@
       { render: function (row) { return global.MBMS_UTILS.escapeHtml(variantName(row, data)); } },
       {
         render: function (row) {
-          return stockPill(row.stock_display);
+          return stockPill(liveStockDisplay(row));
         }
       },
       { render: function () { return '<span class="badge text-bg-success">Live</span>'; } }
@@ -522,6 +546,15 @@
     });
     global.MBMS_UTILS.qsa('[data-remaining-field]').forEach(function (el) {
       el.hidden = !cfg.showRemaining;
+    });
+    global.MBMS_UTILS.qsa('[data-currency-field]').forEach(function (el) {
+      el.hidden = !cfg.allowCurrency;
+      global.MBMS_UTILS.qsa('select, input', el).forEach(function (input) {
+        input.disabled = !cfg.allowCurrency;
+        if (!cfg.allowCurrency && input.tagName === 'SELECT') {
+          input.value = 'AFN';
+        }
+      });
     });
     document.getElementById('sale-credit-note').textContent = cfg.creditNote;
 
@@ -1020,8 +1053,7 @@
           });
           form.reset();
           bootstrap.Modal.getOrCreateInstance(document.getElementById('productModal')).hide();
-          var saved = global.MBMS_UTILS.unwrap(result.data) || result.data || {};
-          global.location.search = '?id=' + encodeURIComponent(saved.id || record.id);
+          load();
         });
       }
     });
@@ -1040,6 +1072,7 @@
           values.product_id = values.type_id;
           values.size_id = values.variant;
           values.unit_id = values.variant;
+          values.currency = cfg.allowCurrency ? (values.currency || 'AFN') : 'AFN';
           return global.MBMS_RECORDS.submitOrMock('post', cfg.endpoint + '/purchases', values, function (body) {
             return global.MBMS_RECORDS.storeSave(cfg.endpoint + '-purchases', body);
           }).then(function (result) {
@@ -1063,6 +1096,7 @@
           values.product_id = values.type_id;
           values.size_id = values.variant;
           values.unit_id = values.variant;
+          values.currency = cfg.allowCurrency ? (values.currency || 'AFN') : 'AFN';
           return global.MBMS_RECORDS.submitOrMock('post', cfg.endpoint + '/sales', values, function (body) {
             return global.MBMS_RECORDS.storeSave(cfg.endpoint + '-sales', body);
           }).then(function (result) {
@@ -1095,7 +1129,9 @@
         : null;
       renderList(cached || mockRoot(), cached ? 'api' : undefined);
     }
-    return global.MBMS_RECORDS.fetchOrMock(cfg.endpoint, function () { return mockRoot(); })
+    return ensureStockIndex().then(function () {
+      return global.MBMS_RECORDS.fetchOrMock(cfg.endpoint, function () { return mockRoot(); });
+    })
       .then(function (result) {
         var data = result.data || mockRoot();
         if (id) {

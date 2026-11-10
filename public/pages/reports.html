@@ -55,12 +55,12 @@
         <input class="form-control mbms-search" name="search" type="search" placeholder="Search report" autocomplete="off">
         <input class="form-control mbms-date" name="date_from" type="date" aria-label="From date">
         <input class="form-control mbms-date" name="date_to" type="date" aria-label="To date">
-        <select class="form-select mbms-filter" name="category" aria-label="Category"></select>
-        <select class="form-select mbms-filter" name="product" aria-label="Product"></select>
-        <select class="form-select mbms-filter" name="customer" aria-label="Customer"></select>
-        <select class="form-select mbms-filter" name="supplier" aria-label="Supplier"></select>
-        <select class="form-select mbms-filter" name="location" aria-label="Location"></select>
-        <select class="form-select mbms-filter" name="transaction_type" aria-label="Transaction type">
+        <select class="form-select mbms-filter" name="category" aria-label="Category" data-ac="0"></select>
+        <select class="form-select mbms-filter" name="product" aria-label="Product" data-ac="0"></select>
+        <select class="form-select mbms-filter" name="customer" aria-label="Customer" data-ac="0"></select>
+        <select class="form-select mbms-filter" name="supplier" aria-label="Supplier" data-ac="0"></select>
+        <select class="form-select mbms-filter" name="location" aria-label="Location" data-ac="0"></select>
+        <select class="form-select mbms-filter" name="transaction_type" aria-label="Transaction type" data-ac="0">
           <option value="">All types</option>
           <option value="Purchase">Purchase</option>
           <option value="Sale">Sale</option>
@@ -92,7 +92,7 @@
   <script defer src="../assets/js/config.js"></script>
   <script defer src="../assets/js/i18n.js"></script>
   <script defer src="../assets/js/api.js"></script>
-  <script defer src="../assets/js/bridge.js"></script>
+  <script defer src="../assets/js/bridge.js?v=20261104b"></script>
   <script defer src="../assets/js/utils.js"></script>
   <script defer src="../assets/js/ui.js"></script>
   <script defer src="../assets/js/nav.js"></script>
@@ -101,8 +101,8 @@
   <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/catalog-lookups.js"></script>
-  <script defer src="../assets/js/report-filters.js"></script>
-  <script defer src="../assets/js/pages/reports-page.js"></script>
+  <script defer src="../assets/js/report-filters.js?v=20261104b"></script>
+  <script defer src="../assets/js/pages/reports-page.js?v=20261104b"></script>
   <script defer src="../assets/js/app.js"></script>
 </body>
 </html>

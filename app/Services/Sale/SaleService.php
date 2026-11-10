@@ -9,6 +9,7 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\User;
 use App\Services\Stock\StockService;
+use App\Support\CurrencyGuard;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -27,6 +28,7 @@ class SaleService
      *     sold_at?:\DateTimeInterface|string|null,
      *     paid_amount?:float|string|null,
      *     notes?:string|null,
+     *     currency?:string|null,
      *     items:list<array{product_variant_id:int, quantity:float|string, unit?:string|null, unit_price:float|string}>
      * }  $data
      */
@@ -37,6 +39,9 @@ class SaleService
         }
 
         return DB::transaction(function () use ($data) {
+            $currency = CurrencyGuard::normalize($data['currency'] ?? null);
+            CurrencyGuard::assertTradeCurrencyAllowed($currency, $data['items']);
+
             $paidAmount = round((float) ($data['paid_amount'] ?? 0), 2);
             if ($paidAmount < 0) {
                 throw new InvalidArgumentException('paid_amount cannot be negative.');
@@ -94,6 +99,7 @@ class SaleService
                 'payment_type' => $paymentType,
                 'status' => 'posted',
                 'notes' => $data['notes'] ?? null,
+                'currency' => $currency,
             ]);
 
             foreach ($normalizedItems as $item) {
@@ -122,7 +128,8 @@ class SaleService
                     ->lockForUpdate()
                     ->firstOrFail();
 
-                $customer->balance = round((float) $customer->balance + $remainingAmount, 2);
+                $balanceColumn = CurrencyGuard::partyBalanceColumn($currency);
+                $customer->{$balanceColumn} = round((float) $customer->{$balanceColumn} + $remainingAmount, 2);
                 $customer->save();
             }
 

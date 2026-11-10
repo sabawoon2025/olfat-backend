@@ -116,21 +116,34 @@
     global.MBMS_RECORDS.showBanner(document.getElementById('source-banner'), source);
     syncTabs();
 
-    var weOwe = 0;
-    var theyOwe = 0;
+    var weOweAfn = 0;
+    var weOweUsd = 0;
+    var theyOweAfn = 0;
+    var theyOweUsd = 0;
     rows.forEach(function (row) {
       var rem = row.remaining_raw != null ? num(row.remaining_raw) : num(row.remaining_display);
+      var isUsd = String(row.currency || 'AFN').toUpperCase() === 'USD';
       if (row.direction === 'business_owes') {
-        weOwe += rem;
+        if (isUsd) {
+          weOweUsd += rem;
+        } else {
+          weOweAfn += rem;
+        }
       } else if (row.direction === 'person_owes') {
-        theyOwe += rem;
+        if (isUsd) {
+          theyOweUsd += rem;
+        } else {
+          theyOweAfn += rem;
+        }
       }
     });
 
     global.MBMS_RECORDS.renderSummary(document.getElementById('list-summary'), [
       { icon: 'bi-bank', label: 'Records', value: rows.length, tone: 'primary' },
-      { icon: 'bi-arrow-up-right', label: 'We owe', value: moneyText(weOwe), tone: 'danger' },
-      { icon: 'bi-arrow-down-left', label: 'They owe us', value: moneyText(theyOwe), tone: 'success' }
+      { icon: 'bi-arrow-up-right', label: 'We owe AFN', value: moneyText(weOweAfn) + ' AFN', tone: 'danger' },
+      { icon: 'bi-currency-dollar', label: 'We owe USD', value: moneyText(weOweUsd) + ' USD', tone: 'danger' },
+      { icon: 'bi-arrow-down-left', label: 'They owe AFN', value: moneyText(theyOweAfn) + ' AFN', tone: 'success' },
+      { icon: 'bi-currency-dollar', label: 'They owe USD', value: moneyText(theyOweUsd) + ' USD', tone: 'success' }
     ]);
 
     if (!rows.length) {
@@ -151,6 +164,11 @@
         render: function (row) {
           var info = directionInfo(row.direction);
           return '<span class="' + info.cls + '">' + global.MBMS_UTILS.escapeHtml(info.short) + '</span>';
+        }
+      },
+      {
+        render: function (row) {
+          return global.MBMS_UTILS.escapeHtml(String(row.currency || 'AFN').toUpperCase());
         }
       },
       { key: 'reason' },
@@ -195,13 +213,14 @@
     var amountInput = document.getElementById('pay-amount');
     var over = amount > 0 && amount > remaining + 0.00001;
 
+    var cur = record && record.currency ? String(record.currency).toUpperCase() : 'AFN';
     if (hint) {
-      hint.textContent = 'Remaining: ' + moneyText(remaining);
+      hint.textContent = 'Remaining: ' + moneyText(remaining) + ' ' + cur + ' (same currency as debt)';
     }
     if (error) {
       error.hidden = !over;
       error.textContent = over
-        ? ('Cannot exceed remaining (' + moneyText(remaining) + ').')
+        ? ('Cannot exceed remaining (' + moneyText(remaining) + ' ' + cur + ').')
         : '';
     }
     if (amountInput) {
@@ -227,6 +246,12 @@
     global.MBMS_RECORDS.showBanner(document.getElementById('source-banner'), source);
 
     global.MBMS_RECORDS.renderSummary(document.getElementById('detail-summary'), [
+      {
+        icon: 'bi-currency-exchange',
+        label: 'Currency',
+        value: String(record.currency || 'AFN').toUpperCase(),
+        tone: 'info'
+      },
       { icon: 'bi-cash-stack', label: 'Original', value: record.original_amount || '—', tone: 'primary' },
       { icon: 'bi-cash-coin', label: 'Paid / received', value: record.paid_received || '—', tone: 'info' },
       {
@@ -456,6 +481,7 @@
             reason: values.reason,
             original_amount: original,
             paid_received: paid,
+            currency: values.currency === 'USD' ? 'USD' : 'AFN',
             date: values.date || todayIso(),
             location: values.location,
             location_id: values.location

@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'opened_at',
     'notes',
     'status',
+    'currency',
 ])]
 class ExternalDebt extends Model
 {

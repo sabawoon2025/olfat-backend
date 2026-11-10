@@ -11,9 +11,7 @@ use Illuminate\Http\Request;
 
 class ReportController extends Controller
 {
-    public function __construct(private readonly ReportService $reportService)
-    {
-    }
+    public function __construct(private readonly ReportService $reportService) {}
 
     public function sales(Request $request): JsonResponse
     {
@@ -22,6 +20,7 @@ class ReportController extends Controller
                 $this->dateOrNull($request->input('from')),
                 $this->dateOrNull($request->input('to')),
                 $request->filled('location_id') ? $request->integer('location_id') : null,
+                $request->filled('product_id') ? $request->integer('product_id') : null,
             )
         );
     }
@@ -33,6 +32,7 @@ class ReportController extends Controller
                 $this->dateOrNull($request->input('from')),
                 $this->dateOrNull($request->input('to')),
                 $request->filled('location_id') ? $request->integer('location_id') : null,
+                $request->filled('product_id') ? $request->integer('product_id') : null,
             )
         );
     }
@@ -116,6 +116,7 @@ class ReportController extends Controller
                 $this->dateOrNull($request->input('from') ?? $request->input('date_from')),
                 $this->dateOrNull($request->input('to') ?? $request->input('date_to')),
                 $request->filled('location_id') ? $request->integer('location_id') : null,
+                $request->filled('product_id') ? $request->integer('product_id') : null,
             )
         );
     }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\Currency;
 use App\Enums\ExternalDebtDirection;
 use App\Http\Controllers\Controller;
 use App\Models\ExternalDebt;
@@ -51,6 +52,7 @@ class ExternalDebtController extends Controller
             'location_id' => ['required', 'exists:locations,id'],
             'opened_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
+            'currency' => ['nullable', 'string', Rule::in(Currency::values())],
         ]);
 
         try {

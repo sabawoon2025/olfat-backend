@@ -88,7 +88,11 @@ class DashboardAndReportTest extends TestCase
         $this->assertSame(18.0, (float) $byLocation->firstWhere('name', 'Kabul')['stock_quantity']);
         $this->assertSame(12.0, (float) $byLocation->firstWhere('name', 'Ghazni')['stock_quantity']);
         $this->assertSame(50.0, (float) $byLocation->firstWhere('name', 'Kabul')['sales_total']);
+        $this->assertSame(0.0, (float) $byLocation->firstWhere('name', 'Kabul')['sales_total_usd']);
         $this->assertSame(0.0, (float) $byLocation->firstWhere('name', 'Ghazni')['sales_total']);
+        $this->assertSame(0.0, (float) $byLocation->firstWhere('name', 'Ghazni')['sales_total_usd']);
+        $this->assertSame(0.0, (float) $byLocation->firstWhere('name', 'Kabul')['purchases_total']);
+        $this->assertSame(0.0, (float) $byLocation->firstWhere('name', 'Kabul')['purchases_total_usd']);
     }
 
     public function test_sales_and_purchases_reports(): void
@@ -207,7 +211,7 @@ class DashboardAndReportTest extends TestCase
         $response = $this->getJson('/api/v1/reports/profit-loss?location_id='.$location->id);
 
         $response->assertOk()
-            ->assertJsonPath('data.summary.gross_sales', 100)
+            ->assertJsonPath('data.summary.gross_sales', 75)
             ->assertJsonPath('data.summary.returns_amount', 25)
             ->assertJsonPath('data.summary.revenue', 75);
 

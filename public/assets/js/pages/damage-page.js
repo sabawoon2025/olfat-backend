@@ -120,10 +120,10 @@
 
     if (preview) {
       preview.hidden = false;
-      document.getElementById('dmg-preview-available').textContent = formatQty(available) + unitLabel;
-      document.getElementById('dmg-preview-qty').textContent = formatQty(wanted) + unitLabel;
+      document.getElementById('dmg-preview-available').textContent = formatQty(available);
+      document.getElementById('dmg-preview-qty').textContent = formatQty(wanted);
       document.getElementById('dmg-preview-remaining').textContent =
-        formatQty(Math.max(0, available - wanted)) + unitLabel;
+        formatQty(Math.max(0, available - wanted));
       document.getElementById('dmg-preview-location').textContent = place;
     }
   }
@@ -383,60 +383,51 @@
           return;
         }
 
-        global.MBMS_UI.confirm({
-          title: 'Record damage',
-          message: 'This permanently writes off stock at this location if Laravel accepts the request.',
-          confirmLabel: 'Submit damage'
-        }).then(function (ok) {
-          if (!ok) {
-            return;
-          }
-          form.dataset.submitting = '1';
-          var submitter = form.querySelector('[type="submit"]');
-          global.MBMS_UI.setButtonLoading(submitter, true);
+        form.dataset.submitting = '1';
+        var submitter = form.querySelector('[type="submit"]');
+        global.MBMS_UI.setButtonLoading(submitter, true);
 
-          var product = global.MBMS_CATALOG.products(values.category).filter(function (row) {
-            return String(row.id) === String(values.product);
-          })[0];
-          var variant = global.MBMS_CATALOG.variants(values.category, values.product).filter(function (row) {
-            return String(row.id) === String(values.variant);
-          })[0];
+        var product = global.MBMS_CATALOG.products(values.category).filter(function (row) {
+          return String(row.id) === String(values.product);
+        })[0];
+        var variant = global.MBMS_CATALOG.variants(values.category, values.product).filter(function (row) {
+          return String(row.id) === String(values.variant);
+        })[0];
 
-          var record = {
-            product: product ? product.name : values.product,
-            variant: variant ? variant.label : values.variant,
-            variant_id: values.variant,
-            quantity: values.quantity,
-            unit: values.unit || (variant && variant.base_unit) || '',
-            reason: values.reason,
-            notes: values.notes || null,
-            date: values.date,
-            location: values.location,
-            location_id: values.location
-          };
+        var record = {
+          product: product ? product.name : values.product,
+          variant: variant ? variant.label : values.variant,
+          variant_id: values.variant,
+          quantity: values.quantity,
+          unit: values.unit || (variant && variant.base_unit) || '',
+          reason: values.reason,
+          notes: values.notes || null,
+          date: values.date,
+          location: values.location,
+          location_id: values.location
+        };
 
-          global.MBMS_RECORDS.submitOrMock('post', 'damaged-stock', record).then(function (result) {
-            global.MBMS_UI.notify({
-              type: result.source === 'api' ? 'success' : 'warning',
-              message: result.source === 'api'
-                ? 'Damage recorded. Stock reduced by Laravel.'
-                : 'API not connected. Sample damage only.'
-            });
-            form.reset();
-            form.classList.remove('was-validated');
-            resetFormExtras();
-            bootstrap.Modal.getOrCreateInstance(document.getElementById('dmgModal')).hide();
-            return ensureStockIndex().then(load);
-          }).catch(function (error) {
-            global.MBMS_UI.notify({
-              type: 'danger',
-              title: 'Damage not saved',
-              message: global.MBMS_UTILS.getErrorMessage(error)
-            });
-          }).finally(function () {
-            form.dataset.submitting = '';
-            global.MBMS_UI.setButtonLoading(submitter, false);
+        global.MBMS_RECORDS.submitOrMock('post', 'damaged-stock', record).then(function (result) {
+          global.MBMS_UI.notify({
+            type: result.source === 'api' ? 'success' : 'warning',
+            message: result.source === 'api'
+              ? 'Damage recorded. Stock reduced by Laravel.'
+              : 'API not connected. Sample damage only.'
           });
+          form.reset();
+          form.classList.remove('was-validated');
+          resetFormExtras();
+          bootstrap.Modal.getOrCreateInstance(document.getElementById('dmgModal')).hide();
+          return ensureStockIndex().then(load);
+        }).catch(function (error) {
+          global.MBMS_UI.notify({
+            type: 'danger',
+            title: 'Damage not saved',
+            message: global.MBMS_UTILS.getErrorMessage(error)
+          });
+        }).finally(function () {
+          form.dataset.submitting = '';
+          global.MBMS_UI.setButtonLoading(submitter, false);
         });
       });
 

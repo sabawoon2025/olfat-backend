@@ -91,10 +91,10 @@
     sales: ['search', 'date_from', 'date_to', 'category', 'product', 'customer', 'location'],
     purchases: ['search', 'date_from', 'date_to', 'category', 'product', 'supplier', 'location'],
     stock: ['search', 'date_from', 'date_to', 'category', 'product', 'location', 'transaction_type'],
-    financial: ['search', 'date_from', 'date_to', 'location'],
+    financial: ['search', 'date_from', 'date_to', 'product', 'location'],
     workers: ['search', 'date_from', 'date_to', 'location'],
     factory: ['search', 'location'],
-    location: ['search', 'date_from', 'date_to', 'category', 'product']
+    location: ['search', 'date_from', 'date_to', 'category', 'product', 'location']
   };
 
   var LABELS = {
@@ -118,6 +118,7 @@
     monthly_total_display: 'Monthly total',
     note: 'Note',
     module: 'Module',
+    currency: 'Currency',
     revenue: 'Net revenue',
     returns: 'Returns',
     cost: 'COGS',
@@ -157,6 +158,7 @@
     if (isProfitLoss()) {
       return [
         { key: 'module' },
+        { key: 'currency' },
         { key: 'product' },
         { key: 'location' },
         { key: 'sold_qty' },
@@ -187,13 +189,28 @@
     var locationName = filters && params.location_id ? filters.locationLabel(params.location_id) : '';
     var customerName = filters && params.customer_id ? filters.personLabel('customer', params.customer_id) : '';
     var supplierName = filters && params.supplier_id ? filters.personLabel('supplier', params.supplier_id) : '';
+    var productId = params.product_id ? String(params.product_id) : '';
+    var productLabel = '';
+    if (productId && filters && typeof filters.productLabel === 'function') {
+      productLabel = String(filters.productLabel(productId) || '').toLowerCase();
+    }
     return (rows || []).filter(function (row) {
       var search = String(params.search || '').toLowerCase();
       var text = [row.product, row.person, row.customer, row.supplier, row.worker, row.detail, row.module].join(' ').toLowerCase();
+      var rowProduct = String(row.product || '').toLowerCase();
+      var rowProductId = row.product_id != null ? String(row.product_id) : '';
+      var productOk = !productId
+        || rowProductId === productId
+        || (!!productLabel && rowProduct.indexOf(productLabel) !== -1)
+        || rowProduct === 'all products';
+      var locationOk = !locationName
+        || String(row.location || '') === locationName
+        || String(row.location || '') === 'All'
+        || String(row.location_id || '') === String(params.location_id || '');
       return (!search || text.indexOf(search) !== -1)
-        && (!locationName || row.location === locationName || row.location === 'All')
-        && (!params.category || row.category === params.category)
-        && (!params.product_id || row.product_id === params.product_id || row.product === params.product_id)
+        && locationOk
+        && (!params.category || row.category === params.category || String(row.module || '').indexOf(params.category) !== -1)
+        && productOk
         && (!customerName || row.customer === customerName || row.person === customerName)
         && (!supplierName || row.supplier === supplierName || row.person === supplierName)
         && (!params.transaction_type || row.type === params.transaction_type);
@@ -250,27 +267,44 @@
       var netRaw = summary.net_profit_raw != null
         ? Number(summary.net_profit_raw)
         : Number(String(summary.net_profit || summary.remaining || '').replace(/,/g, ''));
+      var netUsdRaw = summary.net_profit_usd_raw != null
+        ? Number(summary.net_profit_usd_raw)
+        : Number(String(summary.net_profit_usd || '').replace(/,/g, ''));
       var netTone = netRaw < 0 ? 'danger' : (netRaw > 0 ? 'success' : 'muted');
+      var netUsdTone = netUsdRaw < 0 ? 'danger' : (netUsdRaw > 0 ? 'success' : 'muted');
       chips = [
-        { icon: 'bi-cash-stack', label: 'Gross sales', value: summary.gross_sales || '—', tone: 'primary' },
-        { icon: 'bi-arrow-return-left', label: 'Returns', value: summary.returns_amount || '—', tone: 'warning' },
-        { icon: 'bi-receipt', label: 'Net revenue', value: summary.revenue || summary.total || '—', tone: 'info' },
-        { icon: 'bi-box-seam', label: 'COGS', value: summary.cost || summary.paid || '—', tone: 'muted' },
-        { icon: 'bi-graph-up-arrow', label: 'Net profit / loss', value: summary.net_profit || summary.remaining || '—', tone: netTone }
+        { icon: 'bi-cash-stack', label: 'Gross AFN', value: summary.gross_sales || '—', tone: 'primary' },
+        { icon: 'bi-currency-dollar', label: 'Gross USD', value: summary.gross_sales_usd || '—', tone: 'primary' },
+        { icon: 'bi-receipt', label: 'Revenue AFN', value: summary.revenue || summary.total || '—', tone: 'info' },
+        { icon: 'bi-receipt', label: 'Revenue USD', value: summary.revenue_usd || '—', tone: 'info' },
+        { icon: 'bi-graph-up-arrow', label: 'Net P/L AFN', value: summary.net_profit || summary.remaining || '—', tone: netTone },
+        { icon: 'bi-graph-up-arrow', label: 'Net P/L USD', value: summary.net_profit_usd || '—', tone: netUsdTone }
       ];
     } else {
       chips.push({ icon: 'bi-list-ul', label: 'Rows shown', value: rows.length, tone: 'primary' });
       if (summary.count != null && summary.count !== '') {
-        chips.push({ icon: 'bi-hash', label: 'Records', value: summary.count, tone: 'info' });
+        chips.push({ icon: 'bi-hash', label: 'Records AFN', value: summary.count, tone: 'info' });
+      }
+      if (summary.count_usd != null && summary.count_usd !== '') {
+        chips.push({ icon: 'bi-hash', label: 'Records USD', value: summary.count_usd, tone: 'info' });
       }
       if (summary.total != null && summary.total !== '') {
-        chips.push({ icon: 'bi-cash-stack', label: 'Total', value: summary.total, tone: 'success' });
+        chips.push({ icon: 'bi-cash-stack', label: 'Total AFN', value: summary.total, tone: 'success' });
+      }
+      if (summary.total_usd != null && summary.total_usd !== '') {
+        chips.push({ icon: 'bi-currency-dollar', label: 'Total USD', value: summary.total_usd, tone: 'success' });
       }
       if (summary.paid != null && summary.paid !== '') {
-        chips.push({ icon: 'bi-wallet2', label: 'Paid', value: summary.paid, tone: 'accent' });
+        chips.push({ icon: 'bi-wallet2', label: 'Paid AFN', value: summary.paid, tone: 'accent' });
+      }
+      if (summary.paid_usd != null && summary.paid_usd !== '') {
+        chips.push({ icon: 'bi-wallet2', label: 'Paid USD', value: summary.paid_usd, tone: 'accent' });
       }
       if (summary.remaining != null && summary.remaining !== '') {
-        chips.push({ icon: 'bi-hourglass-split', label: 'Remaining', value: summary.remaining, tone: 'warning' });
+        chips.push({ icon: 'bi-hourglass-split', label: 'Remaining AFN', value: summary.remaining, tone: 'warning' });
+      }
+      if (summary.remaining_usd != null && summary.remaining_usd !== '') {
+        chips.push({ icon: 'bi-hourglass-split', label: 'Remaining USD', value: summary.remaining_usd, tone: 'warning' });
       }
     }
     global.MBMS_RECORDS.renderSummary(document.getElementById('report-summary'), chips);
@@ -288,12 +322,12 @@
     var payload = result.data && !Array.isArray(result.data) ? result.data : { rows: result.data };
     var rows = result.source === 'api'
       ? (payload.rows || payload.data || [])
-      : applyClientFilters(mockRows(), params);
+      : mockRows();
     var summary = payload.summary || {};
 
-    if (params.search && result.source === 'api') {
-      rows = applyClientFilters(rows, { search: params.search });
-    }
+    // Always apply visible filters client-side so product/location work even when
+    // the API returns broader aggregates (and while lookups finish loading).
+    rows = applyClientFilters(rows, params);
 
     global.MBMS_RECORDS.showBanner(
       document.getElementById('source-banner'),
@@ -375,16 +409,19 @@
     title: 'Reports',
     onReady: function () {
       setNav();
-      if (global.MBMS_FILTERS) {
-        global.MBMS_FILTERS.bind(document.getElementById('report-filters'), load);
-      }
       document.getElementById('pager-prev').addEventListener('click', function () { goPage(-1); });
       document.getElementById('pager-next').addEventListener('click', function () { goPage(1); });
       var exportButton = document.getElementById('report-export');
       if (exportButton) {
         exportButton.addEventListener('click', exportCsv);
       }
-      load();
+      var ready = global.MBMS_FILTERS
+        ? global.MBMS_FILTERS.bind(document.getElementById('report-filters'), load)
+        : Promise.resolve();
+      Promise.resolve(ready).then(function () {
+        setNav();
+        load();
+      });
     }
   };
 })(window);

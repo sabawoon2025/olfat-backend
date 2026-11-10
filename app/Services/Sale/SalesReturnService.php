@@ -9,6 +9,7 @@ use App\Models\SaleItem;
 use App\Models\SalesReturn;
 use App\Models\User;
 use App\Services\Stock\StockService;
+use App\Support\CurrencyGuard;
 use App\Support\ProvinceScope;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -154,8 +155,9 @@ class SalesReturnService
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            // Only reverse what was previously booked as receivable.
-            $customer->balance = round((float) $customer->balance - $fromRemaining, 2);
+            // Only reverse what was previously booked as receivable (same currency column as the sale).
+            $balanceColumn = CurrencyGuard::partyBalanceColumn((string) ($sale->currency ?? 'AFN'));
+            $customer->{$balanceColumn} = round((float) $customer->{$balanceColumn} - $fromRemaining, 2);
             $customer->save();
 
             return $salesReturn->load(['items.variant.product', 'sale', 'customer', 'location', 'user']);

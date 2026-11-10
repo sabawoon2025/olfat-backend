@@ -61,6 +61,7 @@
               <th>Date</th>
               <th>Ref</th>
               <th id="pay-person-col">Customer</th>
+              <th>Bill</th>
               <th>Amount</th>
               <th>Balance after</th>
               <th>Note</th>
@@ -99,8 +100,28 @@
             </div>
 
             <div class="mbms-form-section is-payment">
+              <div class="mbms-form-section-title"><i class="bi bi-receipt" aria-hidden="true"></i> Bill</div>
+              <div class="mbms-field mb-0">
+                <label class="form-label" for="pay-bill" id="pay-bill-label">Unpaid bill</label>
+                <select class="form-select" id="pay-bill" name="bill" required data-ac="0">
+                  <option value="">Select unpaid bill</option>
+                </select>
+                <div class="invalid-feedback" data-error-for="bill">Choose the sale or purchase bill to pay.</div>
+              </div>
+            </div>
+
+            <div class="mbms-form-section is-payment">
               <div class="mbms-form-section-title"><i class="bi bi-wallet2" aria-hidden="true"></i> Payment</div>
               <div class="row g-2">
+                <div class="col-md-6">
+                  <div class="mbms-field mb-0">
+                    <label class="form-label" for="pay-currency">Currency</label>
+                    <select class="form-select" id="pay-currency" name="currency" required>
+                      <option value="AFN" selected>AFN</option>
+                      <option value="USD">USD</option>
+                    </select>
+                  </div>
+                </div>
                 <div class="col-md-6">
                   <div class="mbms-field mb-0">
                     <label class="form-label" for="pay-amount">Amount</label>
@@ -158,7 +179,7 @@
   <script defer src="../assets/js/config.js"></script>
   <script defer src="../assets/js/i18n.js"></script>
   <script defer src="../assets/js/api.js"></script>
-  <script defer src="../assets/js/bridge.js"></script>
+  <script defer src="../assets/js/bridge.js?v=20261107b"></script>
   <script defer src="../assets/js/utils.js"></script>
   <script defer src="../assets/js/ui.js"></script>
   <script defer src="../assets/js/nav.js"></script>
@@ -167,7 +188,7 @@
   <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/catalog-lookups.js"></script>
-  <script defer src="../assets/js/pages/payments-page.js"></script>
+  <script defer src="../assets/js/pages/payments-page.js?v=20261107b"></script>
   <script defer src="../assets/js/app.js"></script>
 </body>
 </html>

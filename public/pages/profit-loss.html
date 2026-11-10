@@ -39,9 +39,9 @@
       <div class="mbms-toolbar" id="pl-filters">
         <input class="form-control mbms-date" name="date_from" type="date" aria-label="From date">
         <input class="form-control mbms-date" name="date_to" type="date" aria-label="To date">
-        <select class="form-select mbms-filter" name="module" aria-label="Module"></select>
-        <select class="form-select mbms-filter" name="product" aria-label="Product"></select>
-        <select class="form-select mbms-filter" name="location" aria-label="Location"></select>
+        <select class="form-select mbms-filter" name="module" aria-label="Module" data-ac="0"></select>
+        <select class="form-select mbms-filter" name="product" aria-label="Product" data-ac="0"></select>
+        <select class="form-select mbms-filter" name="location" aria-label="Location" data-ac="0"></select>
       </div>
 
       <div class="d-flex flex-wrap gap-2 mb-3" id="pl-presets" aria-label="Date presets">
@@ -59,6 +59,7 @@
           <thead>
             <tr>
               <th>Module</th>
+              <th>Currency</th>
               <th>Product</th>
               <th>Location</th>
               <th>Sold</th>
@@ -79,7 +80,7 @@
   <script defer src="../assets/js/config.js"></script>
   <script defer src="../assets/js/i18n.js"></script>
   <script defer src="../assets/js/api.js"></script>
-  <script defer src="../assets/js/bridge.js"></script>
+  <script defer src="../assets/js/bridge.js?v=20261104b"></script>
   <script defer src="../assets/js/utils.js"></script>
   <script defer src="../assets/js/ui.js"></script>
   <script defer src="../assets/js/nav.js"></script>
@@ -88,8 +89,8 @@
   <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
   <script defer src="../assets/js/catalog-lookups.js"></script>
-  <script defer src="../assets/js/report-filters.js"></script>
-  <script defer src="../assets/js/pages/profit-loss-page.js"></script>
+  <script defer src="../assets/js/report-filters.js?v=20261104b"></script>
+  <script defer src="../assets/js/pages/profit-loss-page.js?v=20261104b"></script>
   <script defer src="../assets/js/app.js"></script>
 </body>
 </html>

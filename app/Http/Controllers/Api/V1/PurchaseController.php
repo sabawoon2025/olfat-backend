@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Purchase\StorePurchaseRequest;
+use App\Http\Resources\V1\PurchaseResource;
 use App\Models\Purchase;
 use App\Services\Purchase\PurchaseService;
 use App\Support\ApiResponse;
@@ -71,10 +72,15 @@ class PurchaseController extends Controller
         return ApiResponse::success($purchase, 'Purchase created', 201);
     }
 
+    /**
+     * Returns the purchase in the shape expected by public/pages/bill.html.
+     */
     public function show(Purchase $purchase): JsonResponse
     {
+        $purchase->load(['items.variant.product', 'supplier', 'location', 'user']);
+
         return ApiResponse::success(
-            $purchase->load(['items.variant.product', 'supplier', 'location', 'user'])
+            PurchaseResource::make($purchase)->resolve()
         );
     }
 }

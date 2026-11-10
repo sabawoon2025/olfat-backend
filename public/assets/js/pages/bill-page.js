@@ -50,6 +50,22 @@
     }
   }
 
+  function billKindFromQuery() {
+    try {
+      var kind = String(new URLSearchParams(global.location.search).get('type') || 'sale').toLowerCase();
+      return kind === 'purchase' ? 'purchase' : 'sale';
+    } catch (err) {
+      return 'sale';
+    }
+  }
+
+  function isPurchaseBill(doc) {
+    if (doc && String(doc.kind || '').toLowerCase() === 'purchase') {
+      return true;
+    }
+    return billKindFromQuery() === 'purchase';
+  }
+
   function money(value) {
     var n = Number(value);
     if (value == null || value === '' || isNaN(n)) {
@@ -73,6 +89,12 @@
     return billSettings.currencyPosition === 'prefix'
       ? (token + ' ' + amount)
       : (amount + ' ' + token);
+  }
+
+  function withCurrencyCode(value, code) {
+    var amount = money(value);
+    var currency = String(code || 'AFN').toUpperCase() === 'USD' ? 'USD' : 'AFN';
+    return amount + ' ' + currency;
   }
 
   function textOrFallback(primary, fallback) {
@@ -393,7 +415,7 @@
     }
 
     setText('bill-business-name', billSettings.businessName);
-    setText('bill-business-tag', billSettings.tagline || 'Sales Invoice');
+    setText('bill-business-tag', billSettings.tagline || (isPurchaseBill(sale) ? 'Purchase Invoice' : 'Sales Invoice'));
 
     var addressLines = [billSettings.addressLine1, billSettings.addressLine2]
       .filter(function (line) { return !!line; });
@@ -435,11 +457,23 @@
   }
 
   function renderParties(sale, status) {
-    setText('bill-customer-name', sale.customer || 'Walk-in customer');
-    setText('bill-customer-phone', sale.customer_phone || '—');
-    setText('bill-customer-address', sale.customer_address || '—');
+    var partyName = sale.customer || sale.supplier || (isPurchaseBill(sale) ? 'Supplier' : 'Walk-in customer');
+    setText('bill-customer-name', partyName);
+    setText('bill-customer-phone', sale.customer_phone || sale.supplier_phone || '—');
+    setText('bill-customer-address', sale.customer_address || sale.supplier_address || '—');
     setText('bill-seller-name', sale.seller || billSettings.businessName || 'Staff');
     setText('bill-payment-type', paymentLabel(sale, status));
+
+    var partyTitle = document.querySelector('.bill-info-title');
+    if (partyTitle) {
+      partyTitle.textContent = isPurchaseBill(sale) ? 'Supplier' : 'Customer';
+    }
+    var signCustomer = document.getElementById('bill-sign-customer');
+    if (signCustomer && !billSettings.signatureCustomer) {
+      signCustomer.textContent = isPurchaseBill(sale) ? 'Supplier signature' : 'Customer signature';
+    } else if (signCustomer && isPurchaseBill(sale) && /customer/i.test(billSettings.signatureCustomer || '')) {
+      setText('bill-sign-customer', 'Supplier signature');
+    }
   }
 
   function normalizeItems(sale) {
@@ -506,11 +540,35 @@
     var total = sale.total_raw != null ? sale.total_raw : sale.total;
     var paid = sale.paid_raw != null ? sale.paid_raw : sale.paid;
     var remaining = sale.remaining_raw != null ? sale.remaining_raw : sale.remaining;
+    var billCurrency = String((sale && sale.currency) || billSettings.currencyCode || 'AFN').toUpperCase() === 'USD'
+      ? 'USD'
+      : 'AFN';
+    var previousAfn = sale.previous_unpaid_afn_raw != null
+      ? Number(sale.previous_unpaid_afn_raw)
+      : (billCurrency === 'AFN'
+        ? Number(sale.previous_unpaid_raw != null ? sale.previous_unpaid_raw : sale.previous_unpaid || 0)
+        : 0);
+    var previousUsd = sale.previous_unpaid_usd_raw != null
+      ? Number(sale.previous_unpaid_usd_raw)
+      : (billCurrency === 'USD'
+        ? Number(sale.previous_unpaid_raw != null ? sale.previous_unpaid_raw : sale.previous_unpaid || 0)
+        : 0);
+    var outstandingAfn = sale.total_outstanding_afn_raw != null
+      ? Number(sale.total_outstanding_afn_raw)
+      : (Number(previousAfn || 0) + (billCurrency === 'AFN' ? Number(remaining || 0) : 0));
+    var outstandingUsd = sale.total_outstanding_usd_raw != null
+      ? Number(sale.total_outstanding_usd_raw)
+      : (Number(previousUsd || 0) + (billCurrency === 'USD' ? Number(remaining || 0) : 0));
+
     setText('bill-subtotal', withCurrency(total));
     setText('bill-paid', withCurrency(paid));
     setText('bill-remaining', withCurrency(remaining));
     setText('bill-total', withCurrency(total));
     setText('bill-amount-words', amountInWords(total));
+    setText('bill-previous-unpaid-afn', withCurrencyCode(Number.isFinite(previousAfn) ? previousAfn : 0, 'AFN'));
+    setText('bill-previous-unpaid-usd', withCurrencyCode(Number.isFinite(previousUsd) ? previousUsd : 0, 'USD'));
+    setText('bill-total-outstanding-afn', withCurrencyCode(Number.isFinite(outstandingAfn) ? outstandingAfn : 0, 'AFN'));
+    setText('bill-total-outstanding-usd', withCurrencyCode(Number.isFinite(outstandingUsd) ? outstandingUsd : 0, 'USD'));
   }
 
   function renderNotes(sale) {
@@ -563,6 +621,21 @@
     setText('bill-footer-meta', metaBits.join(' · '));
   }
 
+  function applySaleCurrency(sale) {
+    var code = String((sale && sale.currency) || billSettings.currencyCode || 'AFN').trim().toUpperCase();
+    if (code === 'USD') {
+      billSettings.currencyCode = 'USD';
+      billSettings.currencySymbol = billSettings.currencySymbol === '؋' || !billSettings.currencySymbol
+        ? '$'
+        : billSettings.currencySymbol;
+      if (billSettings.currencySymbol === '$') {
+        billSettings.currencyPosition = 'prefix';
+      }
+      return;
+    }
+    billSettings.currencyCode = 'AFN';
+  }
+
   function renderSale(sale) {
     currentSale = sale;
     var root = document.getElementById('bill-root');
@@ -575,6 +648,7 @@
     }
 
     applyLocationProfile(sale.invoice_profile || {});
+    applySaleCurrency(sale);
 
     var status = paymentStatus(sale);
     var number = invoiceNumber(sale);
@@ -591,7 +665,10 @@
   }
 
   function customerName(sale) {
-    return textOrFallback(sale && sale.customer, 'Customer');
+    return textOrFallback(
+      sale && (sale.customer || sale.supplier),
+      isPurchaseBill(sale) ? 'Supplier' : 'Customer'
+    );
   }
 
   function whatsAppText(sale) {
@@ -600,7 +677,7 @@
     var lines = [];
     lines.push('*' + billSettings.businessName + '*');
     lines.push('Invoice *' + number + '*');
-    lines.push('Customer: *' + customer + '*');
+    lines.push((isPurchaseBill(sale) ? 'Supplier' : 'Customer') + ': *' + customer + '*');
     if (sale.location) {
       lines.push('Location: ' + sale.location);
     }
@@ -619,9 +696,25 @@
     var total = sale.total_raw != null ? sale.total_raw : sale.total;
     var paid = sale.paid_raw != null ? sale.paid_raw : sale.paid;
     var remaining = sale.remaining_raw != null ? sale.remaining_raw : sale.remaining;
+    var previousAfn = sale.previous_unpaid_afn_raw != null
+      ? Number(sale.previous_unpaid_afn_raw)
+      : 0;
+    var previousUsd = sale.previous_unpaid_usd_raw != null
+      ? Number(sale.previous_unpaid_usd_raw)
+      : 0;
+    var outstandingAfn = sale.total_outstanding_afn_raw != null
+      ? Number(sale.total_outstanding_afn_raw)
+      : previousAfn;
+    var outstandingUsd = sale.total_outstanding_usd_raw != null
+      ? Number(sale.total_outstanding_usd_raw)
+      : previousUsd;
     lines.push('Total: ' + withCurrency(total));
     lines.push('Paid: ' + withCurrency(paid));
     lines.push('Balance: ' + withCurrency(remaining));
+    lines.push('Previous unpaid AFN: ' + withCurrencyCode(previousAfn, 'AFN'));
+    lines.push('Previous unpaid USD: ' + withCurrencyCode(previousUsd, 'USD'));
+    lines.push('Total outstanding AFN: ' + withCurrencyCode(outstandingAfn, 'AFN'));
+    lines.push('Total outstanding USD: ' + withCurrencyCode(outstandingUsd, 'USD'));
     if (billSettings.whatsapp || billSettings.phone) {
       lines.push('');
       lines.push('Contact: ' + (billSettings.whatsapp || billSettings.phone));
@@ -955,8 +1048,11 @@
 
   function loadBill() {
     var id = saleIdFromQuery();
+    var kind = billKindFromQuery();
     if (!id) {
-      showError('Missing sale id. Open an invoice from the Sales page.');
+      showError(kind === 'purchase'
+        ? 'Missing purchase id. Open an invoice from the Purchases page.'
+        : 'Missing sale id. Open an invoice from the Sales page.');
       return Promise.resolve();
     }
     if (!global.MBMS_CONFIG || !global.MBMS_CONFIG.getAuthToken || !global.MBMS_CONFIG.getAuthToken()) {
@@ -966,16 +1062,23 @@
       return Promise.resolve();
     }
 
+    var path = kind === 'purchase' ? ('purchases/' + id) : ('sales/' + id);
     return loadSettings().then(function () {
-      return global.MBMS_API.get('sales/' + id);
+      return global.MBMS_API.get(path);
     }).then(function (response) {
       var sale = global.MBMS_UTILS.unwrap(response.data) || response.data || {};
       if (!sale.id) {
-        throw { message: 'Sale invoice was not found.' };
+        throw { message: kind === 'purchase' ? 'Purchase invoice was not found.' : 'Sale invoice was not found.' };
+      }
+      if (!sale.kind) {
+        sale.kind = kind;
       }
       renderSale(sale);
     }).catch(function (error) {
-      showError(global.MBMS_UTILS.getErrorMessage(error, 'Unable to load this sale invoice.'));
+      showError(global.MBMS_UTILS.getErrorMessage(
+        error,
+        kind === 'purchase' ? 'Unable to load this purchase invoice.' : 'Unable to load this sale invoice.'
+      ));
     });
   }
 

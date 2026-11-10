@@ -99,7 +99,7 @@
           <div class="tab-pane fade" id="tab-purchases">
             <div class="table-responsive">
               <table class="table mbms-table">
-                <thead><tr><th>Date</th><th>Supplier</th><th>Size</th><th>Quantity</th><th>Total</th><th>Location</th></tr></thead>
+                <thead><tr><th>Date</th><th>Supplier</th><th>Size</th><th>Quantity</th><th>Currency</th><th>Total</th><th>Location</th></tr></thead>
                 <tbody id="purchase-history-body"></tbody>
               </table>
             </div>
@@ -107,7 +107,7 @@
           <div class="tab-pane fade" id="tab-sales">
             <div class="table-responsive">
               <table class="table mbms-table">
-                <thead><tr><th>Date</th><th>Customer</th><th>Size</th><th>Quantity</th><th>Total</th><th>Type</th></tr></thead>
+                <thead><tr><th>Date</th><th>Customer</th><th>Size</th><th>Quantity</th><th>Currency</th><th>Total</th><th>Type</th></tr></thead>
                 <tbody id="sales-history-body"></tbody>
               </table>
             </div>
@@ -115,7 +115,7 @@
           <div class="tab-pane fade" id="tab-history">
             <div class="table-responsive">
               <table class="table mbms-table">
-                <thead><tr><th>Date</th><th>Type</th><th>Party</th><th>Quantity</th><th>Amount</th></tr></thead>
+                <thead><tr><th>Date</th><th>Type</th><th>Party</th><th>Quantity</th><th>Currency</th><th>Amount</th></tr></thead>
                 <tbody id="all-history-body"></tbody>
               </table>
             </div>
@@ -202,6 +202,13 @@
               <label class="form-label" for="purchase-variant">Bag size</label>
               <select class="form-select" id="purchase-variant" name="variant" required></select>
             </div>
+            <div class="mbms-field" data-currency-field>
+              <label class="form-label" for="purchase-currency">Currency</label>
+              <select class="form-select" id="purchase-currency" name="currency" required>
+                <option value="AFN">AFN (Afghani)</option>
+                <option value="USD">USD (Dollar)</option>
+              </select>
+            </div>
             <div class="mbms-field" data-bags-field>
               <label class="form-label" for="purchase-bags">Number of bags</label>
               <input class="form-control" id="purchase-bags" name="bags" inputmode="numeric" min="0" step="1" placeholder="e.g. 10">
@@ -281,6 +288,13 @@
               <label class="form-label" for="sale-variant">Bag size</label>
               <select class="form-select" id="sale-variant" name="variant" required></select>
             </div>
+            <div class="mbms-field" data-currency-field>
+              <label class="form-label" for="sale-currency">Currency</label>
+              <select class="form-select" id="sale-currency" name="currency" required>
+                <option value="AFN">AFN (Afghani)</option>
+                <option value="USD">USD (Dollar)</option>
+              </select>
+            </div>
             <div class="mbms-field">
               <label class="form-label" for="sale-quantity">Quantity</label>
               <input class="form-control" id="sale-quantity" name="quantity" required inputmode="decimal" min="0" step="0.01" placeholder="0">
@@ -349,7 +363,7 @@
   <script defer src="../assets/js/config.js"></script>
   <script defer src="../assets/js/i18n.js"></script>
   <script defer src="../assets/js/api.js"></script>
-  <script defer src="../assets/js/bridge.js"></script>
+  <script defer src="../assets/js/bridge.js?v=20261107b"></script>
   <script defer src="../assets/js/utils.js"></script>
   <script defer src="../assets/js/ui.js"></script>
   <script defer src="../assets/js/nav.js"></script>
@@ -357,7 +371,8 @@
   <script defer src="../assets/js/layout.js"></script>
   <script defer src="../assets/js/autocomplete.js"></script>
   <script defer src="../assets/js/records.js"></script>
-  <script defer src="../assets/js/pages/catalog-page.js"></script>
+  <script defer src="../assets/js/catalog-lookups.js"></script>
+  <script defer src="../assets/js/pages/catalog-page.js?v=20261107a"></script>
   <script defer src="../assets/js/app.js"></script>
 </body>
 </html>

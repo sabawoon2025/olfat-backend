@@ -45,17 +45,28 @@ class ReportService
         $todayEnd = now()->endOfDay();
         $lowStockThreshold = (float) $this->settingsService->get('stock.low_stock_threshold', 5);
 
-        $salesTodayAgg = Sale::query()
+        $salesTodayByCurrency = Sale::query()
             ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
             ->whereBetween('sold_at', [$todayStart, $todayEnd])
+            ->selectRaw("COALESCE(currency, 'AFN') as currency")
             ->selectRaw('COUNT(*) as sales_count, COALESCE(SUM(total_amount), 0) as sales_total')
-            ->first();
+            ->groupBy(DB::raw("COALESCE(currency, 'AFN')"))
+            ->get()
+            ->keyBy('currency');
 
-        $purchasesTodayAgg = Purchase::query()
+        $purchasesTodayByCurrency = Purchase::query()
             ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
             ->whereBetween('purchased_at', [$todayStart, $todayEnd])
+            ->selectRaw("COALESCE(currency, 'AFN') as currency")
             ->selectRaw('COUNT(*) as purchases_count, COALESCE(SUM(total_amount), 0) as purchases_total')
-            ->first();
+            ->groupBy(DB::raw("COALESCE(currency, 'AFN')"))
+            ->get()
+            ->keyBy('currency');
+
+        $salesTodayAgg = $salesTodayByCurrency->get('AFN');
+        $purchasesTodayAgg = $purchasesTodayByCurrency->get('AFN');
+        $salesTodayUsd = $salesTodayByCurrency->get('USD');
+        $purchasesTodayUsd = $purchasesTodayByCurrency->get('USD');
 
         $lowStock = StockBalance::query()
             ->with([
@@ -98,19 +109,41 @@ class ReportService
                 'sales_count' => (int) ($salesTodayAgg->sales_count ?? 0),
                 'purchases_total' => round((float) ($purchasesTodayAgg->purchases_total ?? 0), 2),
                 'purchases_count' => (int) ($purchasesTodayAgg->purchases_count ?? 0),
+                'sales_total_usd' => round((float) ($salesTodayUsd->sales_total ?? 0), 2),
+                'sales_count_usd' => (int) ($salesTodayUsd->sales_count ?? 0),
+                'purchases_total_usd' => round((float) ($purchasesTodayUsd->purchases_total ?? 0), 2),
+                'purchases_count_usd' => (int) ($purchasesTodayUsd->purchases_count ?? 0),
             ],
             'receivables' => [
                 'customers_total' => round((float) Customer::query()->sum('balance'), 2),
+                'customers_total_usd' => round((float) Customer::query()->sum('balance_usd'), 2),
                 'external_person_owes' => round((float) ExternalDebt::query()
                     ->where('direction', 'person_owes')
                     ->where('status', 'open')
+                    ->where(function ($q) {
+                        $q->where('currency', 'AFN')->orWhereNull('currency');
+                    })
+                    ->sum('remaining_amount'), 2),
+                'external_person_owes_usd' => round((float) ExternalDebt::query()
+                    ->where('direction', 'person_owes')
+                    ->where('status', 'open')
+                    ->where('currency', 'USD')
                     ->sum('remaining_amount'), 2),
             ],
             'payables' => [
                 'suppliers_total' => round((float) Supplier::query()->sum('balance'), 2),
+                'suppliers_total_usd' => round((float) Supplier::query()->sum('balance_usd'), 2),
                 'external_business_owes' => round((float) ExternalDebt::query()
                     ->where('direction', 'business_owes')
                     ->where('status', 'open')
+                    ->where(function ($q) {
+                        $q->where('currency', 'AFN')->orWhereNull('currency');
+                    })
+                    ->sum('remaining_amount'), 2),
+                'external_business_owes_usd' => round((float) ExternalDebt::query()
+                    ->where('direction', 'business_owes')
+                    ->where('status', 'open')
+                    ->where('currency', 'USD')
                     ->sum('remaining_amount'), 2),
             ],
             'stock_warnings' => $lowStock,
@@ -126,6 +159,7 @@ class ReportService
 
     /**
      * Province totals that make up the dashboard headline numbers.
+     * Sales and purchases keep AFN and USD separate per province.
      *
      * @return list<array{
      *     location_id:int,
@@ -133,8 +167,12 @@ class ReportService
      *     stock_quantity:float,
      *     sales_total:float,
      *     sales_count:int,
+     *     sales_total_usd:float,
+     *     sales_count_usd:int,
      *     purchases_total:float,
      *     purchases_count:int,
+     *     purchases_total_usd:float,
+     *     purchases_count_usd:int,
      *     worker_payments_today:float
      * }>
      */
@@ -156,21 +194,25 @@ class ReportService
             ->groupBy('location_id')
             ->pluck('total', 'location_id');
 
-        $salesByLoc = Sale::query()
+        $salesByLocCurrency = Sale::query()
             ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
             ->whereBetween('sold_at', [$todayStart, $todayEnd])
-            ->selectRaw('location_id, COUNT(*) as sales_count, COALESCE(SUM(total_amount), 0) as sales_total')
-            ->groupBy('location_id')
+            ->selectRaw('location_id')
+            ->selectRaw("COALESCE(currency, 'AFN') as currency")
+            ->selectRaw('COUNT(*) as sales_count, COALESCE(SUM(total_amount), 0) as sales_total')
+            ->groupBy('location_id', DB::raw("COALESCE(currency, 'AFN')"))
             ->get()
-            ->keyBy('location_id');
+            ->groupBy('location_id');
 
-        $purchasesByLoc = Purchase::query()
+        $purchasesByLocCurrency = Purchase::query()
             ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
             ->whereBetween('purchased_at', [$todayStart, $todayEnd])
-            ->selectRaw('location_id, COUNT(*) as purchases_count, COALESCE(SUM(total_amount), 0) as purchases_total')
-            ->groupBy('location_id')
+            ->selectRaw('location_id')
+            ->selectRaw("COALESCE(currency, 'AFN') as currency")
+            ->selectRaw('COUNT(*) as purchases_count, COALESCE(SUM(total_amount), 0) as purchases_total')
+            ->groupBy('location_id', DB::raw("COALESCE(currency, 'AFN')"))
             ->get()
-            ->keyBy('location_id');
+            ->groupBy('location_id');
 
         $workersByLoc = WorkerPayment::query()
             ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
@@ -179,38 +221,55 @@ class ReportService
             ->groupBy('location_id')
             ->pluck('total', 'location_id');
 
-        return $locations->map(function (Location $location) use ($stockByLoc, $salesByLoc, $purchasesByLoc, $workersByLoc) {
-            $sales = $salesByLoc->get($location->id);
-            $purchases = $purchasesByLoc->get($location->id);
+        return $locations->map(function (Location $location) use ($stockByLoc, $salesByLocCurrency, $purchasesByLocCurrency, $workersByLoc) {
+            $salesRows = ($salesByLocCurrency->get($location->id) ?? collect())->keyBy('currency');
+            $purchaseRows = ($purchasesByLocCurrency->get($location->id) ?? collect())->keyBy('currency');
+            $salesAfn = $salesRows->get('AFN');
+            $salesUsd = $salesRows->get('USD');
+            $purchasesAfn = $purchaseRows->get('AFN');
+            $purchasesUsd = $purchaseRows->get('USD');
 
             return [
                 'location_id' => $location->id,
                 'name' => $location->name,
                 'stock_quantity' => round((float) ($stockByLoc[$location->id] ?? 0), 4),
-                'sales_total' => round((float) ($sales->sales_total ?? 0), 2),
-                'sales_count' => (int) ($sales->sales_count ?? 0),
-                'purchases_total' => round((float) ($purchases->purchases_total ?? 0), 2),
-                'purchases_count' => (int) ($purchases->purchases_count ?? 0),
+                'sales_total' => round((float) ($salesAfn->sales_total ?? 0), 2),
+                'sales_count' => (int) ($salesAfn->sales_count ?? 0),
+                'sales_total_usd' => round((float) ($salesUsd->sales_total ?? 0), 2),
+                'sales_count_usd' => (int) ($salesUsd->sales_count ?? 0),
+                'purchases_total' => round((float) ($purchasesAfn->purchases_total ?? 0), 2),
+                'purchases_count' => (int) ($purchasesAfn->purchases_count ?? 0),
+                'purchases_total_usd' => round((float) ($purchasesUsd->purchases_total ?? 0), 2),
+                'purchases_count_usd' => (int) ($purchasesUsd->purchases_count ?? 0),
                 'worker_payments_today' => round((float) ($workersByLoc[$location->id] ?? 0), 2),
             ];
         })->values()->all();
     }
 
-    public function salesSummary(?Carbon $from, ?Carbon $to, ?int $locationId = null): array
+    public function salesSummary(?Carbon $from, ?Carbon $to, ?int $locationId = null, ?int $productId = null): array
     {
         [$from, $to] = $this->normalizeDateRange($from, $to);
 
         $query = Sale::query()
             ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
+            ->when($productId, function ($q) use ($productId) {
+                $q->whereHas('items.variant', fn ($variant) => $variant->where('product_id', $productId));
+            })
             ->when($from, fn ($q) => $q->where('sold_at', '>=', $from->copy()->startOfDay()))
             ->when($to, fn ($q) => $q->where('sold_at', '<=', $to->copy()->endOfDay()));
 
-        $summary = (clone $query)
+        $byCurrency = (clone $query)
+            ->selectRaw("COALESCE(currency, 'AFN') as currency")
             ->selectRaw('COUNT(*) as count')
             ->selectRaw('COALESCE(SUM(total_amount), 0) as total_amount')
             ->selectRaw('COALESCE(SUM(paid_amount), 0) as paid_amount')
             ->selectRaw('COALESCE(SUM(remaining_amount), 0) as remaining_amount')
-            ->first();
+            ->groupBy(DB::raw("COALESCE(currency, 'AFN')"))
+            ->get()
+            ->keyBy('currency');
+
+        $summary = $byCurrency->get('AFN');
+        $summaryUsd = $byCurrency->get('USD');
 
         return [
             'filters' => $this->filtersPayload($from, $to, $locationId),
@@ -219,26 +278,50 @@ class ReportService
                 'total_amount' => round((float) ($summary->total_amount ?? 0), 2),
                 'paid_amount' => round((float) ($summary->paid_amount ?? 0), 2),
                 'remaining_amount' => round((float) ($summary->remaining_amount ?? 0), 2),
+                'count_usd' => (int) ($summaryUsd->count ?? 0),
+                'total_amount_usd' => round((float) ($summaryUsd->total_amount ?? 0), 2),
+                'paid_amount_usd' => round((float) ($summaryUsd->paid_amount ?? 0), 2),
+                'remaining_amount_usd' => round((float) ($summaryUsd->remaining_amount ?? 0), 2),
             ],
-            'by_day' => $this->groupByDay(clone $query, 'sold_at', 'total_amount'),
+            'by_day' => $this->groupByDay(
+                (clone $query)->where(function ($q) {
+                    $q->where('currency', 'AFN')->orWhereNull('currency');
+                }),
+                'sold_at',
+                'total_amount'
+            ),
+            'by_day_usd' => $this->groupByDay(
+                (clone $query)->where('currency', 'USD'),
+                'sold_at',
+                'total_amount'
+            ),
         ];
     }
 
-    public function purchasesSummary(?Carbon $from, ?Carbon $to, ?int $locationId = null): array
+    public function purchasesSummary(?Carbon $from, ?Carbon $to, ?int $locationId = null, ?int $productId = null): array
     {
         [$from, $to] = $this->normalizeDateRange($from, $to);
 
         $query = Purchase::query()
             ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
+            ->when($productId, function ($q) use ($productId) {
+                $q->whereHas('items.variant', fn ($variant) => $variant->where('product_id', $productId));
+            })
             ->when($from, fn ($q) => $q->where('purchased_at', '>=', $from->copy()->startOfDay()))
             ->when($to, fn ($q) => $q->where('purchased_at', '<=', $to->copy()->endOfDay()));
 
-        $summary = (clone $query)
+        $byCurrency = (clone $query)
+            ->selectRaw("COALESCE(currency, 'AFN') as currency")
             ->selectRaw('COUNT(*) as count')
             ->selectRaw('COALESCE(SUM(total_amount), 0) as total_amount')
             ->selectRaw('COALESCE(SUM(paid_amount), 0) as paid_amount')
             ->selectRaw('COALESCE(SUM(remaining_amount), 0) as remaining_amount')
-            ->first();
+            ->groupBy(DB::raw("COALESCE(currency, 'AFN')"))
+            ->get()
+            ->keyBy('currency');
+
+        $summary = $byCurrency->get('AFN');
+        $summaryUsd = $byCurrency->get('USD');
 
         return [
             'filters' => $this->filtersPayload($from, $to, $locationId),
@@ -247,8 +330,23 @@ class ReportService
                 'total_amount' => round((float) ($summary->total_amount ?? 0), 2),
                 'paid_amount' => round((float) ($summary->paid_amount ?? 0), 2),
                 'remaining_amount' => round((float) ($summary->remaining_amount ?? 0), 2),
+                'count_usd' => (int) ($summaryUsd->count ?? 0),
+                'total_amount_usd' => round((float) ($summaryUsd->total_amount ?? 0), 2),
+                'paid_amount_usd' => round((float) ($summaryUsd->paid_amount ?? 0), 2),
+                'remaining_amount_usd' => round((float) ($summaryUsd->remaining_amount ?? 0), 2),
             ],
-            'by_day' => $this->groupByDay(clone $query, 'purchased_at', 'total_amount'),
+            'by_day' => $this->groupByDay(
+                (clone $query)->where(function ($q) {
+                    $q->where('currency', 'AFN')->orWhereNull('currency');
+                }),
+                'purchased_at',
+                'total_amount'
+            ),
+            'by_day_usd' => $this->groupByDay(
+                (clone $query)->where('currency', 'USD'),
+                'purchased_at',
+                'total_amount'
+            ),
         ];
     }
 
@@ -300,28 +398,50 @@ class ReportService
         return [
             'customers' => [
                 'total_receivable' => round((float) Customer::query()->sum('balance'), 2),
+                'total_receivable_usd' => round((float) Customer::query()->sum('balance_usd'), 2),
                 'with_balance' => Customer::query()
-                    ->where('balance', '>', 0)
+                    ->where(function ($q) {
+                        $q->where('balance', '>', 0)->orWhere('balance_usd', '>', 0);
+                    })
                     ->orderByDesc('balance')
                     ->limit(200)
-                    ->get(['id', 'name', 'phone', 'balance']),
+                    ->get(['id', 'name', 'phone', 'balance', 'balance_usd']),
             ],
             'suppliers' => [
                 'total_payable' => round((float) Supplier::query()->sum('balance'), 2),
+                'total_payable_usd' => round((float) Supplier::query()->sum('balance_usd'), 2),
                 'with_balance' => Supplier::query()
-                    ->where('balance', '>', 0)
+                    ->where(function ($q) {
+                        $q->where('balance', '>', 0)->orWhere('balance_usd', '>', 0);
+                    })
                     ->orderByDesc('balance')
                     ->limit(200)
-                    ->get(['id', 'name', 'phone', 'balance']),
+                    ->get(['id', 'name', 'phone', 'balance', 'balance_usd']),
             ],
             'external' => [
                 'person_owes_total' => round((float) ExternalDebt::query()
                     ->where('direction', 'person_owes')
                     ->where('status', 'open')
+                    ->where(function ($q) {
+                        $q->where('currency', 'AFN')->orWhereNull('currency');
+                    })
+                    ->sum('remaining_amount'), 2),
+                'person_owes_total_usd' => round((float) ExternalDebt::query()
+                    ->where('direction', 'person_owes')
+                    ->where('status', 'open')
+                    ->where('currency', 'USD')
                     ->sum('remaining_amount'), 2),
                 'business_owes_total' => round((float) ExternalDebt::query()
                     ->where('direction', 'business_owes')
                     ->where('status', 'open')
+                    ->where(function ($q) {
+                        $q->where('currency', 'AFN')->orWhereNull('currency');
+                    })
+                    ->sum('remaining_amount'), 2),
+                'business_owes_total_usd' => round((float) ExternalDebt::query()
+                    ->where('direction', 'business_owes')
+                    ->where('status', 'open')
+                    ->where('currency', 'USD')
                     ->sum('remaining_amount'), 2),
                 'open_debts' => ExternalDebt::query()
                     ->with('party')
@@ -463,13 +583,13 @@ class ReportService
      * Business P&L using weighted-average purchase cost (Master Spec costing choice).
      * Home expenses remain excluded from business net profit (§15 / §28.2).
      */
-    public function profitLoss(?Carbon $from = null, ?Carbon $to = null, ?int $locationId = null): array
+    public function profitLoss(?Carbon $from = null, ?Carbon $to = null, ?int $locationId = null, ?int $productId = null): array
     {
         [$from, $to] = $this->normalizeDateRange($from, $to);
-        $cacheKey = 'mbms.pl.'.$this->reportCacheVersion().'.'.($locationId ?? 'all').'.'.$from->getTimestamp().'.'.$to->getTimestamp();
+        $cacheKey = 'mbms.pl.'.$this->reportCacheVersion().'.'.($locationId ?? 'all').'.'.($productId ?? 'all').'.'.$from->getTimestamp().'.'.$to->getTimestamp();
 
-        return Cache::remember($cacheKey, 45, function () use ($from, $to, $locationId) {
-            return $this->calculateProfitLoss($from, $to, $locationId);
+        return Cache::remember($cacheKey, 45, function () use ($from, $to, $locationId, $productId) {
+            return $this->calculateProfitLoss($from, $to, $locationId, $productId);
         });
     }
 
@@ -486,36 +606,47 @@ class ReportService
         return (int) Cache::get('mbms.report.version', 1);
     }
 
-    private function calculateProfitLoss(Carbon $from, Carbon $to, ?int $locationId): array
+    private function calculateProfitLoss(Carbon $from, Carbon $to, ?int $locationId, ?int $productId = null): array
     {
         $purchaseReturnedQty = $this->purchaseReturnedQuantitySql();
         $saleReturnedQty = $this->saleReturnedQuantitySql();
 
-        // Net purchase qty/cost after purchase returns (weighted-average denominator).
+        // Net purchase qty/cost after purchase returns (weighted-average denominator), per currency.
         $avgCosts = PurchaseItem::query()
             ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
+            ->join('product_variants', 'product_variants.id', '=', 'purchase_items.product_variant_id')
             ->when($locationId, fn ($q) => $q->where('purchases.location_id', $locationId))
+            ->when($productId, fn ($q) => $q->where('product_variants.product_id', $productId))
             ->where('purchases.purchased_at', '<=', $to)
             ->selectRaw('purchase_items.product_variant_id as product_variant_id')
+            ->selectRaw("COALESCE(purchases.currency, 'AFN') as currency")
             ->selectRaw("SUM(purchase_items.unit_price * (purchase_items.quantity - {$purchaseReturnedQty})) as cost_total")
             ->selectRaw("SUM(purchase_items.quantity - {$purchaseReturnedQty}) as qty_total")
-            ->groupBy('purchase_items.product_variant_id')
+            ->groupBy('purchase_items.product_variant_id', DB::raw("COALESCE(purchases.currency, 'AFN')"))
             ->get()
-            ->keyBy('product_variant_id');
+            ->keyBy(fn ($row) => $row->product_variant_id.'|'.$row->currency);
 
-        // Gross sold qty/revenue before sales returns (for transparency).
+        // Gross sold qty/revenue before sales returns (for transparency), per currency.
         $soldItems = SaleItem::query()
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+            ->join('product_variants', 'product_variants.id', '=', 'sale_items.product_variant_id')
             ->when($locationId, fn ($q) => $q->where('sales.location_id', $locationId))
+            ->when($productId, fn ($q) => $q->where('product_variants.product_id', $productId))
             ->whereBetween('sales.sold_at', [$from, $to])
             ->selectRaw('sale_items.product_variant_id as product_variant_id')
+            ->selectRaw('product_variants.product_id as product_id')
+            ->selectRaw("COALESCE(sales.currency, 'AFN') as currency")
             ->selectRaw('SUM(sale_items.quantity) as sold_qty_gross')
             ->selectRaw("SUM({$saleReturnedQty}) as returned_qty")
             ->selectRaw("SUM(sale_items.quantity - {$saleReturnedQty}) as sold_qty")
             ->selectRaw('SUM(sale_items.unit_price * sale_items.quantity) as revenue_gross')
             ->selectRaw("SUM(sale_items.unit_price * {$saleReturnedQty}) as returns_amount")
             ->selectRaw("SUM(sale_items.unit_price * (sale_items.quantity - {$saleReturnedQty})) as revenue_total")
-            ->groupBy('sale_items.product_variant_id')
+            ->groupBy(
+                'sale_items.product_variant_id',
+                'product_variants.product_id',
+                DB::raw("COALESCE(sales.currency, 'AFN')")
+            )
             ->get();
 
         $returnsSummary = SalesReturn::query()
@@ -530,17 +661,18 @@ class ReportService
             ->get()
             ->keyBy('id');
 
-        $cogs = 0.0;
-        $revenue = 0.0;
-        $grossSales = 0.0;
-        $returnsFromLines = 0.0;
+        $totals = [
+            'AFN' => ['cogs' => 0.0, 'revenue' => 0.0, 'gross_sales' => 0.0, 'returns' => 0.0],
+            'USD' => ['cogs' => 0.0, 'revenue' => 0.0, 'gross_sales' => 0.0, 'returns' => 0.0],
+        ];
         $rows = [];
         $locationLabel = $locationId
             ? (string) (Location::query()->whereKey($locationId)->value('name') ?: $locationId)
             : 'All';
 
         foreach ($soldItems as $item) {
-            $avg = $avgCosts->get($item->product_variant_id);
+            $currency = in_array((string) $item->currency, ['AFN', 'USD'], true) ? (string) $item->currency : 'AFN';
+            $avg = $avgCosts->get($item->product_variant_id.'|'.$currency);
             $unitCost = ($avg && (float) $avg->qty_total > 0)
                 ? ((float) $avg->cost_total / (float) $avg->qty_total)
                 : 0.0;
@@ -549,10 +681,10 @@ class ReportService
             $lineRevenue = round((float) $item->revenue_total, 2);
             $lineGross = round((float) $item->revenue_gross, 2);
             $lineReturns = round((float) $item->returns_amount, 2);
-            $cogs += $lineCogs;
-            $revenue += $lineRevenue;
-            $grossSales += $lineGross;
-            $returnsFromLines += $lineReturns;
+            $totals[$currency]['cogs'] += $lineCogs;
+            $totals[$currency]['revenue'] += $lineRevenue;
+            $totals[$currency]['gross_sales'] += $lineGross;
+            $totals[$currency]['returns'] += $lineReturns;
 
             if ($soldQty <= 0 && $lineReturns <= 0) {
                 continue;
@@ -568,6 +700,8 @@ class ReportService
 
             $rows[] = [
                 'module' => $moduleLabel,
+                'currency' => $currency,
+                'product_id' => (int) ($item->product_id ?: ($variant?->product_id ?? 0)),
                 'product' => trim(($productName ?? 'Product').($variantName ? ' · '.$variantName : '')),
                 'location' => $locationLabel,
                 'sold_qty' => round(max(0, (float) $item->sold_qty_gross), 4),
@@ -579,15 +713,20 @@ class ReportService
             ];
         }
 
-        $cogs = round($cogs, 2);
-        $revenue = round($revenue, 2);
-        $grossSales = round($grossSales, 2);
-        // Keep returns aligned with net line revenue (sale-period returned qty), not return-date totals.
-        $returnsAmount = round($returnsFromLines, 2);
+        $afnCogs = round($totals['AFN']['cogs'], 2);
+        $afnRevenue = round($totals['AFN']['revenue'], 2);
+        $afnGrossSales = round($totals['AFN']['gross_sales'], 2);
+        $afnReturns = round($totals['AFN']['returns'], 2);
+        $afnGross = round($afnRevenue - $afnCogs, 2);
+
+        $usdCogs = round($totals['USD']['cogs'], 2);
+        $usdRevenue = round($totals['USD']['revenue'], 2);
+        $usdGrossSales = round($totals['USD']['gross_sales'], 2);
+        $usdReturns = round($totals['USD']['returns'], 2);
+        $usdGross = round($usdRevenue - $usdCogs, 2);
+
         $returnsCount = (int) ($returnsSummary->returns_count ?? 0);
-        $gross = round($revenue - $cogs, 2);
         $operating = 0.0;
-        $net = $gross;
 
         return [
             'available' => true,
@@ -595,16 +734,24 @@ class ReportService
             'method_label' => 'Weighted Average',
             'filters' => $this->filtersPayload($from, $to, $locationId),
             'summary' => [
-                'gross_sales' => $grossSales,
-                'returns_amount' => $returnsAmount,
+                // Gross sales and net revenue are the same figure (sales after returns).
+                'gross_sales' => $afnRevenue,
+                'returns_amount' => $afnReturns,
                 'returns_count' => $returnsCount,
-                'revenue' => $revenue,
-                'cost' => $cogs,
-                'cogs' => $cogs,
-                'gross_profit' => $gross,
+                'revenue' => $afnRevenue,
+                'cost' => $afnCogs,
+                'cogs' => $afnCogs,
+                'gross_profit' => $afnGross,
                 'operating_expenses' => $operating,
-                'net_profit' => $net,
-                'note' => 'Net sales after returns. COGS uses weighted-average purchase unit cost through the period end. Home expenses are excluded from business P&L.',
+                'net_profit' => $afnGross,
+                'gross_sales_usd' => $usdRevenue,
+                'returns_amount_usd' => $usdReturns,
+                'revenue_usd' => $usdRevenue,
+                'cost_usd' => $usdCogs,
+                'cogs_usd' => $usdCogs,
+                'gross_profit_usd' => $usdGross,
+                'net_profit_usd' => $usdGross,
+                'note' => 'AFN and USD kept separate (no FX). Gross sales and net revenue are equal (sales after returns). COGS uses weighted-average purchase unit cost in the same currency. Home expenses are excluded from business P&L.',
             ],
             'rows' => $rows,
         ];
@@ -627,6 +774,10 @@ class ReportService
             'gross_profit' => $pl['summary']['gross_profit'] ?? 0,
             'revenue' => $pl['summary']['revenue'] ?? 0,
             'cost' => $pl['summary']['cost'] ?? 0,
+            'net_profit_usd' => $pl['summary']['net_profit_usd'] ?? 0,
+            'gross_profit_usd' => $pl['summary']['gross_profit_usd'] ?? 0,
+            'revenue_usd' => $pl['summary']['revenue_usd'] ?? 0,
+            'cost_usd' => $pl['summary']['cost_usd'] ?? 0,
         ];
     }
 

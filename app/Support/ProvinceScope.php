@@ -18,6 +18,7 @@ class ProvinceScope
         'customer-payments',
         'supplier-payments',
         'sales-returns',
+        'purchase-returns',
         'damaged-stocks',
         'stock/adjustments',
         'worker-payments',

@@ -168,11 +168,14 @@
     global.MBMS_RECORDS.showBanner(document.getElementById('source-banner'), source);
 
     var totalBalance = 0;
+    var totalBalanceUsd = 0;
     var withBalance = 0;
     rows.forEach(function (row) {
       var bal = row.balance_raw != null ? num(row.balance_raw) : num(row.balance_display);
+      var balUsd = row.balance_usd_raw != null ? num(row.balance_usd_raw) : 0;
       totalBalance += bal;
-      if (Math.abs(bal) > 0.00001) {
+      totalBalanceUsd += balUsd;
+      if (Math.abs(bal) > 0.00001 || Math.abs(balUsd) > 0.00001) {
         withBalance += 1;
       }
     });
@@ -192,9 +195,15 @@
       },
       {
         icon: 'bi-cash-coin',
-        label: isCustomer() ? 'Receivable' : 'Payable',
-        value: moneyText(totalBalance),
+        label: isCustomer() ? 'Receivable AFN' : 'Payable AFN',
+        value: moneyText(totalBalance) + ' AFN',
         tone: balanceTone(totalBalance)
+      },
+      {
+        icon: 'bi-currency-dollar',
+        label: isCustomer() ? 'Receivable USD' : 'Payable USD',
+        value: moneyText(totalBalanceUsd) + ' USD',
+        tone: balanceTone(totalBalanceUsd)
       }
     ]);
 
@@ -236,10 +245,12 @@
       },
       {
         render: function (row) {
-          var bal = row.balance_display || moneyText(row.balance_raw);
-          var tone = balanceTone(row.balance_raw != null ? row.balance_raw : row.balance_display);
+          var bal = row.balance_display || (moneyText(row.balance_raw) + ' AFN');
+          var balUsd = row.balance_usd_display || (moneyText(row.balance_usd_raw || 0) + ' USD');
+          var combined = Math.abs(num(row.balance_raw)) + Math.abs(num(row.balance_usd_raw));
+          var tone = balanceTone(combined);
           return '<span class="mbms-stock-pill is-' + tone + '">' +
-            global.MBMS_UTILS.escapeHtml(bal) +
+            global.MBMS_UTILS.escapeHtml(bal + ' · ' + balUsd) +
             '</span>';
         }
       },
@@ -260,9 +271,15 @@
     global.MBMS_RECORDS.renderSummary(document.getElementById('detail-summary'), [
       {
         icon: 'bi-cash-coin',
-        label: isCustomer() ? 'Balance due' : 'Payable',
-        value: record.balance_display || moneyText(record.balance_raw),
+        label: isCustomer() ? 'Balance AFN' : 'Payable AFN',
+        value: record.balance_display || (moneyText(record.balance_raw) + ' AFN'),
         tone: balanceTone(record.balance_raw != null ? record.balance_raw : record.balance_display)
+      },
+      {
+        icon: 'bi-currency-dollar',
+        label: isCustomer() ? 'Balance USD' : 'Payable USD',
+        value: record.balance_usd_display || (moneyText(record.balance_usd_raw || 0) + ' USD'),
+        tone: balanceTone(record.balance_usd_raw)
       },
       {
         icon: 'bi-journal-text',

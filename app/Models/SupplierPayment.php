@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'balance_after',
     'paid_at',
     'notes',
+    'currency',
 ])]
 class SupplierPayment extends Model
 {
