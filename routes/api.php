@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\V1\StockController;
 use App\Http\Controllers\Api\V1\SupplierController;
 use App\Http\Controllers\Api\V1\SupplierPaymentController;
 use App\Http\Controllers\Api\V1\SystemCronController;
+use App\Http\Controllers\Api\V1\SystemDiagnoseController;
 use App\Http\Controllers\Api\V1\SystemSetupController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\WorkerController;
@@ -32,6 +33,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/health', HealthController::class)->middleware('throttle:60,1')->name('health');
 Route::get('/cron/schedule', SystemCronController::class)->middleware('throttle:30,1')->name('cron.schedule');
 Route::post('/cron/setup', SystemSetupController::class)->middleware('throttle:5,1')->name('cron.setup');
+Route::get('/cron/diagnose', SystemDiagnoseController::class)->middleware('throttle:10,1')->name('cron.diagnose');
 
 Route::prefix('v1')->group(function () {
     Route::get('/auth/login-options', [AuthController::class, 'loginOptions'])

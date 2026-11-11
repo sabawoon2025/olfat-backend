@@ -10,16 +10,27 @@ use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    public function __construct(private readonly ReportService $reportService)
-    {
-    }
+    public function __construct(private readonly ReportService $reportService) {}
 
     public function show(Request $request): JsonResponse
     {
         $locationId = $request->filled('location_id') ? $request->integer('location_id') : null;
 
-        return ApiResponse::success(
-            $this->reportService->dashboard($locationId)
-        );
+        try {
+            return ApiResponse::success(
+                $this->reportService->dashboard($locationId)
+            );
+        } catch (\Throwable $e) {
+            report($e);
+
+            return ApiResponse::error(
+                'Unable to load dashboard data.',
+                [
+                    'type' => $e::class,
+                    'error' => $e->getMessage(),
+                ],
+                500
+            );
+        }
     }
 }
