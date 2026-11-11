@@ -27,8 +27,9 @@ use App\Models\WorkerPayment;
 use App\Observers\AuditLogObserver;
 use App\Observers\ReportCacheObserver;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
@@ -133,25 +134,56 @@ class AppServiceProvider extends ServiceProvider
             return;
         }
 
-        if (getenv('VERCEL') === false && getenv('VERCEL_ENV') === false) {
+        $onVercel = getenv('VERCEL') !== false
+            || getenv('VERCEL_ENV') !== false
+            || (isset($_ENV['VERCEL']) && $_ENV['VERCEL'] !== '')
+            || (isset($_SERVER['VERCEL']) && $_SERVER['VERCEL'] !== '');
+
+        if (! $onVercel && ! $this->app->environment('production')) {
             return;
         }
 
         try {
-            if (Schema::hasColumn('sales', 'currency')
-                && Schema::hasColumn('purchases', 'currency')
-                && Schema::hasColumn('customers', 'balance_usd')
-                && Schema::hasColumn('suppliers', 'balance_usd')
-                && Schema::hasColumn('external_debts', 'currency')) {
-                return;
+            $this->addCurrencyColumn('sales');
+            $this->addCurrencyColumn('purchases');
+            $this->addCurrencyColumn('customer_payments');
+            $this->addCurrencyColumn('supplier_payments');
+            $this->addCurrencyColumn('external_debts');
+
+            if (! Schema::hasColumn('customers', 'balance_usd')) {
+                Schema::table('customers', function (Blueprint $table) {
+                    $table->decimal('balance_usd', 15, 2)->default(0);
+                });
             }
 
-            Artisan::call('migrate', [
-                '--force' => true,
-                '--no-interaction' => true,
-            ]);
+            if (! Schema::hasColumn('suppliers', 'balance_usd')) {
+                Schema::table('suppliers', function (Blueprint $table) {
+                    $table->decimal('balance_usd', 15, 2)->default(0);
+                });
+            }
         } catch (Throwable $e) {
             report($e);
+        }
+    }
+
+    private function addCurrencyColumn(string $table): void
+    {
+        if (Schema::hasColumn($table, 'currency')) {
+            return;
+        }
+
+        Schema::table($table, function (Blueprint $blueprint) {
+            $blueprint->string('currency', 3)->default('AFN');
+            $blueprint->index('currency');
+        });
+
+        $driver = Schema::getConnection()->getDriverName();
+        if (in_array($driver, ['mysql', 'pgsql'], true)) {
+            try {
+                DB::statement("ALTER TABLE {$table} ADD CONSTRAINT {$table}_currency_check CHECK (currency IN ('AFN', 'USD'))");
+            } catch (Throwable) {
+                // Constraint may already exist from a previous partial run.
+            }
         }
     }
 }
