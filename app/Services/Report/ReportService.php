@@ -44,29 +44,47 @@ class ReportService
         $todayStart = now()->startOfDay();
         $todayEnd = now()->endOfDay();
         $lowStockThreshold = (float) $this->settingsService->get('stock.low_stock_threshold', 5);
+        $multiCurrency = $this->multiCurrencyEnabled();
 
-        $salesTodayByCurrency = Sale::query()
-            ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
-            ->whereBetween('sold_at', [$todayStart, $todayEnd])
-            ->selectRaw("COALESCE(currency, 'AFN') as currency")
-            ->selectRaw('COUNT(*) as sales_count, COALESCE(SUM(total_amount), 0) as sales_total')
-            ->groupBy(DB::raw("COALESCE(currency, 'AFN')"))
-            ->get()
-            ->keyBy('currency');
+        if ($multiCurrency) {
+            $salesTodayByCurrency = Sale::query()
+                ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
+                ->whereBetween('sold_at', [$todayStart, $todayEnd])
+                ->selectRaw("COALESCE(currency, 'AFN') as currency")
+                ->selectRaw('COUNT(*) as sales_count, COALESCE(SUM(total_amount), 0) as sales_total')
+                ->groupBy(DB::raw("COALESCE(currency, 'AFN')"))
+                ->get()
+                ->keyBy('currency');
 
-        $purchasesTodayByCurrency = Purchase::query()
-            ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
-            ->whereBetween('purchased_at', [$todayStart, $todayEnd])
-            ->selectRaw("COALESCE(currency, 'AFN') as currency")
-            ->selectRaw('COUNT(*) as purchases_count, COALESCE(SUM(total_amount), 0) as purchases_total')
-            ->groupBy(DB::raw("COALESCE(currency, 'AFN')"))
-            ->get()
-            ->keyBy('currency');
+            $purchasesTodayByCurrency = Purchase::query()
+                ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
+                ->whereBetween('purchased_at', [$todayStart, $todayEnd])
+                ->selectRaw("COALESCE(currency, 'AFN') as currency")
+                ->selectRaw('COUNT(*) as purchases_count, COALESCE(SUM(total_amount), 0) as purchases_total')
+                ->groupBy(DB::raw("COALESCE(currency, 'AFN')"))
+                ->get()
+                ->keyBy('currency');
 
-        $salesTodayAgg = $salesTodayByCurrency->get('AFN');
-        $purchasesTodayAgg = $purchasesTodayByCurrency->get('AFN');
-        $salesTodayUsd = $salesTodayByCurrency->get('USD');
-        $purchasesTodayUsd = $purchasesTodayByCurrency->get('USD');
+            $salesTodayAgg = $salesTodayByCurrency->get('AFN');
+            $purchasesTodayAgg = $purchasesTodayByCurrency->get('AFN');
+            $salesTodayUsd = $salesTodayByCurrency->get('USD');
+            $purchasesTodayUsd = $purchasesTodayByCurrency->get('USD');
+        } else {
+            $salesTodayAgg = Sale::query()
+                ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
+                ->whereBetween('sold_at', [$todayStart, $todayEnd])
+                ->selectRaw('COUNT(*) as sales_count, COALESCE(SUM(total_amount), 0) as sales_total')
+                ->first();
+
+            $purchasesTodayAgg = Purchase::query()
+                ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
+                ->whereBetween('purchased_at', [$todayStart, $todayEnd])
+                ->selectRaw('COUNT(*) as purchases_count, COALESCE(SUM(total_amount), 0) as purchases_total')
+                ->first();
+
+            $salesTodayUsd = null;
+            $purchasesTodayUsd = null;
+        }
 
         $lowStock = StockBalance::query()
             ->with([
@@ -103,6 +121,33 @@ class ReportService
             ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
             ->sum('quantity'), 4);
 
+        $externalPersonOwes = ExternalDebt::query()
+            ->where('direction', 'person_owes')
+            ->where('status', 'open');
+        $externalBusinessOwes = ExternalDebt::query()
+            ->where('direction', 'business_owes')
+            ->where('status', 'open');
+
+        if ($multiCurrency) {
+            $externalPersonOwesAfn = (clone $externalPersonOwes)->where(function ($q) {
+                $q->where('currency', 'AFN')->orWhereNull('currency');
+            })->sum('remaining_amount');
+            $externalPersonOwesUsd = (clone $externalPersonOwes)->where('currency', 'USD')->sum('remaining_amount');
+            $externalBusinessOwesAfn = (clone $externalBusinessOwes)->where(function ($q) {
+                $q->where('currency', 'AFN')->orWhereNull('currency');
+            })->sum('remaining_amount');
+            $externalBusinessOwesUsd = (clone $externalBusinessOwes)->where('currency', 'USD')->sum('remaining_amount');
+            $customersTotalUsd = (float) Customer::query()->sum('balance_usd');
+            $suppliersTotalUsd = (float) Supplier::query()->sum('balance_usd');
+        } else {
+            $externalPersonOwesAfn = $externalPersonOwes->sum('remaining_amount');
+            $externalPersonOwesUsd = 0;
+            $externalBusinessOwesAfn = $externalBusinessOwes->sum('remaining_amount');
+            $externalBusinessOwesUsd = 0;
+            $customersTotalUsd = 0;
+            $suppliersTotalUsd = 0;
+        }
+
         return [
             'today' => [
                 'sales_total' => round((float) ($salesTodayAgg->sales_total ?? 0), 2),
@@ -116,35 +161,15 @@ class ReportService
             ],
             'receivables' => [
                 'customers_total' => round((float) Customer::query()->sum('balance'), 2),
-                'customers_total_usd' => round((float) Customer::query()->sum('balance_usd'), 2),
-                'external_person_owes' => round((float) ExternalDebt::query()
-                    ->where('direction', 'person_owes')
-                    ->where('status', 'open')
-                    ->where(function ($q) {
-                        $q->where('currency', 'AFN')->orWhereNull('currency');
-                    })
-                    ->sum('remaining_amount'), 2),
-                'external_person_owes_usd' => round((float) ExternalDebt::query()
-                    ->where('direction', 'person_owes')
-                    ->where('status', 'open')
-                    ->where('currency', 'USD')
-                    ->sum('remaining_amount'), 2),
+                'customers_total_usd' => round($customersTotalUsd, 2),
+                'external_person_owes' => round((float) $externalPersonOwesAfn, 2),
+                'external_person_owes_usd' => round((float) $externalPersonOwesUsd, 2),
             ],
             'payables' => [
                 'suppliers_total' => round((float) Supplier::query()->sum('balance'), 2),
-                'suppliers_total_usd' => round((float) Supplier::query()->sum('balance_usd'), 2),
-                'external_business_owes' => round((float) ExternalDebt::query()
-                    ->where('direction', 'business_owes')
-                    ->where('status', 'open')
-                    ->where(function ($q) {
-                        $q->where('currency', 'AFN')->orWhereNull('currency');
-                    })
-                    ->sum('remaining_amount'), 2),
-                'external_business_owes_usd' => round((float) ExternalDebt::query()
-                    ->where('direction', 'business_owes')
-                    ->where('status', 'open')
-                    ->where('currency', 'USD')
-                    ->sum('remaining_amount'), 2),
+                'suppliers_total_usd' => round($suppliersTotalUsd, 2),
+                'external_business_owes' => round((float) $externalBusinessOwesAfn, 2),
+                'external_business_owes_usd' => round((float) $externalBusinessOwesUsd, 2),
             ],
             'stock_warnings' => $lowStock,
             'low_stock_threshold' => $lowStockThreshold,
@@ -194,25 +219,49 @@ class ReportService
             ->groupBy('location_id')
             ->pluck('total', 'location_id');
 
-        $salesByLocCurrency = Sale::query()
-            ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
-            ->whereBetween('sold_at', [$todayStart, $todayEnd])
-            ->selectRaw('location_id')
-            ->selectRaw("COALESCE(currency, 'AFN') as currency")
-            ->selectRaw('COUNT(*) as sales_count, COALESCE(SUM(total_amount), 0) as sales_total')
-            ->groupBy('location_id', DB::raw("COALESCE(currency, 'AFN')"))
-            ->get()
-            ->groupBy('location_id');
+        $multiCurrency = $this->multiCurrencyEnabled();
 
-        $purchasesByLocCurrency = Purchase::query()
-            ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
-            ->whereBetween('purchased_at', [$todayStart, $todayEnd])
-            ->selectRaw('location_id')
-            ->selectRaw("COALESCE(currency, 'AFN') as currency")
-            ->selectRaw('COUNT(*) as purchases_count, COALESCE(SUM(total_amount), 0) as purchases_total')
-            ->groupBy('location_id', DB::raw("COALESCE(currency, 'AFN')"))
-            ->get()
-            ->groupBy('location_id');
+        if ($multiCurrency) {
+            $salesByLocCurrency = Sale::query()
+                ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
+                ->whereBetween('sold_at', [$todayStart, $todayEnd])
+                ->selectRaw('location_id')
+                ->selectRaw("COALESCE(currency, 'AFN') as currency")
+                ->selectRaw('COUNT(*) as sales_count, COALESCE(SUM(total_amount), 0) as sales_total')
+                ->groupBy('location_id', DB::raw("COALESCE(currency, 'AFN')"))
+                ->get()
+                ->groupBy('location_id');
+
+            $purchasesByLocCurrency = Purchase::query()
+                ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
+                ->whereBetween('purchased_at', [$todayStart, $todayEnd])
+                ->selectRaw('location_id')
+                ->selectRaw("COALESCE(currency, 'AFN') as currency")
+                ->selectRaw('COUNT(*) as purchases_count, COALESCE(SUM(total_amount), 0) as purchases_total')
+                ->groupBy('location_id', DB::raw("COALESCE(currency, 'AFN')"))
+                ->get()
+                ->groupBy('location_id');
+        } else {
+            $salesByLocCurrency = Sale::query()
+                ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
+                ->whereBetween('sold_at', [$todayStart, $todayEnd])
+                ->selectRaw('location_id')
+                ->selectRaw("'AFN' as currency")
+                ->selectRaw('COUNT(*) as sales_count, COALESCE(SUM(total_amount), 0) as sales_total')
+                ->groupBy('location_id')
+                ->get()
+                ->groupBy('location_id');
+
+            $purchasesByLocCurrency = Purchase::query()
+                ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
+                ->whereBetween('purchased_at', [$todayStart, $todayEnd])
+                ->selectRaw('location_id')
+                ->selectRaw("'AFN' as currency")
+                ->selectRaw('COUNT(*) as purchases_count, COALESCE(SUM(total_amount), 0) as purchases_total')
+                ->groupBy('location_id')
+                ->get()
+                ->groupBy('location_id');
+        }
 
         $workersByLoc = WorkerPayment::query()
             ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
@@ -258,18 +307,42 @@ class ReportService
             ->when($from, fn ($q) => $q->where('sold_at', '>=', $from->copy()->startOfDay()))
             ->when($to, fn ($q) => $q->where('sold_at', '<=', $to->copy()->endOfDay()));
 
-        $byCurrency = (clone $query)
-            ->selectRaw("COALESCE(currency, 'AFN') as currency")
-            ->selectRaw('COUNT(*) as count')
-            ->selectRaw('COALESCE(SUM(total_amount), 0) as total_amount')
-            ->selectRaw('COALESCE(SUM(paid_amount), 0) as paid_amount')
-            ->selectRaw('COALESCE(SUM(remaining_amount), 0) as remaining_amount')
-            ->groupBy(DB::raw("COALESCE(currency, 'AFN')"))
-            ->get()
-            ->keyBy('currency');
+        if ($this->multiCurrencyEnabled()) {
+            $byCurrency = (clone $query)
+                ->selectRaw("COALESCE(currency, 'AFN') as currency")
+                ->selectRaw('COUNT(*) as count')
+                ->selectRaw('COALESCE(SUM(total_amount), 0) as total_amount')
+                ->selectRaw('COALESCE(SUM(paid_amount), 0) as paid_amount')
+                ->selectRaw('COALESCE(SUM(remaining_amount), 0) as remaining_amount')
+                ->groupBy(DB::raw("COALESCE(currency, 'AFN')"))
+                ->get()
+                ->keyBy('currency');
 
-        $summary = $byCurrency->get('AFN');
-        $summaryUsd = $byCurrency->get('USD');
+            $summary = $byCurrency->get('AFN');
+            $summaryUsd = $byCurrency->get('USD');
+            $byDay = $this->groupByDay(
+                (clone $query)->where(function ($q) {
+                    $q->where('currency', 'AFN')->orWhereNull('currency');
+                }),
+                'sold_at',
+                'total_amount'
+            );
+            $byDayUsd = $this->groupByDay(
+                (clone $query)->where('currency', 'USD'),
+                'sold_at',
+                'total_amount'
+            );
+        } else {
+            $summary = (clone $query)
+                ->selectRaw('COUNT(*) as count')
+                ->selectRaw('COALESCE(SUM(total_amount), 0) as total_amount')
+                ->selectRaw('COALESCE(SUM(paid_amount), 0) as paid_amount')
+                ->selectRaw('COALESCE(SUM(remaining_amount), 0) as remaining_amount')
+                ->first();
+            $summaryUsd = null;
+            $byDay = $this->groupByDay(clone $query, 'sold_at', 'total_amount');
+            $byDayUsd = collect();
+        }
 
         return [
             'filters' => $this->filtersPayload($from, $to, $locationId),
@@ -283,18 +356,8 @@ class ReportService
                 'paid_amount_usd' => round((float) ($summaryUsd->paid_amount ?? 0), 2),
                 'remaining_amount_usd' => round((float) ($summaryUsd->remaining_amount ?? 0), 2),
             ],
-            'by_day' => $this->groupByDay(
-                (clone $query)->where(function ($q) {
-                    $q->where('currency', 'AFN')->orWhereNull('currency');
-                }),
-                'sold_at',
-                'total_amount'
-            ),
-            'by_day_usd' => $this->groupByDay(
-                (clone $query)->where('currency', 'USD'),
-                'sold_at',
-                'total_amount'
-            ),
+            'by_day' => $byDay,
+            'by_day_usd' => $byDayUsd,
         ];
     }
 
@@ -310,18 +373,42 @@ class ReportService
             ->when($from, fn ($q) => $q->where('purchased_at', '>=', $from->copy()->startOfDay()))
             ->when($to, fn ($q) => $q->where('purchased_at', '<=', $to->copy()->endOfDay()));
 
-        $byCurrency = (clone $query)
-            ->selectRaw("COALESCE(currency, 'AFN') as currency")
-            ->selectRaw('COUNT(*) as count')
-            ->selectRaw('COALESCE(SUM(total_amount), 0) as total_amount')
-            ->selectRaw('COALESCE(SUM(paid_amount), 0) as paid_amount')
-            ->selectRaw('COALESCE(SUM(remaining_amount), 0) as remaining_amount')
-            ->groupBy(DB::raw("COALESCE(currency, 'AFN')"))
-            ->get()
-            ->keyBy('currency');
+        if ($this->multiCurrencyEnabled()) {
+            $byCurrency = (clone $query)
+                ->selectRaw("COALESCE(currency, 'AFN') as currency")
+                ->selectRaw('COUNT(*) as count')
+                ->selectRaw('COALESCE(SUM(total_amount), 0) as total_amount')
+                ->selectRaw('COALESCE(SUM(paid_amount), 0) as paid_amount')
+                ->selectRaw('COALESCE(SUM(remaining_amount), 0) as remaining_amount')
+                ->groupBy(DB::raw("COALESCE(currency, 'AFN')"))
+                ->get()
+                ->keyBy('currency');
 
-        $summary = $byCurrency->get('AFN');
-        $summaryUsd = $byCurrency->get('USD');
+            $summary = $byCurrency->get('AFN');
+            $summaryUsd = $byCurrency->get('USD');
+            $byDay = $this->groupByDay(
+                (clone $query)->where(function ($q) {
+                    $q->where('currency', 'AFN')->orWhereNull('currency');
+                }),
+                'purchased_at',
+                'total_amount'
+            );
+            $byDayUsd = $this->groupByDay(
+                (clone $query)->where('currency', 'USD'),
+                'purchased_at',
+                'total_amount'
+            );
+        } else {
+            $summary = (clone $query)
+                ->selectRaw('COUNT(*) as count')
+                ->selectRaw('COALESCE(SUM(total_amount), 0) as total_amount')
+                ->selectRaw('COALESCE(SUM(paid_amount), 0) as paid_amount')
+                ->selectRaw('COALESCE(SUM(remaining_amount), 0) as remaining_amount')
+                ->first();
+            $summaryUsd = null;
+            $byDay = $this->groupByDay(clone $query, 'purchased_at', 'total_amount');
+            $byDayUsd = collect();
+        }
 
         return [
             'filters' => $this->filtersPayload($from, $to, $locationId),
@@ -335,18 +422,8 @@ class ReportService
                 'paid_amount_usd' => round((float) ($summaryUsd->paid_amount ?? 0), 2),
                 'remaining_amount_usd' => round((float) ($summaryUsd->remaining_amount ?? 0), 2),
             ],
-            'by_day' => $this->groupByDay(
-                (clone $query)->where(function ($q) {
-                    $q->where('currency', 'AFN')->orWhereNull('currency');
-                }),
-                'purchased_at',
-                'total_amount'
-            ),
-            'by_day_usd' => $this->groupByDay(
-                (clone $query)->where('currency', 'USD'),
-                'purchased_at',
-                'total_amount'
-            ),
+            'by_day' => $byDay,
+            'by_day_usd' => $byDayUsd,
         ];
     }
 
@@ -395,54 +472,69 @@ class ReportService
 
     public function financialDebts(): array
     {
+        $multiCurrency = $this->multiCurrencyEnabled();
+
+        $customerQuery = Customer::query()->where('balance', '>', 0);
+        $supplierQuery = Supplier::query()->where('balance', '>', 0);
+        $customerColumns = ['id', 'name', 'phone', 'balance'];
+        $supplierColumns = ['id', 'name', 'phone', 'balance'];
+
+        if ($multiCurrency) {
+            $customerQuery = Customer::query()->where(function ($q) {
+                $q->where('balance', '>', 0)->orWhere('balance_usd', '>', 0);
+            });
+            $supplierQuery = Supplier::query()->where(function ($q) {
+                $q->where('balance', '>', 0)->orWhere('balance_usd', '>', 0);
+            });
+            $customerColumns[] = 'balance_usd';
+            $supplierColumns[] = 'balance_usd';
+        }
+
+        $personOwes = ExternalDebt::query()->where('direction', 'person_owes')->where('status', 'open');
+        $businessOwes = ExternalDebt::query()->where('direction', 'business_owes')->where('status', 'open');
+
+        if ($multiCurrency) {
+            $personOwesAfn = (clone $personOwes)->where(function ($q) {
+                $q->where('currency', 'AFN')->orWhereNull('currency');
+            })->sum('remaining_amount');
+            $personOwesUsd = (clone $personOwes)->where('currency', 'USD')->sum('remaining_amount');
+            $businessOwesAfn = (clone $businessOwes)->where(function ($q) {
+                $q->where('currency', 'AFN')->orWhereNull('currency');
+            })->sum('remaining_amount');
+            $businessOwesUsd = (clone $businessOwes)->where('currency', 'USD')->sum('remaining_amount');
+            $customersTotalUsd = (float) Customer::query()->sum('balance_usd');
+            $suppliersTotalUsd = (float) Supplier::query()->sum('balance_usd');
+        } else {
+            $personOwesAfn = $personOwes->sum('remaining_amount');
+            $personOwesUsd = 0;
+            $businessOwesAfn = $businessOwes->sum('remaining_amount');
+            $businessOwesUsd = 0;
+            $customersTotalUsd = 0;
+            $suppliersTotalUsd = 0;
+        }
+
         return [
             'customers' => [
                 'total_receivable' => round((float) Customer::query()->sum('balance'), 2),
-                'total_receivable_usd' => round((float) Customer::query()->sum('balance_usd'), 2),
-                'with_balance' => Customer::query()
-                    ->where(function ($q) {
-                        $q->where('balance', '>', 0)->orWhere('balance_usd', '>', 0);
-                    })
+                'total_receivable_usd' => round($customersTotalUsd, 2),
+                'with_balance' => $customerQuery
                     ->orderByDesc('balance')
                     ->limit(200)
-                    ->get(['id', 'name', 'phone', 'balance', 'balance_usd']),
+                    ->get($customerColumns),
             ],
             'suppliers' => [
                 'total_payable' => round((float) Supplier::query()->sum('balance'), 2),
-                'total_payable_usd' => round((float) Supplier::query()->sum('balance_usd'), 2),
-                'with_balance' => Supplier::query()
-                    ->where(function ($q) {
-                        $q->where('balance', '>', 0)->orWhere('balance_usd', '>', 0);
-                    })
+                'total_payable_usd' => round($suppliersTotalUsd, 2),
+                'with_balance' => $supplierQuery
                     ->orderByDesc('balance')
                     ->limit(200)
-                    ->get(['id', 'name', 'phone', 'balance', 'balance_usd']),
+                    ->get($supplierColumns),
             ],
             'external' => [
-                'person_owes_total' => round((float) ExternalDebt::query()
-                    ->where('direction', 'person_owes')
-                    ->where('status', 'open')
-                    ->where(function ($q) {
-                        $q->where('currency', 'AFN')->orWhereNull('currency');
-                    })
-                    ->sum('remaining_amount'), 2),
-                'person_owes_total_usd' => round((float) ExternalDebt::query()
-                    ->where('direction', 'person_owes')
-                    ->where('status', 'open')
-                    ->where('currency', 'USD')
-                    ->sum('remaining_amount'), 2),
-                'business_owes_total' => round((float) ExternalDebt::query()
-                    ->where('direction', 'business_owes')
-                    ->where('status', 'open')
-                    ->where(function ($q) {
-                        $q->where('currency', 'AFN')->orWhereNull('currency');
-                    })
-                    ->sum('remaining_amount'), 2),
-                'business_owes_total_usd' => round((float) ExternalDebt::query()
-                    ->where('direction', 'business_owes')
-                    ->where('status', 'open')
-                    ->where('currency', 'USD')
-                    ->sum('remaining_amount'), 2),
+                'person_owes_total' => round((float) $personOwesAfn, 2),
+                'person_owes_total_usd' => round((float) $personOwesUsd, 2),
+                'business_owes_total' => round((float) $businessOwesAfn, 2),
+                'business_owes_total_usd' => round((float) $businessOwesUsd, 2),
                 'open_debts' => ExternalDebt::query()
                     ->with('party')
                     ->where('status', 'open')
@@ -802,6 +894,27 @@ class ReportService
                 'cost' => null,
             ];
         }
+    }
+
+    /**
+     * Production can briefly run new code before the multi-currency migration.
+     * Detect the schema so dashboard/reports stay available on AFN-only DBs.
+     */
+    private function multiCurrencyEnabled(): bool
+    {
+        static $enabled = null;
+
+        if ($enabled !== null) {
+            return $enabled;
+        }
+
+        $enabled = Schema::hasColumn('sales', 'currency')
+            && Schema::hasColumn('purchases', 'currency')
+            && Schema::hasColumn('customers', 'balance_usd')
+            && Schema::hasColumn('suppliers', 'balance_usd')
+            && Schema::hasColumn('external_debts', 'currency');
+
+        return $enabled;
     }
 
     private function purchaseReturnedQuantitySql(): string

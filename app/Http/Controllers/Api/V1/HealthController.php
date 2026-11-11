@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -36,11 +37,25 @@ class HealthController extends Controller
             }),
         ];
 
+        $schema = $this->check(function (): void {
+            foreach ([
+                ['sales', 'currency'],
+                ['purchases', 'currency'],
+                ['customers', 'balance_usd'],
+                ['suppliers', 'balance_usd'],
+                ['external_debts', 'currency'],
+            ] as [$table, $column]) {
+                if (! Schema::hasColumn($table, $column)) {
+                    throw new \RuntimeException("Missing {$table}.{$column}");
+                }
+            }
+        });
+
         $healthy = ! in_array(false, array_column($checks, 'ok'), true);
 
         return response()->json([
             'status' => $healthy ? 'ok' : 'degraded',
-            'checks' => $checks,
+            'checks' => $checks + ['multi_currency_schema' => $schema],
             'timestamp' => now()->toIso8601String(),
         ], $healthy ? 200 : 503);
     }

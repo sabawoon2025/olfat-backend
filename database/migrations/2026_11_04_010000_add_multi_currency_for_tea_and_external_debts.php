@@ -9,46 +9,60 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('sales', function (Blueprint $table) {
-            $table->string('currency', 3)->default('AFN')->after('notes');
-            $table->index('currency');
-        });
+        if (! Schema::hasColumn('sales', 'currency')) {
+            Schema::table('sales', function (Blueprint $table) {
+                $table->string('currency', 3)->default('AFN')->after('notes');
+                $table->index('currency');
+            });
+        }
 
-        Schema::table('purchases', function (Blueprint $table) {
-            $table->string('currency', 3)->default('AFN')->after('notes');
-            $table->index('currency');
-        });
+        if (! Schema::hasColumn('purchases', 'currency')) {
+            Schema::table('purchases', function (Blueprint $table) {
+                $table->string('currency', 3)->default('AFN')->after('notes');
+                $table->index('currency');
+            });
+        }
 
-        Schema::table('customer_payments', function (Blueprint $table) {
-            $table->string('currency', 3)->default('AFN')->after('notes');
-            $table->index('currency');
-        });
+        if (! Schema::hasColumn('customer_payments', 'currency')) {
+            Schema::table('customer_payments', function (Blueprint $table) {
+                $table->string('currency', 3)->default('AFN')->after('notes');
+                $table->index('currency');
+            });
+        }
 
-        Schema::table('supplier_payments', function (Blueprint $table) {
-            $table->string('currency', 3)->default('AFN')->after('notes');
-            $table->index('currency');
-        });
+        if (! Schema::hasColumn('supplier_payments', 'currency')) {
+            Schema::table('supplier_payments', function (Blueprint $table) {
+                $table->string('currency', 3)->default('AFN')->after('notes');
+                $table->index('currency');
+            });
+        }
 
-        Schema::table('external_debts', function (Blueprint $table) {
-            $table->string('currency', 3)->default('AFN')->after('status');
-            $table->index('currency');
-        });
+        if (! Schema::hasColumn('external_debts', 'currency')) {
+            Schema::table('external_debts', function (Blueprint $table) {
+                $table->string('currency', 3)->default('AFN')->after('status');
+                $table->index('currency');
+            });
+        }
 
-        Schema::table('customers', function (Blueprint $table) {
-            $table->decimal('balance_usd', 15, 2)->default(0)->after('balance');
-        });
+        if (! Schema::hasColumn('customers', 'balance_usd')) {
+            Schema::table('customers', function (Blueprint $table) {
+                $table->decimal('balance_usd', 15, 2)->default(0)->after('balance');
+            });
+        }
 
-        Schema::table('suppliers', function (Blueprint $table) {
-            $table->decimal('balance_usd', 15, 2)->default(0)->after('balance');
-        });
+        if (! Schema::hasColumn('suppliers', 'balance_usd')) {
+            Schema::table('suppliers', function (Blueprint $table) {
+                $table->decimal('balance_usd', 15, 2)->default(0)->after('balance');
+            });
+        }
 
         $driver = Schema::getConnection()->getDriverName();
         if (in_array($driver, ['mysql', 'pgsql'], true)) {
-            DB::statement("ALTER TABLE sales ADD CONSTRAINT sales_currency_check CHECK (currency IN ('AFN', 'USD'))");
-            DB::statement("ALTER TABLE purchases ADD CONSTRAINT purchases_currency_check CHECK (currency IN ('AFN', 'USD'))");
-            DB::statement("ALTER TABLE customer_payments ADD CONSTRAINT customer_payments_currency_check CHECK (currency IN ('AFN', 'USD'))");
-            DB::statement("ALTER TABLE supplier_payments ADD CONSTRAINT supplier_payments_currency_check CHECK (currency IN ('AFN', 'USD'))");
-            DB::statement("ALTER TABLE external_debts ADD CONSTRAINT external_debts_currency_check CHECK (currency IN ('AFN', 'USD'))");
+            $this->ensureCurrencyCheck('sales', 'sales_currency_check');
+            $this->ensureCurrencyCheck('purchases', 'purchases_currency_check');
+            $this->ensureCurrencyCheck('customer_payments', 'customer_payments_currency_check');
+            $this->ensureCurrencyCheck('supplier_payments', 'supplier_payments_currency_check');
+            $this->ensureCurrencyCheck('external_debts', 'external_debts_currency_check');
         }
     }
 
@@ -56,44 +70,64 @@ return new class extends Migration
     {
         $driver = Schema::getConnection()->getDriverName();
         if (in_array($driver, ['mysql', 'pgsql'], true)) {
-            DB::statement('ALTER TABLE sales DROP CONSTRAINT sales_currency_check');
-            DB::statement('ALTER TABLE purchases DROP CONSTRAINT purchases_currency_check');
-            DB::statement('ALTER TABLE customer_payments DROP CONSTRAINT customer_payments_currency_check');
-            DB::statement('ALTER TABLE supplier_payments DROP CONSTRAINT supplier_payments_currency_check');
-            DB::statement('ALTER TABLE external_debts DROP CONSTRAINT external_debts_currency_check');
+            foreach ([
+                'sales_currency_check',
+                'purchases_currency_check',
+                'customer_payments_currency_check',
+                'supplier_payments_currency_check',
+                'external_debts_currency_check',
+            ] as $constraint) {
+                try {
+                    DB::statement("ALTER TABLE {$this->tableFromConstraint($constraint)} DROP CONSTRAINT {$constraint}");
+                } catch (Throwable) {
+                    // Constraint may already be absent.
+                }
+            }
         }
 
-        Schema::table('sales', function (Blueprint $table) {
-            $table->dropIndex(['currency']);
-            $table->dropColumn('currency');
-        });
+        foreach (['sales', 'purchases', 'customer_payments', 'supplier_payments', 'external_debts'] as $table) {
+            if (Schema::hasColumn($table, 'currency')) {
+                Schema::table($table, function (Blueprint $blueprint) use ($table) {
+                    try {
+                        $blueprint->dropIndex([$table === 'external_debts' ? 'currency' : 'currency']);
+                    } catch (Throwable) {
+                        // Index name can differ by driver; column drop still proceeds.
+                    }
+                    $blueprint->dropColumn('currency');
+                });
+            }
+        }
 
-        Schema::table('purchases', function (Blueprint $table) {
-            $table->dropIndex(['currency']);
-            $table->dropColumn('currency');
-        });
+        if (Schema::hasColumn('customers', 'balance_usd')) {
+            Schema::table('customers', function (Blueprint $table) {
+                $table->dropColumn('balance_usd');
+            });
+        }
 
-        Schema::table('customer_payments', function (Blueprint $table) {
-            $table->dropIndex(['currency']);
-            $table->dropColumn('currency');
-        });
+        if (Schema::hasColumn('suppliers', 'balance_usd')) {
+            Schema::table('suppliers', function (Blueprint $table) {
+                $table->dropColumn('balance_usd');
+            });
+        }
+    }
 
-        Schema::table('supplier_payments', function (Blueprint $table) {
-            $table->dropIndex(['currency']);
-            $table->dropColumn('currency');
-        });
+    private function ensureCurrencyCheck(string $table, string $constraint): void
+    {
+        try {
+            DB::statement("ALTER TABLE {$table} ADD CONSTRAINT {$constraint} CHECK (currency IN ('AFN', 'USD'))");
+        } catch (Throwable) {
+            // Already exists from a previous partial run.
+        }
+    }
 
-        Schema::table('external_debts', function (Blueprint $table) {
-            $table->dropIndex(['currency']);
-            $table->dropColumn('currency');
-        });
-
-        Schema::table('customers', function (Blueprint $table) {
-            $table->dropColumn('balance_usd');
-        });
-
-        Schema::table('suppliers', function (Blueprint $table) {
-            $table->dropColumn('balance_usd');
-        });
+    private function tableFromConstraint(string $constraint): string
+    {
+        return match ($constraint) {
+            'sales_currency_check' => 'sales',
+            'purchases_currency_check' => 'purchases',
+            'customer_payments_currency_check' => 'customer_payments',
+            'supplier_payments_currency_check' => 'supplier_payments',
+            default => 'external_debts',
+        };
     }
 };

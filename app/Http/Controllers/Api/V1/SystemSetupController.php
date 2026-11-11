@@ -42,6 +42,7 @@ class SystemSetupController extends Controller
                     '--seed' => true,
                     '--no-interaction' => true,
                 ]);
+                $output = trim(Artisan::output());
             } else {
                 Artisan::call('migrate', [
                     '--force' => true,
@@ -49,13 +50,18 @@ class SystemSetupController extends Controller
                 ]);
                 $migrateOutput = trim(Artisan::output());
 
-                Artisan::call('db:seed', [
-                    '--force' => true,
-                    '--no-interaction' => true,
-                ]);
-            }
+                $seed = $request->boolean('seed', true);
+                $seedOutput = '';
+                if ($seed) {
+                    Artisan::call('db:seed', [
+                        '--force' => true,
+                        '--no-interaction' => true,
+                    ]);
+                    $seedOutput = trim(Artisan::output());
+                }
 
-            $output = trim(Artisan::output());
+                $output = trim($migrateOutput."\n".$seedOutput);
+            }
         } catch (Throwable $e) {
             report($e);
 
@@ -69,7 +75,7 @@ class SystemSetupController extends Controller
         return response()->json([
             'status' => 'ok',
             'mode' => $fresh ? 'fresh' : 'migrate',
-            'output' => $fresh ? $output : trim(($migrateOutput ?? '')."\n".$output),
+            'output' => $output,
         ]);
     }
 }
