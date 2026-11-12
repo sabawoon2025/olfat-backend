@@ -7,6 +7,7 @@ use App\Http\Requests\Customer\StoreCustomerRequest;
 use App\Http\Requests\Customer\UpdateCustomerRequest;
 use App\Models\Customer;
 use App\Support\ApiResponse;
+use App\Support\Pagination;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -28,7 +29,7 @@ class CustomerController extends Controller
             $query->where('is_active', filter_var($request->input('is_active'), FILTER_VALIDATE_BOOLEAN));
         }
 
-        return ApiResponse::success($query->paginate($request->integer('per_page', 20)));
+        return ApiResponse::success($query->paginate(Pagination::perPage($request, 100)));
     }
 
     public function store(StoreCustomerRequest $request): JsonResponse
@@ -58,24 +59,10 @@ class CustomerController extends Controller
 
     public function destroy(Customer $customer): JsonResponse
     {
-        if ($customer->sales()->exists() || $customer->payments()->exists()) {
-            return ApiResponse::error(
-                'Customer has sales or payments and cannot be deleted. Deactivate instead.',
-                null,
-                422
-            );
-        }
+        // Never erase ledger parties. Deactivate so history stays intact.
+        $customer->is_active = false;
+        $customer->save();
 
-        if (round((float) $customer->balance, 2) != 0.0 || round((float) $customer->balance_usd, 2) != 0.0) {
-            return ApiResponse::error(
-                'Customer still has an open balance and cannot be deleted.',
-                null,
-                422
-            );
-        }
-
-        $customer->delete();
-
-        return ApiResponse::success(null, 'Customer deleted');
+        return ApiResponse::success($customer->fresh(), 'Customer deactivated');
     }
 }

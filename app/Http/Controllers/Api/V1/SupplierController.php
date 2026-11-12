@@ -7,6 +7,7 @@ use App\Http\Requests\Supplier\StoreSupplierRequest;
 use App\Http\Requests\Supplier\UpdateSupplierRequest;
 use App\Models\Supplier;
 use App\Support\ApiResponse;
+use App\Support\Pagination;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -28,7 +29,7 @@ class SupplierController extends Controller
             $query->where('is_active', filter_var($request->input('is_active'), FILTER_VALIDATE_BOOLEAN));
         }
 
-        return ApiResponse::success($query->paginate($request->integer('per_page', 20)));
+        return ApiResponse::success($query->paginate(Pagination::perPage($request, 100)));
     }
 
     public function store(StoreSupplierRequest $request): JsonResponse
@@ -58,24 +59,10 @@ class SupplierController extends Controller
 
     public function destroy(Supplier $supplier): JsonResponse
     {
-        if ($supplier->purchases()->exists() || $supplier->payments()->exists()) {
-            return ApiResponse::error(
-                'Supplier has purchases or payments and cannot be deleted. Deactivate instead.',
-                null,
-                422
-            );
-        }
+        // Never erase ledger parties. Deactivate so history stays intact.
+        $supplier->is_active = false;
+        $supplier->save();
 
-        if (round((float) $supplier->balance, 2) != 0.0 || round((float) $supplier->balance_usd, 2) != 0.0) {
-            return ApiResponse::error(
-                'Supplier still has an open balance and cannot be deleted.',
-                null,
-                422
-            );
-        }
-
-        $supplier->delete();
-
-        return ApiResponse::success(null, 'Supplier deleted');
+        return ApiResponse::success($supplier->fresh(), 'Supplier deactivated');
     }
 }

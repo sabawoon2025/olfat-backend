@@ -8,6 +8,7 @@ use App\Models\Supplier;
 use App\Models\SupplierPayment;
 use App\Models\User;
 use App\Support\CurrencyGuard;
+use App\Support\PartyBalanceSync;
 use App\Support\ProvinceScope;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -130,10 +131,8 @@ class SupplierPaymentService
                 'currency' => $currency,
             ]);
 
-            $supplier->{$balanceColumn} = $balanceAfter;
-            $supplier->save();
-
             $this->applyToPurchases($openPurchases, $amount);
+            PartyBalanceSync::rebuildSupplier((int) $supplier->id);
 
             return $payment->load(['supplier', 'location', 'user', 'purchase']);
         }, attempts: self::DEADLOCK_RETRIES);

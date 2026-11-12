@@ -1506,7 +1506,7 @@
       // home-expenses handled below so POST/PUT can map date → expense_date
       // external-debts POST is handled later so person → external_party_id can run
       if (verb === 'GET') {
-        params.per_page = params.per_page || 100;
+        params.per_page = params.per_page || 200;
       }
     } else if (nextPath === 'payments/customers') {
       nextPath = 'customer-payments';
@@ -1521,7 +1521,7 @@
           currency: normalizeCurrency(body.currency)
         };
       } else {
-        params.per_page = 100;
+        params.per_page = 200;
       }
     } else if (nextPath === 'payments/suppliers') {
       nextPath = 'supplier-payments';
@@ -1536,7 +1536,7 @@
           currency: normalizeCurrency(body.currency)
         };
       } else {
-        params.per_page = 100;
+        params.per_page = 200;
       }
     } else if (nextPath === 'stock') {
       nextPath = 'stock/balances';
@@ -2370,8 +2370,76 @@
     }
   }
 
+  function shouldFetchAllPages(original) {
+    return [
+      'sales',
+      'purchases',
+      'customers',
+      'suppliers',
+      'stock',
+      'payments/customers',
+      'payments/suppliers',
+      'sales-returns',
+      'purchase-returns',
+      'damaged-stock',
+      'workers',
+      'worker-payments',
+      'external-debts',
+      'home-expenses',
+      'tea',
+      'rice',
+      'detergents',
+      'raw-materials',
+      'factory-materials'
+    ].indexOf(original) !== -1;
+  }
+
+  function expandPaginatedGet(planned, response) {
+    var root = response.data;
+    var page = inner(root);
+    if (!page || !Array.isArray(page.data) || !(page.last_page > 1)) {
+      return Promise.resolve(response);
+    }
+
+    var lastPage = Math.min(Number(page.last_page) || 1, 30);
+    var allRows = page.data.slice();
+    var requests = [];
+    for (var p = 2; p <= lastPage; p++) {
+      requests.push(rawRequest('GET', planned.path, {
+        params: Object.assign({}, planned.options.params || {}, { page: p })
+      }));
+    }
+
+    return Promise.all(requests).then(function (pages) {
+      pages.forEach(function (res) {
+        allRows = allRows.concat(rowsOf(res.data));
+      });
+      if (root && root.success === true) {
+        response.data = {
+          success: true,
+          message: root.message || 'OK',
+          data: Object.assign({}, page, {
+            data: allRows,
+            current_page: 1,
+            last_page: 1,
+            from: allRows.length ? 1 : 0,
+            to: allRows.length,
+            total: allRows.length,
+            per_page: allRows.length
+          })
+        };
+      }
+      return response;
+    });
+  }
+
   function send(planned, extraPayload) {
     return rawRequest(planned.method, planned.path, planned.options).then(function (response) {
+      if (planned.method === 'GET' && shouldFetchAllPages(planned.original)) {
+        return expandPaginatedGet(planned, response);
+      }
+      return response;
+    }).then(function (response) {
       if (planned.options.also) {
         return rawRequest('GET', planned.options.also, { params: planned.options.params }).then(function (extra) {
           response.data = reportRows(planned.options.reportKind || planned.original, response.data, extra.data);

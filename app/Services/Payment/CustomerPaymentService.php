@@ -8,6 +8,7 @@ use App\Models\CustomerPayment;
 use App\Models\Sale;
 use App\Models\User;
 use App\Support\CurrencyGuard;
+use App\Support\PartyBalanceSync;
 use App\Support\ProvinceScope;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -130,10 +131,8 @@ class CustomerPaymentService
                 'currency' => $currency,
             ]);
 
-            $customer->{$balanceColumn} = $balanceAfter;
-            $customer->save();
-
             $this->applyToSales($openSales, $amount);
+            PartyBalanceSync::rebuildCustomer((int) $customer->id);
 
             return $payment->load(['customer', 'location', 'user', 'sale']);
         }, attempts: self::DEADLOCK_RETRIES);

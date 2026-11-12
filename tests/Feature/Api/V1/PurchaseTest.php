@@ -84,7 +84,8 @@ class PurchaseTest extends TestCase
         ])->assertCreated()
             ->assertJsonPath('data.remaining_amount', '0.00');
 
-        $this->assertSame('25.00', $supplier->fresh()->balance);
+        // Party balances are rebuilt from open purchase remainings (fully paid => 0).
+        $this->assertSame('0.00', $supplier->fresh()->balance);
         $this->assertSame(1, StockMovement::query()->where('type', 'purchase')->count());
         $this->assertSame(4.0, (float) StockBalance::query()->first()->quantity);
     }

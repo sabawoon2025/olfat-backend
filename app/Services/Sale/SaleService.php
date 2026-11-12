@@ -3,13 +3,13 @@
 namespace App\Services\Sale;
 
 use App\Enums\StockMovementType;
-use App\Models\Customer;
 use App\Models\ProductVariant;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\User;
 use App\Services\Stock\StockService;
 use App\Support\CurrencyGuard;
+use App\Support\PartyBalanceSync;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -122,16 +122,7 @@ class SaleService
                 ]);
             }
 
-            if ($remainingAmount > 0) {
-                $customer = Customer::query()
-                    ->whereKey($sale->customer_id)
-                    ->lockForUpdate()
-                    ->firstOrFail();
-
-                $balanceColumn = CurrencyGuard::partyBalanceColumn($currency);
-                $customer->{$balanceColumn} = round((float) $customer->{$balanceColumn} + $remainingAmount, 2);
-                $customer->save();
-            }
+            PartyBalanceSync::rebuildCustomer((int) $sale->customer_id);
 
             return $sale->load(['items.variant.product', 'customer', 'location', 'user']);
         }, attempts: self::DEADLOCK_RETRIES);

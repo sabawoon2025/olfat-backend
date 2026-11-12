@@ -6,10 +6,9 @@ use App\Enums\StockMovementType;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\PurchaseReturn;
-use App\Models\Supplier;
 use App\Models\User;
 use App\Services\Stock\StockService;
-use App\Support\CurrencyGuard;
+use App\Support\PartyBalanceSync;
 use App\Support\ProvinceScope;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -145,15 +144,7 @@ class PurchaseReturnService
             $purchase->total_amount = round(max(0, (float) $purchase->total_amount - $totalAmount), 2);
             $purchase->save();
 
-            $supplier = Supplier::query()
-                ->whereKey($purchase->supplier_id)
-                ->lockForUpdate()
-                ->firstOrFail();
-
-            // Only reverse what was previously booked as payable (same currency column as the purchase).
-            $balanceColumn = CurrencyGuard::partyBalanceColumn((string) ($purchase->currency ?? 'AFN'));
-            $supplier->{$balanceColumn} = round((float) $supplier->{$balanceColumn} - $fromRemaining, 2);
-            $supplier->save();
+            PartyBalanceSync::rebuildSupplier((int) $purchase->supplier_id);
 
             return $purchaseReturn->load(['items.variant.product', 'purchase', 'supplier', 'location', 'user']);
         }, attempts: self::DEADLOCK_RETRIES);

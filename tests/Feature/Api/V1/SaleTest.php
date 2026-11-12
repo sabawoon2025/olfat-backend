@@ -88,7 +88,8 @@ class SaleTest extends TestCase
             ->assertJsonPath('data.payment_type', 'cash')
             ->assertJsonPath('data.remaining_amount', '0.00');
 
-        $this->assertSame('10.00', $customer->fresh()->balance);
+        // Party balances are rebuilt from open sale remainings (cash sale => 0).
+        $this->assertSame('0.00', $customer->fresh()->balance);
     }
 
     public function test_sale_with_multiple_items_calculates_total_and_stock(): void

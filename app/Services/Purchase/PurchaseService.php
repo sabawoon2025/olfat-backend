@@ -6,10 +6,10 @@ use App\Enums\StockMovementType;
 use App\Models\ProductVariant;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
-use App\Models\Supplier;
 use App\Models\User;
 use App\Services\Stock\StockService;
 use App\Support\CurrencyGuard;
+use App\Support\PartyBalanceSync;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -120,16 +120,7 @@ class PurchaseService
                 ]);
             }
 
-            if ($remainingAmount > 0) {
-                $supplier = Supplier::query()
-                    ->whereKey($purchase->supplier_id)
-                    ->lockForUpdate()
-                    ->firstOrFail();
-
-                $balanceColumn = CurrencyGuard::partyBalanceColumn($currency);
-                $supplier->{$balanceColumn} = round((float) $supplier->{$balanceColumn} + $remainingAmount, 2);
-                $supplier->save();
-            }
+            PartyBalanceSync::rebuildSupplier((int) $purchase->supplier_id);
 
             return $purchase->load(['items.variant.product', 'supplier', 'location', 'user']);
         }, attempts: self::DEADLOCK_RETRIES);

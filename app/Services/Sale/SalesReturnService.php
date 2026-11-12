@@ -3,13 +3,12 @@
 namespace App\Services\Sale;
 
 use App\Enums\StockMovementType;
-use App\Models\Customer;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SalesReturn;
 use App\Models\User;
 use App\Services\Stock\StockService;
-use App\Support\CurrencyGuard;
+use App\Support\PartyBalanceSync;
 use App\Support\ProvinceScope;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -150,15 +149,7 @@ class SalesReturnService
             );
             $sale->save();
 
-            $customer = Customer::query()
-                ->whereKey($sale->customer_id)
-                ->lockForUpdate()
-                ->firstOrFail();
-
-            // Only reverse what was previously booked as receivable (same currency column as the sale).
-            $balanceColumn = CurrencyGuard::partyBalanceColumn((string) ($sale->currency ?? 'AFN'));
-            $customer->{$balanceColumn} = round((float) $customer->{$balanceColumn} - $fromRemaining, 2);
-            $customer->save();
+            PartyBalanceSync::rebuildCustomer((int) $sale->customer_id);
 
             return $salesReturn->load(['items.variant.product', 'sale', 'customer', 'location', 'user']);
         }, attempts: self::DEADLOCK_RETRIES);

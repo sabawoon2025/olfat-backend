@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 
 class Pagination
 {
-    public static function perPage(Request $request, int $default = 20, int $max = 100): int
+    public static function perPage(Request $request, int $default = 20, int $max = 200): int
     {
         $perPage = $request->integer('per_page', $default);
 
