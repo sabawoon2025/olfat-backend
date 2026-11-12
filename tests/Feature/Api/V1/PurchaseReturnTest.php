@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Api\V1;
 
+use App\Enums\ProductModule;
 use App\Models\Location;
+use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\PurchaseItem;
 use App\Models\StockBalance;
@@ -92,5 +94,47 @@ class PurchaseReturnTest extends TestCase
                 ],
             ],
         ])->assertStatus(422);
+    }
+
+    public function test_usd_purchase_return_reduces_supplier_usd_balance(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $supplier = Supplier::factory()->create(['balance' => 0, 'balance_usd' => 0]);
+        $location = Location::factory()->create();
+        $tea = ProductVariant::factory()->for(
+            Product::factory()->state(['module' => ProductModule::Tea])
+        )->create(['base_unit' => 'kg']);
+
+        $purchase = $this->postJson('/api/v1/purchases', [
+            'supplier_id' => $supplier->id,
+            'location_id' => $location->id,
+            'currency' => 'USD',
+            'paid_amount' => 0,
+            'items' => [
+                [
+                    'product_variant_id' => $tea->id,
+                    'quantity' => 10,
+                    'unit_price' => 5,
+                ],
+            ],
+        ])->assertCreated();
+
+        $this->assertSame('0.00', $supplier->fresh()->balance);
+        $this->assertSame('50.00', $supplier->fresh()->balance_usd);
+
+        $this->postJson('/api/v1/purchase-returns', [
+            'purchase_id' => $purchase->json('data.id'),
+            'items' => [
+                [
+                    'purchase_item_id' => $purchase->json('data.items.0.id'),
+                    'quantity' => 4,
+                ],
+            ],
+        ])->assertCreated();
+
+        $this->assertSame('0.00', $supplier->fresh()->balance);
+        $this->assertSame('30.00', $supplier->fresh()->balance_usd);
     }
 }

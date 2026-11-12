@@ -36,6 +36,7 @@ class CustomerController extends Controller
         $customer = new Customer($request->validated());
         $customer->created_by = $request->user()->id;
         $customer->balance = 0;
+        $customer->balance_usd = 0;
         $customer->save();
 
         return ApiResponse::success($customer->fresh(), 'Customer created', 201);
@@ -57,6 +58,22 @@ class CustomerController extends Controller
 
     public function destroy(Customer $customer): JsonResponse
     {
+        if ($customer->sales()->exists() || $customer->payments()->exists()) {
+            return ApiResponse::error(
+                'Customer has sales or payments and cannot be deleted. Deactivate instead.',
+                null,
+                422
+            );
+        }
+
+        if (round((float) $customer->balance, 2) != 0.0 || round((float) $customer->balance_usd, 2) != 0.0) {
+            return ApiResponse::error(
+                'Customer still has an open balance and cannot be deleted.',
+                null,
+                422
+            );
+        }
+
         $customer->delete();
 
         return ApiResponse::success(null, 'Customer deleted');

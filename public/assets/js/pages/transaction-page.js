@@ -811,46 +811,69 @@
     global.open(billUrl(docId, kind || (isSales() ? 'sale' : 'purchase')), '_blank', 'noopener');
   }
 
-  function renderList(source) {
-    global.MBMS_RECORDS.showBanner(document.getElementById('source-banner'), source);
-    var partyKey = isSales() ? 'customer' : 'supplier';
-    var rows = filterRows();
-    var body = document.getElementById('tx-list-body');
-    function sumByCurrency(field) {
-      var afn = 0;
-      var usd = 0;
-      rows.forEach(function (row) {
-        var amount = row[field + '_raw'] != null ? num(row[field + '_raw']) : num(row[field]);
-        if (String(row.currency || 'AFN').toUpperCase() === 'USD') {
-          usd += amount;
-        } else {
-          afn += amount;
-        }
-      });
-      return { afn: afn, usd: usd };
+  function dualMoneyParts(parts) {
+    return moneyText(parts.afn) + ' AFN · ' + moneyText(parts.usd) + ' USD';
+  }
+
+  function sumByCurrency(rows, field) {
+    var afn = 0;
+    var usd = 0;
+    rows.forEach(function (row) {
+      var amount = row[field + '_raw'] != null ? num(row[field + '_raw']) : num(row[field]);
+      if (String(row.currency || 'AFN').toUpperCase() === 'USD') {
+        usd += amount;
+      } else {
+        afn += amount;
+      }
+    });
+    return { afn: afn, usd: usd };
+  }
+
+  function openBalanceFromDashboard(data) {
+    if (!data) {
+      return { afn: 0, usd: 0 };
     }
-    var totals = sumByCurrency('total');
-    var paid = sumByCurrency('paid');
-    var remaining = sumByCurrency('remaining');
-    var dual = function (parts) {
-      return moneyText(parts.afn) + ' AFN · ' + moneyText(parts.usd) + ' USD';
+    if (isSales()) {
+      return {
+        afn: num(data.receivables && data.receivables.customers_total),
+        usd: num(data.receivables && data.receivables.customers_total_usd)
+      };
+    }
+    return {
+      afn: num(data.payables && data.payables.suppliers_total),
+      usd: num(data.payables && data.payables.suppliers_total_usd)
     };
+  }
+
+  function renderSummaryChips(rows, openBalance) {
+    var totals = sumByCurrency(rows, 'total');
+    var paid = sumByCurrency(rows, 'paid');
+    var remaining = openBalance || sumByCurrency(rows, 'remaining');
 
     if (isSales()) {
       global.MBMS_RECORDS.renderSummary(document.getElementById('list-summary'), [
         { icon: 'bi-cart-check', label: 'Sales', value: rows.length, tone: 'primary' },
-        { icon: 'bi-cash-stack', label: 'Total', value: dual(totals), tone: 'success' },
-        { icon: 'bi-wallet2', label: 'Collected', value: dual(paid), tone: 'accent' },
-        { icon: 'bi-exclamation-circle', label: 'Receivable', value: dual(remaining), tone: (remaining.afn + remaining.usd) > 0 ? 'warning' : 'muted' }
+        { icon: 'bi-cash-stack', label: 'Total', value: dualMoneyParts(totals), tone: 'success' },
+        { icon: 'bi-wallet2', label: 'Collected', value: dualMoneyParts(paid), tone: 'accent' },
+        { icon: 'bi-exclamation-circle', label: 'Receivable', value: dualMoneyParts(remaining), tone: (remaining.afn + remaining.usd) > 0 ? 'warning' : 'muted' }
       ]);
-    } else {
-      global.MBMS_RECORDS.renderSummary(document.getElementById('list-summary'), [
-        { icon: 'bi-bag-check', label: 'Purchases', value: rows.length, tone: 'primary' },
-        { icon: 'bi-cash-stack', label: 'Total', value: dual(totals), tone: 'info' },
-        { icon: 'bi-wallet2', label: 'Paid', value: dual(paid), tone: 'accent' },
-        { icon: 'bi-exclamation-circle', label: 'Payable', value: dual(remaining), tone: (remaining.afn + remaining.usd) > 0 ? 'warning' : 'muted' }
-      ]);
+      return;
     }
+
+    global.MBMS_RECORDS.renderSummary(document.getElementById('list-summary'), [
+      { icon: 'bi-bag-check', label: 'Purchases', value: rows.length, tone: 'primary' },
+      { icon: 'bi-cash-stack', label: 'Total', value: dualMoneyParts(totals), tone: 'info' },
+      { icon: 'bi-wallet2', label: 'Paid', value: dualMoneyParts(paid), tone: 'accent' },
+      { icon: 'bi-exclamation-circle', label: 'Payable', value: dualMoneyParts(remaining), tone: (remaining.afn + remaining.usd) > 0 ? 'warning' : 'muted' }
+    ]);
+  }
+
+  function renderList(source, openBalance) {
+    global.MBMS_RECORDS.showBanner(document.getElementById('source-banner'), source);
+    var partyKey = isSales() ? 'customer' : 'supplier';
+    var rows = filterRows();
+    var body = document.getElementById('tx-list-body');
+    renderSummaryChips(rows, openBalance);
 
     if (!rows.length) {
       global.MBMS_UI.renderEmpty(document.getElementById('tx-empty'), {
@@ -931,10 +954,20 @@
 
   function load() {
     renderList();
-    return global.MBMS_RECORDS.fetchOrMock(endpoint(), mockList)
-      .then(function (result) {
-        renderList(result.source);
-      });
+    var listPromise = global.MBMS_RECORDS.fetchOrMock(endpoint(), mockList);
+    var balancePromise = global.MBMS_API && typeof global.MBMS_API.get === 'function'
+      ? global.MBMS_API.get('dashboard').then(function (response) {
+        return global.MBMS_UTILS.unwrap(response.data) || response.data || {};
+      }).catch(function () {
+        return null;
+      })
+      : Promise.resolve(null);
+
+    return Promise.all([listPromise, balancePromise]).then(function (parts) {
+      var result = parts[0] || {};
+      var openBalance = openBalanceFromDashboard(parts[1]);
+      renderList(result.source, openBalance);
+    });
   }
 
   function defaultFormMeta() {

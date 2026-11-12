@@ -128,30 +128,9 @@ class ReportService
             ->where('direction', 'business_owes')
             ->where('status', 'open');
 
-        // Match Sales / Purchases / Reports menus: unpaid document remainings,
-        // not denormalized customer/supplier balance columns (those can drift).
+        $openTrade = $this->openTradeRemainings($locationId);
+
         if ($multiCurrency) {
-            $salesRemaining = Sale::query()
-                ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
-                ->selectRaw("COALESCE(currency, 'AFN') as currency")
-                ->selectRaw('COALESCE(SUM(remaining_amount), 0) as total')
-                ->groupBy(DB::raw("COALESCE(currency, 'AFN')"))
-                ->get()
-                ->keyBy('currency');
-
-            $purchasesRemaining = Purchase::query()
-                ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
-                ->selectRaw("COALESCE(currency, 'AFN') as currency")
-                ->selectRaw('COALESCE(SUM(remaining_amount), 0) as total')
-                ->groupBy(DB::raw("COALESCE(currency, 'AFN')"))
-                ->get()
-                ->keyBy('currency');
-
-            $customersTotalAfn = (float) ($salesRemaining->get('AFN')->total ?? 0);
-            $customersTotalUsd = (float) ($salesRemaining->get('USD')->total ?? 0);
-            $suppliersTotalAfn = (float) ($purchasesRemaining->get('AFN')->total ?? 0);
-            $suppliersTotalUsd = (float) ($purchasesRemaining->get('USD')->total ?? 0);
-
             $externalPersonOwesAfn = (clone $externalPersonOwes)->where(function ($q) {
                 $q->where('currency', 'AFN')->orWhereNull('currency');
             })->sum('remaining_amount');
@@ -161,14 +140,6 @@ class ReportService
             })->sum('remaining_amount');
             $externalBusinessOwesUsd = (clone $externalBusinessOwes)->where('currency', 'USD')->sum('remaining_amount');
         } else {
-            $customersTotalAfn = (float) Sale::query()
-                ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
-                ->sum('remaining_amount');
-            $customersTotalUsd = 0;
-            $suppliersTotalAfn = (float) Purchase::query()
-                ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
-                ->sum('remaining_amount');
-            $suppliersTotalUsd = 0;
             $externalPersonOwesAfn = $externalPersonOwes->sum('remaining_amount');
             $externalPersonOwesUsd = 0;
             $externalBusinessOwesAfn = $externalBusinessOwes->sum('remaining_amount');
@@ -187,14 +158,14 @@ class ReportService
                 'purchases_count_usd' => (int) ($purchasesTodayUsd->purchases_count ?? 0),
             ],
             'receivables' => [
-                'customers_total' => round($customersTotalAfn, 2),
-                'customers_total_usd' => round($customersTotalUsd, 2),
+                'customers_total' => round($openTrade['customers_afn'], 2),
+                'customers_total_usd' => round($openTrade['customers_usd'], 2),
                 'external_person_owes' => round((float) $externalPersonOwesAfn, 2),
                 'external_person_owes_usd' => round((float) $externalPersonOwesUsd, 2),
             ],
             'payables' => [
-                'suppliers_total' => round($suppliersTotalAfn, 2),
-                'suppliers_total_usd' => round($suppliersTotalUsd, 2),
+                'suppliers_total' => round($openTrade['suppliers_afn'], 2),
+                'suppliers_total_usd' => round($openTrade['suppliers_usd'], 2),
                 'external_business_owes' => round((float) $externalBusinessOwesAfn, 2),
                 'external_business_owes_usd' => round((float) $externalBusinessOwesUsd, 2),
             ],
@@ -500,6 +471,7 @@ class ReportService
     public function financialDebts(): array
     {
         $multiCurrency = $this->multiCurrencyEnabled();
+        $openTrade = $this->openTradeRemainings(null);
 
         $customerQuery = Customer::query()->where('balance', '>', 0);
         $supplierQuery = Supplier::query()->where('balance', '>', 0);
@@ -529,29 +501,25 @@ class ReportService
                 $q->where('currency', 'AFN')->orWhereNull('currency');
             })->sum('remaining_amount');
             $businessOwesUsd = (clone $businessOwes)->where('currency', 'USD')->sum('remaining_amount');
-            $customersTotalUsd = (float) Customer::query()->sum('balance_usd');
-            $suppliersTotalUsd = (float) Supplier::query()->sum('balance_usd');
         } else {
             $personOwesAfn = $personOwes->sum('remaining_amount');
             $personOwesUsd = 0;
             $businessOwesAfn = $businessOwes->sum('remaining_amount');
             $businessOwesUsd = 0;
-            $customersTotalUsd = 0;
-            $suppliersTotalUsd = 0;
         }
 
         return [
             'customers' => [
-                'total_receivable' => round((float) Customer::query()->sum('balance'), 2),
-                'total_receivable_usd' => round($customersTotalUsd, 2),
+                'total_receivable' => round($openTrade['customers_afn'], 2),
+                'total_receivable_usd' => round($openTrade['customers_usd'], 2),
                 'with_balance' => $customerQuery
                     ->orderByDesc('balance')
                     ->limit(200)
                     ->get($customerColumns),
             ],
             'suppliers' => [
-                'total_payable' => round((float) Supplier::query()->sum('balance'), 2),
-                'total_payable_usd' => round($suppliersTotalUsd, 2),
+                'total_payable' => round($openTrade['suppliers_afn'], 2),
+                'total_payable_usd' => round($openTrade['suppliers_usd'], 2),
                 'with_balance' => $supplierQuery
                     ->orderByDesc('balance')
                     ->limit(200)
@@ -942,6 +910,51 @@ class ReportService
             && Schema::hasColumn('external_debts', 'currency');
 
         return $enabled;
+    }
+
+    /**
+     * Open AR/AP from sale and purchase remainings — same source of truth as
+     * Sales / Purchases document totals (not denormalized party balances).
+     *
+     * @return array{customers_afn:float,customers_usd:float,suppliers_afn:float,suppliers_usd:float}
+     */
+    private function openTradeRemainings(?int $locationId): array
+    {
+        if ($this->multiCurrencyEnabled()) {
+            $salesRemaining = Sale::query()
+                ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
+                ->selectRaw("COALESCE(currency, 'AFN') as currency")
+                ->selectRaw('COALESCE(SUM(remaining_amount), 0) as total')
+                ->groupBy(DB::raw("COALESCE(currency, 'AFN')"))
+                ->get()
+                ->keyBy('currency');
+
+            $purchasesRemaining = Purchase::query()
+                ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
+                ->selectRaw("COALESCE(currency, 'AFN') as currency")
+                ->selectRaw('COALESCE(SUM(remaining_amount), 0) as total')
+                ->groupBy(DB::raw("COALESCE(currency, 'AFN')"))
+                ->get()
+                ->keyBy('currency');
+
+            return [
+                'customers_afn' => (float) ($salesRemaining->get('AFN')->total ?? 0),
+                'customers_usd' => (float) ($salesRemaining->get('USD')->total ?? 0),
+                'suppliers_afn' => (float) ($purchasesRemaining->get('AFN')->total ?? 0),
+                'suppliers_usd' => (float) ($purchasesRemaining->get('USD')->total ?? 0),
+            ];
+        }
+
+        return [
+            'customers_afn' => (float) Sale::query()
+                ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
+                ->sum('remaining_amount'),
+            'customers_usd' => 0.0,
+            'suppliers_afn' => (float) Purchase::query()
+                ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
+                ->sum('remaining_amount'),
+            'suppliers_usd' => 0.0,
+        ];
     }
 
     private function purchaseReturnedQuantitySql(): string

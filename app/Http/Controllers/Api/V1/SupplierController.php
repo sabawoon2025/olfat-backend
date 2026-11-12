@@ -36,6 +36,7 @@ class SupplierController extends Controller
         $supplier = new Supplier($request->validated());
         $supplier->created_by = $request->user()->id;
         $supplier->balance = 0;
+        $supplier->balance_usd = 0;
         $supplier->save();
 
         return ApiResponse::success($supplier->fresh(), 'Supplier created', 201);
@@ -57,6 +58,22 @@ class SupplierController extends Controller
 
     public function destroy(Supplier $supplier): JsonResponse
     {
+        if ($supplier->purchases()->exists() || $supplier->payments()->exists()) {
+            return ApiResponse::error(
+                'Supplier has purchases or payments and cannot be deleted. Deactivate instead.',
+                null,
+                422
+            );
+        }
+
+        if (round((float) $supplier->balance, 2) != 0.0 || round((float) $supplier->balance_usd, 2) != 0.0) {
+            return ApiResponse::error(
+                'Supplier still has an open balance and cannot be deleted.',
+                null,
+                422
+            );
+        }
+
         $supplier->delete();
 
         return ApiResponse::success(null, 'Supplier deleted');

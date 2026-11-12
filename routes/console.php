@@ -35,3 +35,7 @@ Schedule::command('db:integrity-check')
 // Housekeeping: expired API tokens and stale password reset tokens.
 Schedule::command('sanctum:prune-expired --hours=24')->daily();
 Schedule::command('auth:clear-resets')->daily();
+
+// Keep denormalized party balances aligned with open document remainings.
+Schedule::command('customers:sync-receivables')->dailyAt('03:30')->withoutOverlapping();
+Schedule::command('suppliers:sync-payables')->dailyAt('03:40')->withoutOverlapping();

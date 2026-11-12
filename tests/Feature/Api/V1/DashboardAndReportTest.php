@@ -135,13 +135,32 @@ class DashboardAndReportTest extends TestCase
 
     public function test_financial_and_worker_reports(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
 
-        Customer::factory()->create(['balance' => 120]);
-        Supplier::factory()->create(['balance' => 80]);
+        $location = Location::factory()->create();
+        $variant = ProductVariant::factory()->create();
+        $this->seedStock($variant->id, $location->id, $user, 20);
+
+        $this->postJson('/api/v1/sales', [
+            'customer_id' => Customer::factory()->create()->id,
+            'location_id' => $location->id,
+            'paid_amount' => 0,
+            'items' => [
+                ['product_variant_id' => $variant->id, 'quantity' => 4, 'unit_price' => 30],
+            ],
+        ])->assertCreated();
+
+        $this->postJson('/api/v1/purchases', [
+            'supplier_id' => Supplier::factory()->create()->id,
+            'location_id' => $location->id,
+            'paid_amount' => 0,
+            'items' => [
+                ['product_variant_id' => $variant->id, 'quantity' => 4, 'unit_price' => 20],
+            ],
+        ])->assertCreated();
 
         $worker = Worker::factory()->create();
-        $location = Location::factory()->create();
 
         $this->postJson('/api/v1/worker-payments', [
             'worker_id' => $worker->id,

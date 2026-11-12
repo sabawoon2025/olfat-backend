@@ -9,6 +9,7 @@ use App\Models\PurchaseReturn;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Services\Stock\StockService;
+use App\Support\CurrencyGuard;
 use App\Support\ProvinceScope;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -149,8 +150,9 @@ class PurchaseReturnService
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            // Only reverse what was previously booked as payable.
-            $supplier->balance = round((float) $supplier->balance - $fromRemaining, 2);
+            // Only reverse what was previously booked as payable (same currency column as the purchase).
+            $balanceColumn = CurrencyGuard::partyBalanceColumn((string) ($purchase->currency ?? 'AFN'));
+            $supplier->{$balanceColumn} = round((float) $supplier->{$balanceColumn} - $fromRemaining, 2);
             $supplier->save();
 
             return $purchaseReturn->load(['items.variant.product', 'purchase', 'supplier', 'location', 'user']);
