@@ -28,6 +28,13 @@ class SystemSetupController extends Controller
 
         $fresh = $request->boolean('fresh');
 
+        if ($fresh && ! filter_var(env('ALLOW_DESTRUCTIVE_SETUP', false), FILTER_VALIDATE_BOOLEAN)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Destructive setup is disabled. Set ALLOW_DESTRUCTIVE_SETUP=true only when intentionally wiping the database.',
+            ], 403);
+        }
+
         try {
             // Clear a stuck Postgres transaction from a previous failed migrate.
             try {
@@ -50,7 +57,8 @@ class SystemSetupController extends Controller
                 ]);
                 $migrateOutput = trim(Artisan::output());
 
-                $seed = $request->boolean('seed', true);
+                // Default seed=false so routine migrate calls never re-seed production.
+                $seed = $request->boolean('seed', false);
                 $seedOutput = '';
                 if ($seed) {
                     Artisan::call('db:seed', [

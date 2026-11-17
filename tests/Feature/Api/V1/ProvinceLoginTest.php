@@ -28,7 +28,8 @@ class ProvinceLoginTest extends TestCase
 
         $locations = collect($response->json('data.locations'));
         $this->assertFalse($locations->firstWhere('id', $kabul->id)['available']);
-        $this->assertSame($user->email, $locations->firstWhere('id', $kabul->id)['claimed_by']['email']);
+        $this->assertSame($user->name, $locations->firstWhere('id', $kabul->id)['claimed_by']['name']);
+        $this->assertArrayNotHasKey('email', $locations->firstWhere('id', $kabul->id)['claimed_by']);
         $this->assertTrue($locations->firstWhere('id', $ghazni->id)['available']);
 
         $emails = collect($response->json('data.users'))->pluck('email')->all();

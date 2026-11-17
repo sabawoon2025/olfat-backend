@@ -67,8 +67,11 @@ class WorkerController extends Controller
 
     public function destroy(Worker $worker): JsonResponse
     {
-        $worker->delete();
+        // Hard delete fails when worker_payments exist (FK restrict). Match
+        // customers/suppliers: deactivate so payment history stays intact.
+        $worker->is_active = false;
+        $worker->save();
 
-        return ApiResponse::success(null, 'Worker deleted');
+        return ApiResponse::success($worker->fresh(), 'Worker deactivated');
     }
 }

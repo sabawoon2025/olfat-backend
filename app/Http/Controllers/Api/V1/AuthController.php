@@ -43,10 +43,10 @@ class AuthController extends Controller
                     'name' => $location->name,
                     'code' => $location->code,
                     'available' => $claimedBy === null,
+                    // Name only — do not expose emails on the unauthenticated claim map.
                     'claimed_by' => $claimedBy ? [
                         'id' => $claimedBy->id,
                         'name' => $claimedBy->name,
-                        'email' => $claimedBy->email,
                     ] : null,
                 ];
             })

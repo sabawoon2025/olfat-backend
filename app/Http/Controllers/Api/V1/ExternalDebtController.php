@@ -81,7 +81,7 @@ class ExternalDebtController extends Controller
     public function storePayment(Request $request, ExternalDebt $externalDebt): JsonResponse
     {
         $data = $request->validate([
-            'location_id' => ['required', 'exists:locations,id'],
+            'location_id' => ['nullable', 'exists:locations,id'],
             'amount' => ['required', 'numeric', 'gt:0'],
             'paid_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
@@ -94,8 +94,10 @@ class ExternalDebtController extends Controller
                 'You can only record payments on debts from your own province.'
             );
 
+            // Payments always belong to the debt's province — never trust a mismatched client value.
             $payment = $this->debtService->recordPayment([
                 ...$data,
+                'location_id' => (int) $externalDebt->location_id,
                 'external_debt_id' => $externalDebt->id,
                 'user' => $request->user(),
             ]);

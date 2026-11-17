@@ -1569,9 +1569,12 @@
       var saleItem = sale && (sale.items || []).filter(function (line) {
         return sid(line.id) === sid(saleItemId);
       })[0];
-      if (!saleItem && sale && sale.items && sale.items[0]) {
+      if (!saleItemId && sale && sale.items && sale.items[0]) {
         saleItem = sale.items[0];
         saleItemId = idOnly(saleItem.id);
+      }
+      if (!saleItemId) {
+        throw new Error('Select the sale line item to return before submitting.');
       }
       body = {
         sale_id: idOnly(body.sale_id),
@@ -1579,7 +1582,7 @@
         returned_at: body.date || null,
         notes: body.reason || null,
         items: [{
-          sale_item_id: saleItemId ? Number(saleItemId) : null,
+          sale_item_id: Number(saleItemId),
           quantity: num(body.quantity)
         }]
       };
@@ -1589,9 +1592,12 @@
       var purchaseItem = purchase && (purchase.items || []).filter(function (line) {
         return sid(line.id) === sid(purchaseItemId);
       })[0];
-      if (!purchaseItem && purchase && purchase.items && purchase.items[0]) {
+      if (!purchaseItemId && purchase && purchase.items && purchase.items[0]) {
         purchaseItem = purchase.items[0];
         purchaseItemId = idOnly(purchaseItem.id);
+      }
+      if (!purchaseItemId) {
+        throw new Error('Select the purchase line item to return before submitting.');
       }
       body = {
         purchase_id: idOnly(body.purchase_id),
@@ -1599,7 +1605,7 @@
         returned_at: body.date || null,
         notes: body.reason || null,
         items: [{
-          purchase_item_id: purchaseItemId ? Number(purchaseItemId) : null,
+          purchase_item_id: Number(purchaseItemId),
           quantity: num(body.quantity)
         }]
       };
@@ -2499,7 +2505,12 @@
   }
 
   global.MBMS_API.request = function (method, path, options) {
-    var planned = plan(method, path, options);
+    var planned;
+    try {
+      planned = plan(method, path, options);
+    } catch (err) {
+      return Promise.reject(err);
+    }
     if (planned.createPartyName) {
       return ensureParty(planned.createPartyName).then(function (partyId) {
         planned.options.body.external_party_id = partyId;

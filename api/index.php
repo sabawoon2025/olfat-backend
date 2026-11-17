@@ -126,10 +126,21 @@ if ((getenv('VERCEL') !== false || getenv('VERCEL_ENV') !== false) && DIRECTORY_
     }
 }
 
-// Lightweight env probe that does not boot Laravel.
+// Lightweight env probe that does not boot Laravel. Requires CRON_SECRET.
 $requestUri = (string) ($_SERVER['REQUEST_URI'] ?? '');
 if (str_starts_with($requestUri, '/api/diag')) {
     header('Content-Type: application/json');
+    $cronSecret = (string) (getenv('CRON_SECRET') ?: '');
+    $authHeader = (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
+    $bearer = '';
+    if (preg_match('/^\s*Bearer\s+(\S+)\s*$/i', $authHeader, $matches)) {
+        $bearer = $matches[1];
+    }
+    if ($cronSecret === '' || $bearer === '' || ! hash_equals($cronSecret, $bearer)) {
+        http_response_code(401);
+        echo json_encode(['ok' => false, 'message' => 'Unauthorized']);
+        exit;
+    }
     echo json_encode([
         'ok' => true,
         'php' => PHP_VERSION,
@@ -140,7 +151,7 @@ if (str_starts_with($requestUri, '/api/diag')) {
             'DB_CONNECTION' => getenv('DB_CONNECTION') ?: null,
             'DB_URL' => getenv('DB_URL') !== false && getenv('DB_URL') !== '',
             'DATABASE_URL' => getenv('DATABASE_URL') !== false && getenv('DATABASE_URL') !== '',
-            'CRON_SECRET' => getenv('CRON_SECRET') !== false && getenv('CRON_SECRET') !== '',
+            'CRON_SECRET' => true,
             'CACHE_STORE' => getenv('CACHE_STORE') ?: null,
         ],
     ], JSON_PRETTY_PRINT);
@@ -161,9 +172,12 @@ try {
 } catch (Throwable $e) {
     http_response_code(500);
     header('Content-Type: application/json');
-    echo json_encode([
+    $debug = filter_var(getenv('APP_DEBUG') ?: 'false', FILTER_VALIDATE_BOOLEAN);
+    echo json_encode($debug ? [
         'message' => 'Bootstrap failed',
         'type' => $e::class,
         'error' => $e->getMessage(),
+    ] : [
+        'message' => 'Bootstrap failed',
     ]);
 }

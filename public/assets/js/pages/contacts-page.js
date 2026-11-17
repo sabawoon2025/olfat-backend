@@ -14,7 +14,10 @@
   }
 
   function num(value) {
-    var n = Number(String(value == null ? '' : value).replace(/,/g, '').trim());
+    var raw = String(value == null ? '' : value).replace(/,/g, '').trim();
+    // balance_display may look like "1,234.56 AFN" — keep the leading number only.
+    var match = raw.match(/-?\d+(?:\.\d+)?/);
+    var n = Number(match ? match[0] : raw);
     return Number.isFinite(n) ? n : 0;
   }
 
