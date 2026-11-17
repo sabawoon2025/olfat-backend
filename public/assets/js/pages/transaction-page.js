@@ -831,12 +831,24 @@
 
   function openBalanceFromDashboard(data) {
     if (!data) {
-      return { afn: 0, usd: 0 };
+      return sumByCurrency(allRows(), 'remaining');
     }
     if (isSales()) {
+      if (data.customer_receivables_afn != null || data.customer_receivables_usd != null) {
+        return {
+          afn: num(data.customer_receivables_afn),
+          usd: num(data.customer_receivables_usd)
+        };
+      }
       return {
         afn: num(data.receivables && data.receivables.customers_total),
         usd: num(data.receivables && data.receivables.customers_total_usd)
+      };
+    }
+    if (data.supplier_payables_afn != null || data.supplier_payables_usd != null) {
+      return {
+        afn: num(data.supplier_payables_afn),
+        usd: num(data.supplier_payables_usd)
       };
     }
     return {

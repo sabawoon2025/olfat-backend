@@ -29,6 +29,7 @@ use App\Observers\ReportCacheObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
+use App\Support\PartyBalanceSync;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
@@ -58,6 +59,7 @@ class AppServiceProvider extends ServiceProvider
         // Vercel cannot run artisan during deploy. Apply pending migrations once
         // when the live DB is behind the multi-currency schema the app expects.
         $this->ensureMultiCurrencySchema();
+        $this->healPartyBalancesIfNeeded();
 
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(120)->by($request->user()?->id ?: $request->ip());
@@ -184,6 +186,30 @@ class AppServiceProvider extends ServiceProvider
             } catch (Throwable) {
                 // Constraint may already exist from a previous partial run.
             }
+        }
+    }
+
+    private function healPartyBalancesIfNeeded(): void
+    {
+        static $checked = false;
+        if ($checked || $this->app->runningInConsole()) {
+            return;
+        }
+        $checked = true;
+
+        $onVercel = getenv('VERCEL') !== false
+            || getenv('VERCEL_ENV') !== false
+            || (isset($_ENV['VERCEL']) && $_ENV['VERCEL'] !== '')
+            || (isset($_SERVER['VERCEL']) && $_SERVER['VERCEL'] !== '');
+
+        if (! $onVercel && ! $this->app->environment('production')) {
+            return;
+        }
+
+        try {
+            PartyBalanceSync::healIfDrifted();
+        } catch (Throwable $e) {
+            report($e);
         }
     }
 }

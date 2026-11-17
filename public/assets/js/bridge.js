@@ -2061,10 +2061,16 @@
           data.receivables && data.receivables.customers_total,
           data.receivables && data.receivables.customers_total_usd
         ),
+        customer_receivables_afn: num(data.receivables && data.receivables.customers_total),
+        customer_receivables_usd: num(data.receivables && data.receivables.customers_total_usd),
         supplier_payables: dualMoney(
           data.payables && data.payables.suppliers_total,
           data.payables && data.payables.suppliers_total_usd
         ),
+        supplier_payables_afn: num(data.payables && data.payables.suppliers_total),
+        supplier_payables_usd: num(data.payables && data.payables.suppliers_total_usd),
+        receivables: data.receivables || null,
+        payables: data.payables || null,
         profit_loss: (function () {
           if (!data.profit_loss) {
             return '—';

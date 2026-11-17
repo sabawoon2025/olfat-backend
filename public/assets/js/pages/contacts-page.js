@@ -163,7 +163,35 @@
     return 'success';
   }
 
-  function renderList(source) {
+  function openTotalsFromDashboard(data) {
+    if (!data) {
+      return null;
+    }
+    if (isCustomer()) {
+      if (data.customer_receivables_afn != null || data.customer_receivables_usd != null) {
+        return {
+          afn: num(data.customer_receivables_afn),
+          usd: num(data.customer_receivables_usd)
+        };
+      }
+      return {
+        afn: num(data.receivables && data.receivables.customers_total),
+        usd: num(data.receivables && data.receivables.customers_total_usd)
+      };
+    }
+    if (data.supplier_payables_afn != null || data.supplier_payables_usd != null) {
+      return {
+        afn: num(data.supplier_payables_afn),
+        usd: num(data.supplier_payables_usd)
+      };
+    }
+    return {
+      afn: num(data.payables && data.payables.suppliers_total),
+      usd: num(data.payables && data.payables.suppliers_total_usd)
+    };
+  }
+
+  function renderList(source, openTotals) {
     var rows = filteredRows();
     global.MBMS_RECORDS.showBanner(document.getElementById('source-banner'), source);
 
@@ -179,6 +207,12 @@
         withBalance += 1;
       }
     });
+
+    // Prefer dashboard/document remainings so this matches Dashboard + Reports.
+    if (openTotals) {
+      totalBalance = num(openTotals.afn);
+      totalBalanceUsd = num(openTotals.usd);
+    }
 
     global.MBMS_RECORDS.renderSummary(document.getElementById('list-summary'), [
       {
@@ -325,27 +359,37 @@
     if (!id) {
       renderList();
     }
-    return global.MBMS_RECORDS.fetchOrMock(kind(), seedList)
-      .then(function (result) {
-        if (id) {
-          var record = findRecord(id);
-          if (!record && result.source === 'api' && result.data) {
-            var list = Array.isArray(result.data) ? result.data : result.data.data || [];
-            record = list.filter(function (row) { return String(row.id) === String(id); })[0] || null;
-          }
-          if (!record) {
-            setMode(false);
-            global.MBMS_UI.notify({ type: 'danger', message: 'That record is not available.' });
-            renderList(result.source);
-            return;
-          }
-          setMode(true);
-          renderDetail(record, result.source);
-        } else {
-          setMode(false);
-          renderList(result.source);
+    var listPromise = global.MBMS_RECORDS.fetchOrMock(kind(), seedList);
+    var totalsPromise = !id && global.MBMS_API && typeof global.MBMS_API.get === 'function'
+      ? global.MBMS_API.get('dashboard').then(function (response) {
+        return global.MBMS_UTILS.unwrap(response.data) || response.data || {};
+      }).catch(function () {
+        return null;
+      })
+      : Promise.resolve(null);
+
+    return Promise.all([listPromise, totalsPromise]).then(function (parts) {
+      var result = parts[0] || {};
+      var openTotals = openTotalsFromDashboard(parts[1]);
+      if (id) {
+        var record = findRecord(id);
+        if (!record && result.source === 'api' && result.data) {
+          var list = Array.isArray(result.data) ? result.data : result.data.data || [];
+          record = list.filter(function (row) { return String(row.id) === String(id); })[0] || null;
         }
-      });
+        if (!record) {
+          setMode(false);
+          global.MBMS_UI.notify({ type: 'danger', message: 'That record is not available.' });
+          renderList(result.source, openTotals);
+          return;
+        }
+        setMode(true);
+        renderDetail(record, result.source);
+      } else {
+        setMode(false);
+        renderList(result.source, openTotals);
+      }
+    });
   }
 
   function openCreate() {
