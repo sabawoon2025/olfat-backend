@@ -57,10 +57,9 @@
 
   function stockPill(row) {
     var qty = row.quantity_raw != null ? num(row.quantity_raw) : num(row.quantity);
-    var unit = row.unit ? ' ' + row.unit : '';
     var tone = qty > 0 ? 'is-ok' : 'is-empty';
     return '<span class="mbms-stock-pill ' + tone + '">' +
-      global.MBMS_UTILS.escapeHtml(formatQty(qty) + unit) +
+      global.MBMS_UTILS.escapeHtml(formatQty(qty)) +
       '</span>';
   }
 
