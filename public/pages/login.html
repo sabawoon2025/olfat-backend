@@ -55,19 +55,20 @@
 
             <form id="login-form" novalidate>
               <div class="mbms-field auth-field">
-                <label class="form-label" for="location_id">Province</label>
-                <select class="form-select auth-input" id="location_id" name="location_id" required data-ac="0">
-                  <option value="">Select province</option>
-                </select>
-                <div class="invalid-feedback" data-error-for="location_id">Choose a province.</div>
-              </div>
-
-              <div class="mbms-field auth-field">
                 <label class="form-label" for="email">Account</label>
                 <select class="form-select auth-input" id="email" name="email" required data-ac="0">
                   <option value="">Select email</option>
                 </select>
                 <div class="invalid-feedback" data-error-for="email">Choose your email.</div>
+              </div>
+
+              <div class="mbms-field auth-field">
+                <label class="form-label" for="location_id">Province</label>
+                <select class="form-select auth-input" id="location_id" name="location_id" required data-ac="0">
+                  <option value="">Select account first</option>
+                </select>
+                <div class="invalid-feedback" data-error-for="location_id">Choose a province.</div>
+                <div class="form-text">Pick your account first. Your province unlocks automatically if it is already claimed by you.</div>
               </div>
 
               <div class="mbms-field auth-field">
@@ -196,7 +197,7 @@
     })();
   </script>
   <script defer src="../assets/js/pages/forgot-password-page.js?v=20261016b"></script>
-  <script defer src="../assets/js/pages/login.js?v=20261104d"></script>
+  <script defer src="../assets/js/pages/login.js?v=20261118a"></script>
   <script defer src="../assets/js/app.js?v=20261015q"></script>
 </body>
 </html>

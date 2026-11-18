@@ -48,21 +48,27 @@
     select.innerHTML = '';
     var placeholder = document.createElement('option');
     placeholder.value = '';
-    placeholder.textContent = 'Select province';
+    placeholder.textContent = user ? 'Select province' : 'Select account first';
     select.appendChild(placeholder);
 
     (loginOptionsData.locations || []).forEach(function (row) {
       var option = document.createElement('option');
       option.value = String(row.id);
-      var claimedEmail = row.claimed_by && row.claimed_by.email;
-      var ownedBySelected = !!(user && claimedEmail && claimedEmail === user.email);
+      // Match ownership by user id / location_id (claimed_by no longer exposes email).
+      var claimedId = row.claimed_by && row.claimed_by.id;
+      var ownedBySelected = !!(user && (
+        (user.location_id != null && String(user.location_id) === String(row.id))
+        || (claimedId != null && String(claimedId) === String(user.id))
+      ));
       var availableForSelected = !!row.available || ownedBySelected;
 
       if (availableForSelected) {
         option.textContent = ownedBySelected ? (row.name + ' (your province)') : row.name;
+        option.disabled = false;
       } else {
-        var claimed = row.claimed_by && (row.claimed_by.name || row.claimed_by.email);
+        var claimed = row.claimed_by && row.claimed_by.name;
         option.textContent = row.name + ' (taken' + (claimed ? ': ' + claimed : '') + ')';
+        // Keep selectable only after the owning account is chosen; otherwise disable.
         option.disabled = true;
       }
       select.appendChild(option);
@@ -70,11 +76,17 @@
 
     if (user && user.location_id) {
       select.value = String(user.location_id);
+      // iOS Safari can keep showing a disabled option's label with an empty value.
+      if (select.value !== String(user.location_id)) {
+        select.value = '';
+      }
     } else if (previous) {
       select.value = previous;
       if (select.value !== previous) {
         select.value = '';
       }
+    } else {
+      select.value = '';
     }
   }
 
@@ -174,10 +186,17 @@
         silentErrors: true,
         onSubmit: function (values) {
           showServerError('');
+          var locationId = values.location_id
+            || (document.getElementById('location_id') || {}).value
+            || '';
+          if (!locationId) {
+            showServerError('Choose your account first, then select your province.');
+            return;
+          }
           return global.MBMS_AUTH.login({
             email: values.email,
             password: values.password,
-            location_id: values.location_id
+            location_id: Number(locationId)
           }).then(function (result) {
             if (!result.token) {
               showServerError('The server responded, but no token field was found. Confirm the Laravel login response shape.');
