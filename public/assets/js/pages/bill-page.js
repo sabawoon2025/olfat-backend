@@ -464,7 +464,7 @@
     setText('bill-seller-name', sale.seller || billSettings.businessName || 'Staff');
     setText('bill-payment-type', paymentLabel(sale, status));
 
-    var partyTitle = document.querySelector('.bill-info-title');
+    var partyTitle = document.getElementById('bill-party-title');
     if (partyTitle) {
       partyTitle.textContent = isPurchaseBill(sale) ? 'Supplier' : 'Customer';
     }
@@ -958,6 +958,65 @@
     global.open(url, '_blank', 'noopener');
   }
 
+  function printPdfBlob(blob) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(blob);
+      var frame = document.createElement('iframe');
+      frame.setAttribute('title', 'Invoice print');
+      frame.style.position = 'fixed';
+      frame.style.right = '0';
+      frame.style.bottom = '0';
+      frame.style.width = '0';
+      frame.style.height = '0';
+      frame.style.border = '0';
+      frame.style.opacity = '0';
+      frame.style.pointerEvents = 'none';
+
+      function cleanup() {
+        setTimeout(function () {
+          if (frame.parentNode) {
+            frame.parentNode.removeChild(frame);
+          }
+          URL.revokeObjectURL(url);
+        }, 1500);
+      }
+
+      frame.onload = function () {
+        try {
+          var win = frame.contentWindow;
+          if (!win) {
+            throw new Error('Print frame unavailable.');
+          }
+          var done = false;
+          function finish() {
+            if (done) {
+              return;
+            }
+            done = true;
+            cleanup();
+            resolve();
+          }
+          win.focus();
+          if (typeof win.onafterprint === 'object' || 'onafterprint' in win) {
+            win.onafterprint = finish;
+          }
+          setTimeout(finish, 2000);
+          win.print();
+        } catch (err) {
+          cleanup();
+          reject(err);
+        }
+      };
+      frame.onerror = function () {
+        cleanup();
+        reject(new Error('Could not open invoice for printing.'));
+      };
+
+      document.body.appendChild(frame);
+      frame.src = url;
+    });
+  }
+
   function downloadPdf() {
     if (!currentSale) {
       return Promise.resolve();
@@ -977,6 +1036,32 @@
           type: 'danger',
           title: 'PDF failed',
           message: global.MBMS_UTILS.getErrorMessage(error, 'Could not generate the invoice PDF.')
+        });
+      }
+    }).finally(function () {
+      if (btn && global.MBMS_UI) {
+        global.MBMS_UI.setButtonLoading(btn, false);
+      }
+    });
+  }
+
+  function printInvoice() {
+    if (!currentSale) {
+      return Promise.resolve();
+    }
+    var btn = document.getElementById('bill-print');
+    if (btn && global.MBMS_UI) {
+      global.MBMS_UI.setButtonLoading(btn, true);
+    }
+    // Use the same A4 PDF render as Download PDF / WhatsApp so print matches exactly.
+    return buildPdfBlob(currentSale).then(function (blob) {
+      return printPdfBlob(blob);
+    }).catch(function (error) {
+      if (global.MBMS_UI) {
+        global.MBMS_UI.notify({
+          type: 'danger',
+          title: 'Print failed',
+          message: global.MBMS_UTILS.getErrorMessage(error, 'Could not prepare the invoice for printing.')
         });
       }
     }).finally(function () {
@@ -1091,9 +1176,7 @@
       var pdfBtn = document.getElementById('bill-download-pdf');
       var waBtn = document.getElementById('bill-whatsapp');
       if (printBtn) {
-        printBtn.addEventListener('click', function () {
-          global.print();
-        });
+        printBtn.addEventListener('click', printInvoice);
       }
       if (pdfBtn) {
         pdfBtn.addEventListener('click', downloadPdf);

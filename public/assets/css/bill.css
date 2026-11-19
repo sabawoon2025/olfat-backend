@@ -608,7 +608,7 @@ html[dir="rtl"] .bill-notes {
   }
 }
 
-/* ---------- Print / PDF --------------------------------------------------- */
+/* ---------- Print (browser Ctrl+P fallback; Print button uses PDF render) - */
 
 @media print {
   @page {
@@ -650,6 +650,24 @@ html[dir="rtl"] .bill-notes {
     display: block !important;
   }
 
+  .bill-header-grid {
+    grid-template-columns: 56px minmax(0, 1fr) 56px !important;
+  }
+
+  .bill-logo-slot-spacer {
+    display: flex !important;
+  }
+
+  .bill-info-row,
+  .bill-after-table,
+  .bill-sign {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .bill-info-item dd {
+    text-align: end !important;
+  }
+
   .bill-table-wrap {
     height: auto !important;
     min-height: 0 !important;
@@ -665,6 +683,13 @@ html[dir="rtl"] .bill-notes {
   .bill-sign,
   .bill-info-box {
     page-break-inside: avoid;
+  }
+
+  .bill-status.is-paid,
+  .bill-totals-row.is-grand,
+  .bill-table th {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   * {
