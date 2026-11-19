@@ -18,7 +18,7 @@ class UserSeeder extends Seeder
             return;
         }
 
-        $password = (string) env('SEED_USER_PASSWORD', 'password');
+        $password = (string) config('seed.dev_password', 'password');
 
         $users = [
             ['name' => 'User One', 'email' => 'user1@example.com', 'role' => UserRole::Admin],
@@ -84,9 +84,9 @@ class UserSeeder extends Seeder
         $admins = [];
 
         for ($i = 1; $i <= 3; $i++) {
-            $email = trim((string) env("SEED_ADMIN_{$i}_EMAIL", ''));
-            $password = (string) env("SEED_ADMIN_{$i}_PASSWORD", '');
-            $name = trim((string) env("SEED_ADMIN_{$i}_NAME", ''));
+            $email = trim((string) config("seed.admins.{$i}.email", ''));
+            $password = (string) config("seed.admins.{$i}.password", '');
+            $name = trim((string) config("seed.admins.{$i}.name", ''));
 
             if ($email === '' || $password === '') {
                 continue;
@@ -103,9 +103,9 @@ class UserSeeder extends Seeder
             return $admins;
         }
 
-        $email = trim((string) env('SEED_ADMIN_EMAIL', ''));
-        $password = (string) env('SEED_ADMIN_PASSWORD', '');
-        $name = trim((string) env('SEED_ADMIN_NAME', 'Administrator'));
+        $email = trim((string) config('seed.legacy.email', ''));
+        $password = (string) config('seed.legacy.password', '');
+        $name = trim((string) config('seed.legacy.name', 'Administrator'));
 
         if ($email === '' || $password === '') {
             return [];
