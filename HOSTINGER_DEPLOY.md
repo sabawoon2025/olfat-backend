@@ -282,6 +282,8 @@ Generate app key and finish setup:
 php artisan key:generate
 php artisan storage:link
 php artisan migrate --force
+# Clear config first so SEED_ADMIN_* from .env are visible to the seeder
+php artisan config:clear
 php artisan db:seed --force
 php artisan config:cache
 php artisan route:cache
