@@ -161,22 +161,74 @@ domains/YOUR-DOMAIN.com/olfat/public
 
 3. Save and wait a minute.
 
-### Option B — Keep `public_html` and redirect with `.htaccess`
+### Option B — Keep `public_html` and bootstrap Laravel (recommended on shared hosting)
 
-If you cannot change the root:
+Hostinger usually **cannot** change document root, and rewriting to `../olfat/public/` often causes **HTTP 500**. Instead, make `public_html` a thin front for the app:
 
-1. Open File Manager → `public_html`.
-2. Delete default Hostinger `index.html` / placeholder files (keep folder).
-3. Create/edit `public_html/.htaccess` with:
+1. Open File Manager → `public_html` (or SSH into that folder).
+2. Delete Hostinger placeholders (`default.php`, `index.html`, etc.).
+3. Create `public_html/index.php`:
+
+```php
+<?php
+
+use Illuminate\Foundation\Application;
+use Illuminate\Http\Request;
+
+define('LARAVEL_START', microtime(true));
+
+if (file_exists($maintenance = __DIR__.'/../olfat/storage/framework/maintenance.php')) {
+    require $maintenance;
+}
+
+require __DIR__.'/../olfat/vendor/autoload.php';
+
+/** @var Application $app */
+$app = require_once __DIR__.'/../olfat/bootstrap/app.php';
+
+$app->handleRequest(Request::capture());
+```
+
+4. Create `public_html/.htaccess` (same rules as Laravel `public/.htaccess`):
 
 ```apache
 <IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
     RewriteEngine On
-    RewriteRule ^(.*)$ ../olfat/public/$1 [L]
+
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    RewriteCond %{HTTP:x-xsrf-token} .
+    RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
+
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
 </IfModule>
 ```
 
-Only use this if your clone path is `domains/YOUR-DOMAIN.com/olfat` and `public_html` is the sibling folder. Adjust the relative path if your layout differs.
+5. Symlink storage + copy static assets that must be web-reachable:
+
+```bash
+cd ~/domains/olfatwholesaler.com/public_html
+ln -sfn ../olfat/storage/app/public storage
+# Static frontend files live under olfat/public — symlink the folders you need:
+ln -sfn ../olfat/public/pages pages
+ln -sfn ../olfat/public/css css
+ln -sfn ../olfat/public/js js
+ln -sfn ../olfat/public/images images
+ln -sfn ../olfat/public/favicon.ico favicon.ico
+```
+
+Adjust symlink names to match whatever exists inside `olfat/public/` (use `ls ../olfat/public`).
 
 ### Confirm structure looks like this
 
