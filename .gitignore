@@ -23,6 +23,7 @@
 /storage/*.key
 /storage/pail
 /vendor
+/composer.phar
 /.tools
 /node_modules.broken
 /_restore_point_*

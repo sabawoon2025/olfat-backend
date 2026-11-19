@@ -28,6 +28,7 @@ Local seeded users (password from `SEED_USER_PASSWORD`, default `password`):
 
 ## Production deployment
 
+- **Hostinger (Unlimited / shared):** full step-by-step from payment → domain → GitHub → 3 users in **`HOSTINGER_DEPLOY.md`**.
 - **Vercel (serverless):** step-by-step guide in **`VERCEL_DEPLOY.md`** (uses `vercel.json`, `api/index.php`, `.env.vercel.example`).
 - **Classic server (Nginx/Apache + PHP-FPM):** see **`DEPLOY.md`** and **`.env.production.example`**.
 

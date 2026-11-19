@@ -13,7 +13,7 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         if (app()->environment('production')) {
-            $this->seedProductionAdmin();
+            $this->seedProductionAdmins();
 
             return;
         }
@@ -39,32 +39,82 @@ class UserSeeder extends Seeder
         }
     }
 
-    private function seedProductionAdmin(): void
+    /**
+     * Create equal Admin accounts for production (Kabul / Maidan / Ghazni).
+     *
+     * Prefers SEED_ADMIN_1_* … SEED_ADMIN_3_*. Falls back to legacy
+     * SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD / SEED_ADMIN_NAME for a single admin.
+     */
+    private function seedProductionAdmins(): void
     {
-        $email = (string) env('SEED_ADMIN_EMAIL', '');
-        $password = (string) env('SEED_ADMIN_PASSWORD', '');
-        $name = (string) env('SEED_ADMIN_NAME', 'Administrator');
+        $admins = $this->productionAdminDefinitions();
 
-        if ($email === '' || $password === '') {
+        if ($admins === []) {
             $this->command?->warn(
-                'Production user seed skipped. Set SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD to create the first admin.'
+                'Production user seed skipped. Set SEED_ADMIN_1_EMAIL + SEED_ADMIN_1_PASSWORD (and 2/3), or legacy SEED_ADMIN_EMAIL + SEED_ADMIN_PASSWORD.'
             );
 
             return;
         }
 
-        if (strlen($password) < 12) {
-            throw new RuntimeException('SEED_ADMIN_PASSWORD must be at least 12 characters in production.');
+        foreach ($admins as $admin) {
+            if (strlen($admin['password']) < 12) {
+                throw new RuntimeException(
+                    "Password for {$admin['email']} must be at least 12 characters in production."
+                );
+            }
+
+            User::query()->updateOrCreate(
+                ['email' => $admin['email']],
+                [
+                    'name' => $admin['name'],
+                    'password' => Hash::make($admin['password']),
+                    'is_active' => true,
+                    'role' => UserRole::Admin,
+                ]
+            );
+        }
+    }
+
+    /**
+     * @return list<array{name: string, email: string, password: string}>
+     */
+    private function productionAdminDefinitions(): array
+    {
+        $admins = [];
+
+        for ($i = 1; $i <= 3; $i++) {
+            $email = trim((string) env("SEED_ADMIN_{$i}_EMAIL", ''));
+            $password = (string) env("SEED_ADMIN_{$i}_PASSWORD", '');
+            $name = trim((string) env("SEED_ADMIN_{$i}_NAME", ''));
+
+            if ($email === '' || $password === '') {
+                continue;
+            }
+
+            $admins[] = [
+                'email' => $email,
+                'password' => $password,
+                'name' => $name !== '' ? $name : "Administrator {$i}",
+            ];
         }
 
-        User::query()->updateOrCreate(
-            ['email' => $email],
-            [
-                'name' => $name !== '' ? $name : 'Administrator',
-                'password' => Hash::make($password),
-                'is_active' => true,
-                'role' => UserRole::Admin,
-            ]
-        );
+        if ($admins !== []) {
+            return $admins;
+        }
+
+        $email = trim((string) env('SEED_ADMIN_EMAIL', ''));
+        $password = (string) env('SEED_ADMIN_PASSWORD', '');
+        $name = trim((string) env('SEED_ADMIN_NAME', 'Administrator'));
+
+        if ($email === '' || $password === '') {
+            return [];
+        }
+
+        return [[
+            'email' => $email,
+            'password' => $password,
+            'name' => $name !== '' ? $name : 'Administrator',
+        ]];
     }
 }
