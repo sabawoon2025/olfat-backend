@@ -251,8 +251,7 @@
       function (row) {
         return (row.product || 'Item') +
           (row.variant ? ' · ' + row.variant : '') +
-          ' · returnable ' + formatQty(itemReturnable(row)) +
-          (row.unit ? ' ' + row.unit : '');
+          ' · returnable ' + formatQty(itemReturnable(row));
       },
       items[0] ? items[0].id : '',
       items.length ? 'Select item' : 'No items'
@@ -267,7 +266,6 @@
       ? (item.unit_price_raw != null ? num(item.unit_price_raw) : num(item.unit_price))
       : num((document.getElementById('ret-unit-price') || {}).value);
     var amount = roundMoney(qty * unitPrice);
-    var unit = item ? (item.unit || '') : ((document.getElementById('ret-unit') || {}).value || '');
     var hint = document.getElementById('ret-qty-hint');
     var error = document.getElementById('ret-qty-error');
     var refund = document.getElementById('ret-refund');
@@ -278,7 +276,7 @@
     }
     if (hint) {
       hint.textContent = item
-        ? ('Returnable: ' + formatQty(returnable) + (unit ? ' ' + unit : '') +
+        ? ('Returnable: ' + formatQty(returnable) +
           ' · already returned: ' + formatQty(item.returned_quantity_raw != null ? item.returned_quantity_raw : item.returned_quantity))
         : 'Select a sale or purchase first.';
     }

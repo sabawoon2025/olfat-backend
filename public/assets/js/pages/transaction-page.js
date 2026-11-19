@@ -197,9 +197,8 @@
     }
     var stock = stockFor(variantId, locationId);
     var qty = stock.qty != null ? stock.qty : 0;
-    var unit = stock.unit ? (' ' + stock.unit) : '';
     var place = stock.location || locationName || 'this location';
-    hint.textContent = 'Stock in ' + place + ': ' + qty + unit;
+    hint.textContent = 'Stock in ' + place + ': ' + qty;
     hint.classList.toggle('is-ok', qty > 0);
     hint.classList.toggle('is-bad', qty <= 0);
 
@@ -207,7 +206,7 @@
     if (error && qtyInput) {
       if (wanted > 0 && wanted > qty) {
         error.hidden = false;
-        error.textContent = 'Only ' + qty + unit + ' available.';
+        error.textContent = 'Only ' + qty + ' available.';
         qtyInput.classList.add('is-invalid');
       } else {
         error.hidden = true;
@@ -253,9 +252,8 @@
     }
     var stock = availableStock();
     var qty = stock.qty != null ? stock.qty : 0;
-    var unit = stock.unit ? (' ' + stock.unit) : '';
     var place = stock.location || locationName || 'this location';
-    hint.textContent = 'Available in ' + place + ': ' + qty + unit + '. Sales use stock from this location only.';
+    hint.textContent = 'Available in ' + place + ': ' + qty + '. Sales use stock from this location only.';
     hint.classList.toggle('text-success', qty > 0);
     hint.classList.toggle('text-danger', qty <= 0);
 
@@ -263,7 +261,7 @@
     if (error && qtyInput) {
       if (wanted > 0 && wanted > qty) {
         error.hidden = false;
-        error.textContent = 'You do not have this quantity in stock. Available: ' + qty + unit + ' in ' + place + '.';
+        error.textContent = 'You do not have this quantity in stock. Available: ' + qty + ' in ' + place + '.';
         qtyInput.classList.add('is-invalid');
       } else {
         error.hidden = true;
@@ -750,9 +748,8 @@
       if (global.MBMS_API && typeof global.MBMS_API.stockAtLocation === 'function') {
         var available = stockFor(variantId, locationId);
         if (qty > Number(available.qty || 0)) {
-          var unit = available.unit ? (' ' + available.unit) : '';
           var place = available.location || 'this location';
-          errors.push(label + ': only ' + available.qty + unit + ' available in ' + place + '.');
+          errors.push(label + ': only ' + available.qty + ' available in ' + place + '.');
           return;
         }
       }
@@ -1491,11 +1488,10 @@
           if (isSales() && global.MBMS_API && typeof global.MBMS_API.stockAtLocation === 'function') {
             var available = global.MBMS_API.stockAtLocation(values.variant, values.location);
             if (qty > Number(available.qty || 0)) {
-              var unit = available.unit ? (' ' + available.unit) : '';
               var place = available.location || 'this location';
               throw {
-                message: 'You do not have this quantity in stock. Available: ' + available.qty + unit + ' in ' + place + '.',
-                errors: { quantity: ['Only ' + available.qty + unit + ' available in ' + place] }
+                message: 'You do not have this quantity in stock. Available: ' + available.qty + ' in ' + place + '.',
+                errors: { quantity: ['Only ' + available.qty + ' available in ' + place] }
               };
             }
           }

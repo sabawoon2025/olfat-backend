@@ -1,6 +1,6 @@
 /* ============================================================
- * Bilingual A4 sale invoice — compact Rahat-style layout.
- * Logical CSS only so LTR (English) and RTL (Dari) mirror cleanly.
+ * Professional bilingual A4 sale invoice.
+ * Logical CSS so LTR (English) and RTL (Dari) mirror cleanly.
  * ========================================================== */
 
 @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
@@ -8,8 +8,8 @@
 :root {
   --bill-ink: #0f172a;
   --bill-muted: #64748b;
-  --bill-line: #dbe3ee;
-  --bill-soft: #f5f8fc;
+  --bill-line: #d7e0ea;
+  --bill-soft: #f4f7fb;
   --bill-accent: #0b6bcb;
   --bill-accent-dark: #0a4f96;
   --bill-accent-soft: #e8f2fc;
@@ -19,7 +19,7 @@
   --bill-mixed: #0369a1;
   --bill-page-width: 210mm;
   --bill-page-height: 297mm;
-  --bill-page-margin: 8mm 10mm 7mm;
+  --bill-page-margin: 10mm 12mm 9mm;
 }
 
 body.bill-page {
@@ -84,10 +84,11 @@ html[dir="rtl"] body.bill-page {
 
 .bill-paper {
   position: relative;
-  display: block; /* not flex-column — avoids empty stretch between table and footer */
+  display: flex;
+  flex-direction: column;
   width: var(--bill-page-width);
+  min-height: var(--bill-page-height);
   height: auto;
-  min-height: 0;
   padding: var(--bill-page-margin);
   background: var(--bill-paper);
   border: 1px solid var(--bill-line);
@@ -97,9 +98,20 @@ html[dir="rtl"] body.bill-page {
   font-size: 9pt;
   line-height: 1.35;
   overflow: visible;
+  box-sizing: border-box;
 }
 
-/* No watermark — keep background clean for print/PDF */
+.bill-main {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+.bill-bottom {
+  margin-block-start: auto;
+  padding-block-start: 14pt;
+  width: 100%;
+}
+
 .bill-watermark {
   display: none !important;
 }
@@ -107,13 +119,13 @@ html[dir="rtl"] body.bill-page {
 /* ---------- Header -------------------------------------------------------- */
 
 .bill-header {
-  margin: 0 0 6pt;
+  margin: 0 0 8pt;
 }
 
 .bill-header-grid {
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) 56px;
-  gap: 6pt;
+  grid-template-columns: 58px minmax(0, 1fr) 58px;
+  gap: 8pt;
   align-items: start;
 }
 
@@ -129,8 +141,8 @@ html[dir="rtl"] body.bill-page {
 }
 
 .bill-logo-frame {
-  width: 52px;
-  height: 52px;
+  width: 54px;
+  height: 54px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -166,22 +178,24 @@ html[dir="rtl"] body.bill-page {
 
 .bill-brand-name {
   margin: 0;
-  font-size: 16pt;
+  font-size: 16.5pt;
   font-weight: 800;
   color: var(--bill-accent-dark);
   line-height: 1.15;
 }
 
 .bill-brand-tag {
-  margin: 1pt 0 2pt;
+  margin: 2pt 0 3pt;
   color: var(--bill-muted);
   font-size: 8.5pt;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .bill-brand-address {
   margin: 0 auto;
-  max-width: 420px;
+  max-width: 440px;
   font-size: 7.5pt;
   color: var(--bill-muted);
   font-style: normal;
@@ -229,31 +243,33 @@ html[dir="rtl"] body.bill-page {
 }
 
 .bill-header-rule {
-  height: 2px;
-  margin-block-start: 6pt;
-  background: var(--bill-accent);
+  height: 2.5px;
+  margin-block-start: 7pt;
+  background: linear-gradient(90deg, var(--bill-accent-dark), var(--bill-accent));
   border-radius: 2px;
 }
 
-/* ---------- Info boxes (invoice + customer) ------------------------------- */
+/* ---------- Info boxes ---------------------------------------------------- */
 
 .bill-info-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6pt;
-  margin-block-end: 6pt;
+  gap: 8pt;
+  margin-block-end: 8pt;
 }
 
 .bill-info-box {
   border: 1px solid var(--bill-line);
   border-radius: 6px;
-  padding: 5pt 8pt;
+  padding: 6pt 9pt;
   background: #fff;
   min-width: 0;
 }
 
 .bill-info-title {
-  margin: 0 0 3pt;
+  margin: 0 0 4pt;
+  padding-block-end: 3pt;
+  border-block-end: 1px solid var(--bill-line);
   font-size: 7.5pt;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -265,12 +281,12 @@ html[dir="rtl"] body.bill-page {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 1.5pt;
+  gap: 2pt;
 }
 
 .bill-info-item {
   display: grid;
-  grid-template-columns: minmax(70px, auto) minmax(0, 1fr);
+  grid-template-columns: minmax(72px, auto) minmax(0, 1fr);
   gap: 6pt;
   align-items: baseline;
   font-size: 8.5pt;
@@ -292,7 +308,6 @@ html[dir="rtl"] body.bill-page {
 
 /* ---------- Items table --------------------------------------------------- */
 
-/* Table height = row count only. Footer follows immediately after. */
 .bill-table-wrap {
   display: block;
   border: 1px solid var(--bill-line);
@@ -300,8 +315,6 @@ html[dir="rtl"] body.bill-page {
   overflow: hidden;
   height: auto !important;
   min-height: 0 !important;
-  max-height: none !important;
-  flex: none !important;
 }
 
 .bill-table {
@@ -309,15 +322,12 @@ html[dir="rtl"] body.bill-page {
   border-collapse: collapse;
   font-size: 8.5pt;
   height: auto;
-}
-
-.bill-table tbody {
-  height: auto;
+  table-layout: fixed;
 }
 
 .bill-table th {
   text-align: start;
-  padding: 5pt 6pt;
+  padding: 6pt 7pt;
   font-size: 7pt;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -333,7 +343,7 @@ html[dir="rtl"] body.bill-page {
 }
 
 .bill-table td {
-  padding: 4.5pt 6pt;
+  padding: 6pt 7pt;
   border-block-end: 1px solid var(--bill-line);
   border-inline-end: 1px solid #eef2f7;
   vertical-align: top;
@@ -370,18 +380,19 @@ html[dir="rtl"] body.bill-page {
   font-weight: 500;
 }
 
-.bill-col-num { width: 6%; }
-.bill-col-qty { width: 12%; }
-.bill-col-price { width: 16%; }
-.bill-col-total { width: 16%; }
+.bill-col-num { width: 7%; }
+.bill-col-item { width: 45%; }
+.bill-col-qty { width: 14%; }
+.bill-col-price { width: 17%; }
+.bill-col-total { width: 17%; }
 
-/* ---------- After table: words / notes / sign + totals -------------------- */
+/* ---------- After table --------------------------------------------------- */
 
 .bill-after-table {
   display: grid;
-  grid-template-columns: 1.2fr 0.8fr;
-  gap: 8pt;
-  margin-block-start: 7pt;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 10pt;
+  margin-block-start: 9pt;
   align-items: start;
 }
 
@@ -389,11 +400,11 @@ html[dir="rtl"] body.bill-page {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6pt;
+  gap: 7pt;
 }
 
 .bill-amount-words {
-  padding: 5pt 7pt;
+  padding: 7pt 9pt;
   border: 1px solid var(--bill-line);
   border-radius: 6px;
   background: var(--bill-soft);
@@ -401,7 +412,7 @@ html[dir="rtl"] body.bill-page {
 
 .bill-amount-label {
   display: block;
-  margin-block-end: 1pt;
+  margin-block-end: 2pt;
   font-size: 7pt;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -410,9 +421,10 @@ html[dir="rtl"] body.bill-page {
 }
 
 .bill-amount-words strong {
-  font-size: 8.5pt;
+  font-size: 9pt;
   font-weight: 700;
   color: var(--bill-ink);
+  line-height: 1.35;
 }
 
 .bill-totals {
@@ -426,9 +438,13 @@ html[dir="rtl"] body.bill-page {
   display: flex;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 4pt 8pt;
+  padding: 5pt 9pt;
   border-block-end: 1px solid var(--bill-line);
   font-size: 8.5pt;
+}
+
+.bill-totals-row[hidden] {
+  display: none !important;
 }
 
 .bill-totals-row:last-child {
@@ -439,11 +455,12 @@ html[dir="rtl"] body.bill-page {
   background: var(--bill-accent-dark);
   color: #fff;
   font-weight: 800;
-  font-size: 10pt;
+  font-size: 10.5pt;
+  padding: 7pt 9pt;
 }
 
 .bill-notes {
-  padding: 5pt 7pt;
+  padding: 6pt 8pt;
   border-inline-start: 3px solid var(--bill-accent);
   border-radius: 0 6px 6px 0;
   background: var(--bill-soft);
@@ -469,11 +486,13 @@ html[dir="rtl"] .bill-notes {
   white-space: pre-line;
 }
 
+/* ---------- Signatures (pinned near bottom of A4) ------------------------- */
+
 .bill-sign {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16pt;
-  margin-block-start: 4pt;
+  gap: 28pt;
+  margin: 0 4pt 10pt;
 }
 
 .bill-sign-box {
@@ -484,7 +503,8 @@ html[dir="rtl"] .bill-notes {
   display: block;
   height: 1px;
   background: #94a3b8;
-  margin-block-end: 3pt;
+  margin-block-end: 4pt;
+  margin-block-start: 28pt;
 }
 
 .bill-sign-label {
@@ -495,12 +515,11 @@ html[dir="rtl"] .bill-notes {
   font-weight: 700;
 }
 
-/* ---------- Footer (single slim band) ------------------------------------- */
+/* ---------- Footer -------------------------------------------------------- */
 
 .bill-footer {
   display: block;
-  margin-block-start: 10pt;
-  padding-block-start: 6pt;
+  padding-block-start: 7pt;
   border-block-start: 1px solid var(--bill-line);
   text-align: center;
 }
@@ -517,18 +536,18 @@ html[dir="rtl"] .bill-notes {
   margin-block-end: 2pt;
   font-size: 7pt;
   color: var(--bill-muted);
-  line-height: 1.3;
+  line-height: 1.35;
 }
 
 .bill-footer-note {
-  margin-block-start: 2pt;
+  margin-block-start: 3pt;
   font-size: 8pt;
   font-weight: 700;
   color: var(--bill-accent-dark);
 }
 
 .bill-footer-meta {
-  margin-block-start: 1pt;
+  margin-block-start: 2pt;
   font-size: 7pt;
   color: var(--bill-muted);
 }
@@ -537,8 +556,8 @@ html[dir="rtl"] .bill-notes {
 
 .bill-status {
   display: inline-block;
-  padding: 1pt 6pt;
-  border-radius: 4px;
+  padding: 1pt 7pt;
+  border-radius: 999px;
   font-size: 7pt;
   font-weight: 800;
   text-transform: uppercase;
@@ -547,23 +566,38 @@ html[dir="rtl"] .bill-notes {
   color: var(--bill-ink);
 }
 
-.bill-status.is-paid { background: #dc2626; color: #fff; }
-.bill-status.is-credit { background: #fff7ed; color: var(--bill-credit); }
-.bill-status.is-mixed { background: #e0f2fe; color: var(--bill-mixed); }
+.bill-status.is-paid {
+  background: #d1fae5;
+  color: var(--bill-paid);
+  border: 1px solid #6ee7b7;
+}
 
-/* Forced A4 layout while generating PDF (mobile + desktop) */
+.bill-status.is-credit {
+  background: #fff7ed;
+  color: var(--bill-credit);
+  border: 1px solid #fdba74;
+}
+
+.bill-status.is-mixed {
+  background: #e0f2fe;
+  color: var(--bill-mixed);
+  border: 1px solid #7dd3fc;
+}
+
+/* Forced A4 layout while generating PDF */
 .bill-paper.is-pdf-capture {
   width: 794px !important;
   max-width: 794px !important;
   min-width: 794px !important;
+  min-height: 1123px !important; /* 297mm at 96dpi */
   height: auto !important;
-  min-height: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
+  border: 0 !important;
 }
 
 .bill-paper.is-pdf-capture .bill-header-grid {
-  grid-template-columns: 56px minmax(0, 1fr) 56px !important;
+  grid-template-columns: 58px minmax(0, 1fr) 58px !important;
 }
 
 .bill-paper.is-pdf-capture .bill-logo-slot-spacer {
@@ -587,6 +621,11 @@ html[dir="rtl"] .bill-notes {
     width: 100%;
     min-height: 0;
     padding: 12pt;
+  }
+
+  .bill-paper:not(.is-pdf-capture) .bill-bottom {
+    margin-block-start: 16pt;
+    padding-block-start: 10pt;
   }
 
   .bill-paper:not(.is-pdf-capture) .bill-header-grid {
@@ -640,20 +679,19 @@ html[dir="rtl"] .bill-notes {
 
   .bill-paper {
     width: 210mm;
+    min-height: 297mm;
     height: auto !important;
-    min-height: 0 !important;
-    padding: 8mm 10mm 7mm;
+    padding: 10mm 12mm 9mm;
     border: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
     margin: 0 auto;
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
 
-  .bill-table-wrap {
-    height: auto !important;
-    min-height: 0 !important;
-    flex: none !important;
+  .bill-bottom {
+    margin-block-start: auto !important;
   }
 
   .bill-table thead {

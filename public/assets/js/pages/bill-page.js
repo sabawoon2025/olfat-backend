@@ -464,7 +464,7 @@
     setText('bill-seller-name', sale.seller || billSettings.businessName || 'Staff');
     setText('bill-payment-type', paymentLabel(sale, status));
 
-    var partyTitle = document.querySelector('.bill-info-title');
+    var partyTitle = document.getElementById('bill-party-title');
     if (partyTitle) {
       partyTitle.textContent = isPurchaseBill(sale) ? 'Supplier' : 'Customer';
     }
@@ -474,6 +474,17 @@
     } else if (signCustomer && isPurchaseBill(sale) && /customer/i.test(billSettings.signatureCustomer || '')) {
       setText('bill-sign-customer', 'Supplier signature');
     }
+  }
+
+  function setRowHidden(rowId, hidden) {
+    var row = document.getElementById(rowId);
+    if (row) {
+      row.hidden = !!hidden;
+    }
+  }
+
+  function isNearZero(value) {
+    return Math.abs(Number(value) || 0) <= 0.0001;
   }
 
   function normalizeItems(sale) {
@@ -514,7 +525,8 @@
       var title = product || variant || 'Item';
       var sub = product && variant ? variant : '';
       var qtyRaw = line.quantity_raw != null ? line.quantity_raw : line.quantity;
-      var qty = (qtyRaw == null ? '' : qtyRaw) + (line.unit ? (' ' + line.unit) : '');
+      // Qty column is count only — bag/size (e.g. 35kg) stays in the product/variant name.
+      var qty = qtyRaw == null || qtyRaw === '' ? '' : String(qtyRaw);
       var unitPrice = line.unit_price_raw != null ? line.unit_price_raw : line.unit_price;
       var lineTotal = line.line_total_raw != null
         ? line.line_total_raw
@@ -528,7 +540,7 @@
         global.MBMS_UTILS.escapeHtml(title) + '</span>' +
         (sub ? '<span class="bill-item-sub">' + global.MBMS_UTILS.escapeHtml(sub) + '</span>' : '') +
         '</td>' +
-        '<td class="bill-col-qty num">' + global.MBMS_UTILS.escapeHtml(String(qty)) + '</td>' +
+        '<td class="bill-col-qty num">' + global.MBMS_UTILS.escapeHtml(qty) + '</td>' +
         '<td class="bill-col-price num">' + global.MBMS_UTILS.escapeHtml(withCurrency(unitPrice)) + '</td>' +
         '<td class="bill-col-total num">' + global.MBMS_UTILS.escapeHtml(withCurrency(lineTotal)) + '</td>' +
         '</tr>'
@@ -569,6 +581,12 @@
     setText('bill-previous-unpaid-usd', withCurrencyCode(Number.isFinite(previousUsd) ? previousUsd : 0, 'USD'));
     setText('bill-total-outstanding-afn', withCurrencyCode(Number.isFinite(outstandingAfn) ? outstandingAfn : 0, 'AFN'));
     setText('bill-total-outstanding-usd', withCurrencyCode(Number.isFinite(outstandingUsd) ? outstandingUsd : 0, 'USD'));
+
+    // Hide empty ledger rows so paid/simple invoices stay clean on A4/PDF.
+    setRowHidden('bill-previous-afn-row', isNearZero(previousAfn));
+    setRowHidden('bill-previous-usd-row', isNearZero(previousUsd));
+    setRowHidden('bill-outstanding-afn-row', isNearZero(outstandingAfn));
+    setRowHidden('bill-outstanding-usd-row', isNearZero(outstandingUsd));
   }
 
   function renderNotes(sale) {
@@ -671,25 +689,49 @@
     );
   }
 
+  function normalizeWhatsAppPhone(raw) {
+    var digits = String(raw || '').replace(/[^\d]/g, '');
+    if (!digits) {
+      return '';
+    }
+    // Local Afghan mobiles often start with 07… — lift to country code 93.
+    if (digits.length === 10 && digits.charAt(0) === '0') {
+      return '93' + digits.slice(1);
+    }
+    if (digits.length === 9 && digits.charAt(0) === '7') {
+      return '93' + digits;
+    }
+    return digits;
+  }
+
   function whatsAppText(sale) {
     var number = invoiceNumber(sale);
     var customer = customerName(sale);
+    var status = paymentStatus(sale);
     var lines = [];
     lines.push('*' + billSettings.businessName + '*');
-    lines.push('Invoice *' + number + '*');
+    lines.push((isPurchaseBill(sale) ? 'Purchase' : 'Sales') + ' invoice *' + number + '*');
     lines.push((isPurchaseBill(sale) ? 'Supplier' : 'Customer') + ': *' + customer + '*');
     if (sale.location) {
       lines.push('Location: ' + sale.location);
     }
     lines.push('Date: ' + (sale.date || ''));
+    lines.push('Status: ' + status.label);
     lines.push('');
     normalizeItems(sale).forEach(function (line, index) {
       var label = [line.product, line.variant].filter(Boolean).join(' · ') || 'Item';
       var qtyRaw = line.quantity_raw != null ? line.quantity_raw : line.quantity;
       var unitPrice = line.unit_price_raw != null ? line.unit_price_raw : line.unit_price;
+      var lineTotal = line.line_total_raw != null
+        ? line.line_total_raw
+        : (line.line_total != null
+          ? line.line_total
+          : (Number(qtyRaw || 0) * Number(unitPrice || 0)));
       lines.push(
-        (index + 1) + '. ' + label + ' — ' + qtyRaw + (line.unit ? (' ' + line.unit) : '') +
-        ' × ' + withCurrency(unitPrice)
+        (index + 1) + '. ' + label +
+        '\n   Qty ' + qtyRaw +
+        ' × ' + withCurrency(unitPrice) +
+        ' = ' + withCurrency(lineTotal)
       );
     });
     lines.push('');
@@ -708,19 +750,27 @@
     var outstandingUsd = sale.total_outstanding_usd_raw != null
       ? Number(sale.total_outstanding_usd_raw)
       : previousUsd;
-    lines.push('Total: ' + withCurrency(total));
+    lines.push('Total: *' + withCurrency(total) + '*');
     lines.push('Paid: ' + withCurrency(paid));
-    lines.push('Balance: ' + withCurrency(remaining));
-    lines.push('Previous unpaid AFN: ' + withCurrencyCode(previousAfn, 'AFN'));
-    lines.push('Previous unpaid USD: ' + withCurrencyCode(previousUsd, 'USD'));
-    lines.push('Total outstanding AFN: ' + withCurrencyCode(outstandingAfn, 'AFN'));
-    lines.push('Total outstanding USD: ' + withCurrencyCode(outstandingUsd, 'USD'));
+    lines.push('Balance due: ' + withCurrency(remaining));
+    if (!isNearZero(previousAfn)) {
+      lines.push('Previous unpaid AFN: ' + withCurrencyCode(previousAfn, 'AFN'));
+    }
+    if (!isNearZero(previousUsd)) {
+      lines.push('Previous unpaid USD: ' + withCurrencyCode(previousUsd, 'USD'));
+    }
+    if (!isNearZero(outstandingAfn)) {
+      lines.push('Total outstanding AFN: ' + withCurrencyCode(outstandingAfn, 'AFN'));
+    }
+    if (!isNearZero(outstandingUsd)) {
+      lines.push('Total outstanding USD: ' + withCurrencyCode(outstandingUsd, 'USD'));
+    }
     if (billSettings.whatsapp || billSettings.phone) {
       lines.push('');
       lines.push('Contact: ' + (billSettings.whatsapp || billSettings.phone));
     }
     lines.push('');
-    lines.push('PDF: ' + invoiceFileName(sale));
+    lines.push('_PDF attached / downloaded: ' + invoiceFileName(sale) + '_');
     return lines.join('\n');
   }
 
@@ -832,13 +882,15 @@
       }
     }
 
+    var A4_HEIGHT_PX = 1123; // 297mm at 96dpi — full A4 canvas for short bills
+
     paper.classList.add('is-pdf-capture');
     paper.style.width = A4_WIDTH_PX + 'px';
     paper.style.maxWidth = A4_WIDTH_PX + 'px';
     paper.style.minWidth = A4_WIDTH_PX + 'px';
     paper.style.height = 'auto';
-    paper.style.minHeight = '0';
-    paper.style.padding = '32px 38px';
+    paper.style.minHeight = A4_HEIGHT_PX + 'px';
+    paper.style.padding = '38px 45px';
     paper.style.boxShadow = 'none';
     paper.style.borderRadius = '0';
     paper.style.margin = '0 auto';
@@ -867,7 +919,7 @@
       .then(function (canvas) {
         restoreLayout();
 
-        var imgData = canvas.toDataURL('image/jpeg', 0.96);
+        var imgData = canvas.toDataURL('image/jpeg', 0.97);
         var JsPDF = global.jspdf.jsPDF;
         var pdf = new JsPDF({
           orientation: 'portrait',
@@ -881,10 +933,10 @@
         var imgWidth = pageWidth;
         var imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-        // Always produce A4 pages. Short invoices sit on one A4 page;
-        // taller invoices continue onto the next A4 page(s).
-        if (imgHeight <= pageHeight) {
-          pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
+        // Short invoices: stretch image onto one full A4 page.
+        // Tall invoices: slice across multiple A4 pages.
+        if (imgHeight <= pageHeight + 0.5) {
+          pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, pageHeight, undefined, 'FAST');
         } else {
           var pageCanvas = document.createElement('canvas');
           var pageCtx = pageCanvas.getContext('2d');
@@ -895,7 +947,7 @@
           while (sourceOffset < canvas.height) {
             var sliceHeight = Math.min(pageSlicePx, canvas.height - sourceOffset);
             pageCanvas.width = canvas.width;
-            pageCanvas.height = sliceHeight;
+            pageCanvas.height = pageSlicePx;
             pageCtx.fillStyle = '#ffffff';
             pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
             pageCtx.drawImage(
@@ -910,20 +962,18 @@
               sliceHeight
             );
 
-            var sliceData = pageCanvas.toDataURL('image/jpeg', 0.96);
-            var sliceMm = sliceHeight / pxPerMm;
+            var sliceData = pageCanvas.toDataURL('image/jpeg', 0.97);
             if (sourceOffset > 0) {
               pdf.addPage('a4', 'portrait');
             }
-            pdf.addImage(sliceData, 'JPEG', 0, 0, imgWidth, sliceMm, undefined, 'FAST');
+            pdf.addImage(sliceData, 'JPEG', 0, 0, imgWidth, pageHeight, undefined, 'FAST');
             sourceOffset += sliceHeight;
           }
         }
 
-        // Ensure page format metadata is A4 even for single-page invoices.
         pdf.setProperties({
           title: invoiceNumber(sale) + ' — ' + customerName(sale),
-          subject: 'Sale invoice',
+          subject: isPurchaseBill(sale) ? 'Purchase invoice' : 'Sale invoice',
           creator: billSettings.businessName || 'MBMS'
         });
 
@@ -950,7 +1000,7 @@
 
   function openWhatsAppChat(sale, text) {
     var encoded = encodeURIComponent(text);
-    var phone = String(sale.customer_phone || '').replace(/[^\d]/g, '');
+    var phone = normalizeWhatsAppPhone(sale.customer_phone || sale.supplier_phone || '');
     var url = phone
       ? ('https://wa.me/' + phone + '?text=' + encoded)
       : ('https://wa.me/?text=' + encoded);
@@ -1089,6 +1139,15 @@
       var printBtn = document.getElementById('bill-print');
       var pdfBtn = document.getElementById('bill-download-pdf');
       var waBtn = document.getElementById('bill-whatsapp');
+      var backLink = document.getElementById('bill-back');
+      if (backLink) {
+        if (billKindFromQuery() === 'purchase') {
+          backLink.href = 'purchases.html';
+          backLink.innerHTML = '<i class="bi bi-arrow-left"></i> Back to purchases';
+        } else {
+          backLink.href = 'sales.html';
+        }
+      }
       if (printBtn) {
         printBtn.addEventListener('click', function () {
           global.print();

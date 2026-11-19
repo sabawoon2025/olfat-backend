@@ -93,12 +93,10 @@
 
     var stock = availableStock();
     var available = stock.qty != null ? num(stock.qty) : 0;
-    var unit = (unitEl && unitEl.value) || stock.unit || '';
-    var unitLabel = unit ? (' ' + unit) : '';
     var place = stock.location || locationName || 'this location';
 
     if (hint) {
-      hint.textContent = 'Available in ' + place + ': ' + formatQty(available) + unitLabel + '. Damage cannot exceed this.';
+      hint.textContent = 'Available in ' + place + ': ' + formatQty(available) + '. Damage cannot exceed this.';
       hint.classList.toggle('text-success', available > 0);
       hint.classList.toggle('text-danger', available <= 0);
     }
@@ -111,7 +109,7 @@
     if (error) {
       error.hidden = !over;
       error.textContent = over
-        ? ('Only ' + formatQty(available) + unitLabel + ' available in ' + place + '.')
+        ? ('Only ' + formatQty(available) + ' available in ' + place + '.')
         : '';
     }
     if (qtyInput) {
@@ -154,7 +152,7 @@
       global.MBMS_CATALOG.variants(category, productId),
       function (row) { return row.id; },
       function (row) {
-        return row.label + (row.base_unit ? ' (' + row.base_unit + ')' : '');
+        return row.label || row.name || 'Variant';
       },
       current,
       productId ? 'Select variant' : 'Select product first'
@@ -375,10 +373,9 @@
           return;
         }
         if (available != null && qty > available + 0.00001) {
-          var unit = values.unit ? (' ' + values.unit) : '';
           global.MBMS_UI.notify({
             type: 'danger',
-            message: 'Only ' + formatQty(available) + unit + ' available at this location.'
+            message: 'Only ' + formatQty(available) + ' available at this location.'
           });
           return;
         }
