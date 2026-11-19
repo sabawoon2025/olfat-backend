@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 return new class extends Migration
 {
@@ -33,8 +34,26 @@ return new class extends Migration
 
     private function dropCheck(string $name): void
     {
-        $dropKeyword = DB::connection()->getDriverName() === 'pgsql' ? 'CONSTRAINT' : 'CHECK';
-        DB::statement("ALTER TABLE stock_movements DROP {$dropKeyword} {$name}");
+        $driver = DB::connection()->getDriverName();
+
+        if ($driver === 'pgsql') {
+            DB::statement("ALTER TABLE stock_movements DROP CONSTRAINT {$name}");
+
+            return;
+        }
+
+        // MariaDB only accepts DROP CONSTRAINT. MySQL 8 accepts DROP CHECK
+        // (and newer MySQL also accepts DROP CONSTRAINT).
+        $version = strtolower((string) (DB::selectOne('select version() as v')->v ?? ''));
+        $isMariaDb = str_contains($version, 'mariadb');
+        $primary = $isMariaDb ? 'CONSTRAINT' : 'CHECK';
+        $fallback = $isMariaDb ? 'CHECK' : 'CONSTRAINT';
+
+        try {
+            DB::statement("ALTER TABLE stock_movements DROP {$primary} {$name}");
+        } catch (Throwable) {
+            DB::statement("ALTER TABLE stock_movements DROP {$fallback} {$name}");
+        }
     }
 
     private function supportsCheckConstraints(): bool
